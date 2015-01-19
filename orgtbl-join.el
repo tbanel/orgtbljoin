@@ -28,7 +28,7 @@
 ;; key cells of the master row and the reference row are equal.
 ;;
 ;; Full documentation here:
-;;   https://github.com/tbanel/orgjoin/blob/master/README.org
+;;   https://github.com/tbanel/orgtbljoin/blob/master/README.org
 
 ;;; Requires:
 (require 'org-table)
