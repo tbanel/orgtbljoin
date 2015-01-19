@@ -1,0 +1,247 @@
+# -*- mode: org; -*-
+#+TITLE: Join Two Org Mode Tables
+#+OPTIONS: ^:{} author:Thierry Banel toc:nil
+
+One table (the master table) is grown by selectively appending rows of
+another table (the reference table).
+
+* Example
+
+Here is a list of products for a cooking recipe.
+
+#+BEGIN_EXAMPLE
+| type     | quty |
+|----------+------|
+| onion    |   70 |
+| tomatoe  |  120 |
+| eggplant |  300 |
+| tofu     |  100 |
+#+END_EXAMPLE
+
+We want to complete it with nutritional facts: quantities of fiber,
+sugar, proteins, and carbohydrates.  For this purpose, we have a long
+reference table of standard products.  (This table has been freely
+borrowed from Nut-Nutrition, http://nut.sourceforge.net/, by Jim
+Jozwiak).
+
+#+BEGIN_EXAMPLE
+#+tblname: nut
+| type     | Fiber | Sugar | Protein | Carb |
+|----------+-------+-------+---------+------|
+| eggplant |   2.5 |   3.2 |     0.8 |  8.6 |
+| tomatoe  |   0.6 |   2.1 |     0.8 |  3.4 |
+| onion    |   1.3 |   4.4 |     1.3 |  9.0 |
+| egg      |     0 |  18.3 |    31.9 | 18.3 |
+| rice     |   0.2 |     0 |     1.5 | 16.0 |
+| bread    |   0.7 |   0.7 |     3.3 | 16.0 |
+| orange   |   3.1 |  11.9 |     1.3 | 17.6 |
+| banana   |   2.1 |   9.9 |     0.9 | 18.5 |
+| tofu     |   0.7 |   0.5 |     6.6 |  1.4 |
+| nut      |   2.6 |   1.3 |     4.9 |  7.2 |
+| corn     |   4.7 |   1.8 |     2.8 | 21.3 |
+#+END_EXAMPLE
+
+Let us put the cursor on the "type" column of the recipe table, and
+type
+   =C-c C-x j= or =M-x orgtbl-join=.
+
+A few questions are asked.  Then the recipe gets new columns appended with
+the needed nutrition facts:
+
+#+BEGIN_EXAMPLE
+| type     | quty | Fiber | Sugar | Protein | Carb |
+|----------+------+-------+-------+---------+------|
+| onion    |   70 |   1.3 |   4.4 |     1.3 |  9.0 |
+| tomatoe  |  120 |   0.6 |   2.1 |     0.8 |  3.4 |
+| eggplant |  300 |   2.5 |   3.2 |     0.8 |  8.6 |
+| tofu     |  100 |   0.7 |   0.5 |     6.6 |  1.4 |
+#+END_EXAMPLE
+
+* SQL equivalent
+
+If you are familiar with SQL, you would get a similar result with the
+a /join/ (actually a /left outer join/).
+
+#+begin_src sql
+  select *
+  from recipe, nut
+  where recipe.type = nut.type;
+#+end_src
+
+#+begin_src sql
+  select *
+  from recipe, nut
+  left outer join nut on recipe.type = nut.type;
+#+end_src
+
+* In-place, Push, Pull
+
+Three modes are available: /in-place/, /push/, /pull/.
+
+** In /in-place/ mode
+
+The master table is changed (in-place) by appending columns from the
+reference table.
+
+Invoke it with the =M-x orgtbl-join= command, also bound to =C-c C-x j=.  The
+cursor must be positionned on the column used to perform the join.
+
+** In /push/ mode
+
+The master table drives the creation of derived tables.  Specify the wanted
+result in =#+ORGTBL: SEND= directives (as many as desired):
+
+#+BEGIN_EXAMPLE
+#+ORGTBL: SEND enriched orgtbl-to-joined-table :ref-table nut :mas-column type :ref-column type
+| type     | quty |
+|----------+------|
+| onion    |   70 |
+| tomatoe  |  120 |
+| eggplant |  300 |
+| tofu     |  100 |
+#+END_EXAMPLE
+
+The receiving blocks must be created somewhere else in the same file:
+
+#+BEGIN_EXAMPLE
+#+BEGIN RECEIVE ORGTBL enriched
+#+END RECEIVE ORGTBL enriched
+#+END_EXAMPLE
+
+Typing =C-c C-c= with the cursor on the first pipe of the master table
+refreshes all derived tables.
+
+** In /pull/ mode
+
+So-called "dynamic blocks" may also be used.  The resulting table knows how
+to build itself.  Example:
+
+A master table is unaware that it will be enriched in a joined table:
+
+#+BEGIN_EXAMPLE
+#+TBLNAME: recipe
+| type     | quty |
+|----------+------|
+| onion    |   70 |
+| tomatoe  |  120 |
+| eggplant |  300 |
+| tofu     |  100 |
+#+END_EXAMPLE
+
+Create somewhere else a /dynamic block/ which carries the specification of
+the join:
+
+#+BEGIN: join :mas-table recipe :mas-column type :ref-table nut :ref-column type
+| type     | quty | type     | Fiber | Sugar | Protein | Carb |
+|----------+------+----------+-------+-------+---------+------|
+| onion    |   70 | onion    |   1.3 |   4.4 |     1.3 |  9.0 |
+| tomatoe  |  120 | tomatoe  |   0.6 |   2.1 |     0.8 |  3.4 |
+| eggplant |  300 | eggplant |   2.5 |   3.2 |     0.8 |  8.6 |
+| tofu     |  100 | tofu     |   0.7 |   0.5 |     6.6 |  1.4 |
+#+END:
+
+Typing =C-c C-c= with the cursor on the =#+BEGIN:= line refreshes the
+table.
+
+** As a rule of thumb
+
+For quick and once-only processing, use /in-place/ mode.
+
+Use /pull/ or /push/ modes for reproductible work.  The /pull/ mode might be
+easier to use than the /push/, because there is a wizard bound to =C-c C-x i=
+(see below).  Other than that, the two modes use the same underlying engine,
+so using one or the other is just a matter or convenience.
+
+* Duplicates or missing values
+
+It may happen that no row in the reference table matches a value in
+the master table.  In this case, the master row is kept, with empty
+cells added to it.  Information from the master table is never lost.
+If, for example, a line in the recipe refers to an unkown "amarante"
+product (a cereal known by the ancient Incas), then the resulting
+table will still contain the "amarante" row, with empty nutritional
+facts.
+
+#+BEGIN_EXAMPLE
+| type     | quty | type     | Fiber | Sugar | Protein | Carb |
+|----------+------+----------+-------+-------+---------+------|
+| onion    |   70 | onion    |   1.3 |   4.4 |     1.3 |  9.0 |
+| tomatoe  |  120 | tomatoe  |   0.6 |   2.1 |     0.8 |  3.4 |
+| eggplant |  300 | eggplant |   2.5 |   3.2 |     0.8 |  8.6 |
+| tofu     |  100 | tofu     |   0.7 |   0.5 |     6.6 |  1.4 |
+| amarante |  120 |          |       |       |         |      |
+#+END_EXAMPLE
+
+The reference table may contain several matching rows for the same
+value in the master table.  In this case, as many rows are created in
+the joined table.  Therefore, the resulting table may be longer than
+the master table.  Example, if the reference table contains three rows
+for "eggplants":
+
+#+BEGIN_EXAMPLE
+#+tblname: nut
+| type     | Cooking | Fiber | Sugar | Protein | Carb |
+|----------+---------+-------+-------+---------+------|
+| ...      | ...     |   ... |   ... |     ... |  ... |
+| eggplant | boiled  |   2.5 |   3.2 |     0.8 |  8.6 |
+| eggplant | pickled |   3.4 |   6.5 |     1.2 | 13.3 |
+| eggplant | raw     |   2.8 |   1.9 |     0.8 |  4.7 |
+| ...      | ...     |   ... |   ... |     ... |  ... |
+#+END_EXAMPLE
+
+Then the resulting table will have those three rows appended:
+
+#+BEGIN_EXAMPLE
+| type     | quty | type     | Cooking | Fiber | Sugar | Protein | Carb |
+|----------+------+----------+---------+-------+-------+---------+------|
+| eggplant |  300 | eggplant | boiled  |   2.5 |   3.2 |     0.8 |  8.6 |
+| eggplant |  300 | eggplant | pickled |   3.4 |   6.5 |     1.2 | 13.3 |
+| eggplant |  300 | eggplant | raw     |   2.8 |   1.9 |     0.8 |  4.7 |
+#+END_EXAMPLE
+
+If you are familiar with SQL, this behavior is reminicent of the
+/left outer join/.
+
+* Headers
+
+The master and the reference tables may or may not have a header.  When
+there is a header, it may extend over several lines.  A header ends
+with an horizontal line.
+
+The orgtbl-join system tries to preserve as much of the master table
+as possible.  Therefore, if the master table has a header, the
+joined table will have it verbatim, over as many lines as needed.
+
+The reference table header (if any), will fill-in the header (if any)
+of the resulting table.  But if there is no room in the resulting
+table header, the reference table header lines will be ignored, partly
+of fully.
+
+* Wizard
+
+The /in-place mode/ is run through a small wizard which asks questions, with
+completion available.  Invoke it with:
+  =M-x orgtbl-join=
+or
+  =C-c C-x j=
+
+A wizard is available for the /pull/ mode.  It is invoked with either:
+  =M-x org-insert-dblock:join=
+or
+  =C-c C-x i=
+
+For all questions, completion is available.  In the later case, you should
+answer =join= when asked for the kind of block.
+
+Note: there are many kinds of dynamic blocks that can be inserted.
+Actually all those which define a function with a name like:
+=org-insert-dblock:xxxx=
+
+Right now available wizards include:
+- =org-insert-dblock:join=  (with this ~join~ package)
+- =org-insert-dblock:aggregate=   (with the ~aggregate~ package)
+- =org-insert-dblock:transpose=   (with the ~aggregate~ package)
+- =org-insert-dblock:columnview=
+- =org-insert-dblock:clocktable=
+- =org-insert-dblock:propview=
+- =org-insert-dblock:invoice=   (with the ~invoice~ package)

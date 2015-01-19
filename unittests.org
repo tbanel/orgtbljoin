@@ -1,0 +1,394 @@
+#+TITLE: Unit Tests & Examples for Orgtbl Join
+Copyright (C) 2014,2015  Thierry Banel
+
+org-aggregate is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+org-aggregate is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+Running all the tests should not change anything to this page.
+
+All pull-mode tests can be re-computed at once by executing:
+(org-update-all-dblocks)
+
+All push-mode tests can be re-computed at once by executing:
+(org-table-map-tables
+  (lambda ()
+    (org-table-align)
+    (orgtbl-send-table 'maybe)))
+
+* In-place mode
+
+** Nutritional reference table with header
+
+There are multiple "eggplant" entries on purpose.
+They will all get added to the master table when joining.
+
+The header extends on 3 lines. All 3 lines will be concatenated to the
+master table header, provided the master table header has at least 3
+lines. The excess lines will be ignored.
+
+#+tblname: nut_with_header
+|------+----------+-------+-------+---------|
+| Carb | type     | Fiber | Sugar | Protein |
+| ohyd |          |       |       |         |
+| rate |          |       |       |         |
+|------+----------+-------+-------+---------|
+|  8.6 | eggplant |   2.5 |   3.2 |     0.8 |
+|  8.7 | eggplant |   2.6 |   3.3 |     0.9 |
+|  3.4 | tomatoe  |   0.6 |   2.1 |     0.8 |
+|  9.0 | onion    |   1.3 |   4.4 |     1.3 |
+| 18.3 | egg      |     0 |  18.3 |    31.9 |
+| 16.0 | rice     |   0.2 |     0 |     1.5 |
+| 16.0 | bread    |   0.7 |   0.7 |     3.3 |
+| 17.6 | orange   |   3.1 |  11.9 |     1.3 |
+| 18.5 | banana   |   2.1 |   9.9 |     0.9 |
+|  1.4 | tofu     |   0.7 |   0.5 |     6.6 |
+|  7.2 | nut      |   2.6 |   1.3 |     4.9 |
+| 21.3 | corn     |   4.7 |   1.8 |     2.8 |
+|  8.5 | eggplant |     ? |     ? |       ? |
+|      |          |       |       |         |
+
+** Nutritional reference table without header
+
+#+tblname: nut_no_header
+|  8.6 | eggplant | 2.5 |  3.2 |  0.8 |
+|  8.7 | eggplant | 2.6 |  3.3 |  0.9 |
+|  3.4 | tomatoe  | 0.6 |  2.1 |  0.8 |
+|  9.0 | onion    | 1.3 |  4.4 |  1.3 |
+| 18.3 | egg      |   0 | 18.3 | 31.9 |
+| 16.0 | rice     | 0.2 |    0 |  1.5 |
+| 16.0 | bread    | 0.7 |  0.7 |  3.3 |
+| 17.6 | orange   | 3.1 | 11.9 |  1.3 |
+| 18.5 | banana   | 2.1 |  9.9 |  0.9 |
+|  1.4 | tofu     | 0.7 |  0.5 |  6.6 |
+|  7.2 | nut      | 2.6 |  1.3 |  4.9 |
+| 21.3 | corn     | 4.7 |  1.8 |  2.8 |
+|  8.5 | eggplant |   ? |    ? |    ? |
+|      |          |     |      |      |
+
+** Play with M-x orgtbl-join
+
+Those recipes should to be augmented interactively with nutritional facts
+
+The master tables have a formula on the last column, which will be
+preserved after joining.
+
+With header.
+- Put the cursor on the "type" column
+- type
+  : M-x orgtbl-join
+- answer
+  : nut_with_header
+  : type
+
+| quty | type     | units |  mul |
+|------+----------+-------+------|
+|   70 | onion    |     5 |  350 |
+|  120 | tomatoe  |     8 |  960 |
+|  300 | eggplant |     2 |  600 |
+|------+----------+-------+------|
+|  100 | tofu     |     1 |  100 |
+|  250 | corn     |    15 | 3750 |
+|   90 | tomatoe  |     5 |  450 |
+|------+----------+-------+------|
+|   80 | amarante |     1 |   80 |
+#+TBLFM: $4=$1*$3
+
+Without header.
+- Put the cursor on the second column
+- type
+  : M-x orgtbl-join
+- answer
+  : nut_with_header
+  : type
+
+|  70 | onion    |  5 |  350 |
+| 120 | tomatoe  |  8 |  960 |
+| 300 | eggplant |  2 |  600 |
+| 100 | tofu     |  1 |  100 |
+| 250 | corn     | 15 | 3750 |
+|  90 | tomatoe  |  5 |  450 |
+|  80 | amarante |  1 |   80 |
+#+TBLFM: $4=$1*$3
+
+* PULL mode
+
+** Master table with oversized header
+
+#+tblname: meal_with_header
+| product   |   quty |
+| common    |     in |
+| name      | gramms |
+| (english) |        |
+|-----------+--------|
+| onion     |     70 |
+| unknown   |    999 |
+| tomatoe   |    120 |
+| eggplant  |    300 |
+| corn      |    250 |
+
+** Master table without header
+
+#+tblname: meal_no_header
+| onion     |  70 |
+| not known | 999 |
+| tomatoe   | 120 |
+| eggplant  | 300 |
+| corn      | 250 |
+
+** Join header+header
+
+#+BEGIN: join :mas-table meal_with_header :mas-column $1 :ref-table nut_with_header :ref-column 2
+| product   |   quty | Carb | Fiber | Sugar | Protein |
+| common    |     in | ohyd |       |       |         |
+| name      | gramms | rate |       |       |         |
+| (english) |        |      |       |       |         |
+|-----------+--------+------+-------+-------+---------|
+| onion     |     70 |  9.0 |   1.3 |   4.4 |     1.3 |
+| unknown   |    999 |      |       |       |         |
+| tomatoe   |    120 |  3.4 |   0.6 |   2.1 |     0.8 |
+| eggplant  |    300 |  8.6 |   2.5 |   3.2 |     0.8 |
+| eggplant  |    300 |  8.7 |   2.6 |   3.3 |     0.9 |
+| eggplant  |    300 |  8.5 |     ? |     ? |       ? |
+| corn      |    250 | 21.3 |   4.7 |   1.8 |     2.8 |
+#+END:
+
+** join header+bare
+
+#+BEGIN: join :mas-table "meal_with_header" :mas-column "product" :ref-table "nut_no_header" :ref-column "2"
+| product   |   quty |      |     |     |     |
+| common    |     in |      |     |     |     |
+| name      | gramms |      |     |     |     |
+| (english) |        |      |     |     |     |
+|-----------+--------+------+-----+-----+-----|
+| onion     |     70 |  9.0 | 1.3 | 4.4 | 1.3 |
+| unknown   |    999 |      |     |     |     |
+| tomatoe   |    120 |  3.4 | 0.6 | 2.1 | 0.8 |
+| eggplant  |    300 |  8.6 | 2.5 | 3.2 | 0.8 |
+| eggplant  |    300 |  8.7 | 2.6 | 3.3 | 0.9 |
+| eggplant  |    300 |  8.5 |   ? |   ? |   ? |
+| corn      |    250 | 21.3 | 4.7 | 1.8 | 2.8 |
+#+END:
+
+** join bare+header
+
+#+BEGIN: join :mas-table meal_no_header :mas-column $1 :ref-table nut_with_header :ref-column type
+| onion     |  70 |  9.0 | 1.3 | 4.4 | 1.3 |
+| not known | 999 |      |     |     |     |
+| tomatoe   | 120 |  3.4 | 0.6 | 2.1 | 0.8 |
+| eggplant  | 300 |  8.6 | 2.5 | 3.2 | 0.8 |
+| eggplant  | 300 |  8.7 | 2.6 | 3.3 | 0.9 |
+| eggplant  | 300 |  8.5 |   ? |   ? |   ? |
+| corn      | 250 | 21.3 | 4.7 | 1.8 | 2.8 |
+#+END:
+
+** join bare+bare
+
+#+BEGIN: join :mas-table meal_no_header :mas-column 1 :ref-table nut_no_header :ref-column $2
+| onion     |  70 |  9.0 | 1.3 | 4.4 | 1.3 |
+| not known | 999 |      |     |     |     |
+| tomatoe   | 120 |  3.4 | 0.6 | 2.1 | 0.8 |
+| eggplant  | 300 |  8.6 | 2.5 | 3.2 | 0.8 |
+| eggplant  | 300 |  8.7 | 2.6 | 3.3 | 0.9 |
+| eggplant  | 300 |  8.5 |   ? |   ? |   ? |
+| corn      | 250 | 21.3 | 4.7 | 1.8 | 2.8 |
+#+END:
+
+* PUSH mode
+
+** Push a master table with header
+
+1st reference table has a larger header
+2nd reference table has no header
+
+#+ORGTBL: SEND joined1 orgtbl-to-joined-table :ref-table nut_with_header :mas-column product :ref-column type
+#+ORGTBL: SEND joined2 orgtbl-to-joined-table :ref-table "nut_no_header" :mas-column "$1"    :ref-column $2
+| product       | quty |
+| (yes)         |  (g) |
+|---------------+------|
+| onion         |   70 |
+| not specified |  999 |
+| tomatoe       |  120 |
+| eggplant      |  300 |
+| corn          |  250 |
+
+#+BEGIN RECEIVE ORGTBL joined1
+| product       | quty | Carb | Fiber | Sugar | Protein |
+| (yes)         |  (g) | ohyd |       |       |         |
+|---------------+------+------+-------+-------+---------|
+| onion         |   70 |  9.0 |   1.3 |   4.4 |     1.3 |
+| not specified |  999 |      |       |       |         |
+| tomatoe       |  120 |  3.4 |   0.6 |   2.1 |     0.8 |
+| eggplant      |  300 |  8.6 |   2.5 |   3.2 |     0.8 |
+| eggplant      |  300 |  8.7 |   2.6 |   3.3 |     0.9 |
+| eggplant      |  300 |  8.5 |     ? |     ? |       ? |
+| corn          |  250 | 21.3 |   4.7 |   1.8 |     2.8 |
+#+END RECEIVE ORGTBL joined1
+
+#+BEGIN RECEIVE ORGTBL joined2
+| product       | quty |      |     |     |     |
+| (yes)         |  (g) |      |     |     |     |
+|---------------+------+------+-----+-----+-----|
+| onion         |   70 |  9.0 | 1.3 | 4.4 | 1.3 |
+| not specified |  999 |      |     |     |     |
+| tomatoe       |  120 |  3.4 | 0.6 | 2.1 | 0.8 |
+| eggplant      |  300 |  8.6 | 2.5 | 3.2 | 0.8 |
+| eggplant      |  300 |  8.7 | 2.6 | 3.3 | 0.9 |
+| eggplant      |  300 |  8.5 |   ? |   ? |   ? |
+| corn          |  250 | 21.3 | 4.7 | 1.8 | 2.8 |
+#+END RECEIVE ORGTBL joined2
+
+** Push a master table with not header
+
+1st reference table has a larger header
+2nd reference table has no header
+
+#+ORGTBL: SEND joined3 orgtbl-to-joined-table :ref-table nut_with_header :mas-column "1" :ref-column type
+#+ORGTBL: SEND joined4 orgtbl-to-joined-table :ref-table "nut_no_header" :mas-column $1  :ref-column $2
+| onion         |  70 |
+| not specified | 999 |
+| tomatoe       | 120 |
+| eggplant      | 300 |
+| corn          | 250 |
+
+#+BEGIN RECEIVE ORGTBL joined3
+| onion         |  70 |  9.0 | 1.3 | 4.4 | 1.3 |
+| not specified | 999 |      |     |     |     |
+| tomatoe       | 120 |  3.4 | 0.6 | 2.1 | 0.8 |
+| eggplant      | 300 |  8.6 | 2.5 | 3.2 | 0.8 |
+| eggplant      | 300 |  8.7 | 2.6 | 3.3 | 0.9 |
+| eggplant      | 300 |  8.5 |   ? |   ? |   ? |
+| corn          | 250 | 21.3 | 4.7 | 1.8 | 2.8 |
+#+END RECEIVE ORGTBL joined3
+
+#+BEGIN RECEIVE ORGTBL joined4
+| onion         |  70 |  9.0 | 1.3 | 4.4 | 1.3 |
+| not specified | 999 |      |     |     |     |
+| tomatoe       | 120 |  3.4 | 0.6 | 2.1 | 0.8 |
+| eggplant      | 300 |  8.6 | 2.5 | 3.2 | 0.8 |
+| eggplant      | 300 |  8.7 | 2.6 | 3.3 | 0.9 |
+| eggplant      | 300 |  8.5 |   ? |   ? |   ? |
+| corn          | 250 | 21.3 | 4.7 | 1.8 | 2.8 |
+#+END RECEIVE ORGTBL joined4
+
+* Cartesian product
+
+What happens when the master and the reference table are the same
+table?  A so-called cartesian product (named after the mathematician
+René Descartes) is created.  Every possible combination of rows is
+created.
+
+** Simple auto-join in pull-mode
+
+The table is joined with itself, creating a cartesian product.  The
+resulting table size is the square of the original table size (7*7 =
+49).
+
+#+tblname: auto
+| t | n |
+|---+---|
+| a | 1 |
+| a | 2 |
+| a | 3 |
+| a | 4 |
+| a | 5 |
+| a | 6 |
+| a | 7 |
+
+#+BEGIN: join :mas-table auto :mas-column t :ref-table auto :ref-column "t"
+| t | n | n |
+|---+---+---|
+| a | 1 | 1 |
+| a | 1 | 2 |
+| a | 1 | 3 |
+| a | 1 | 4 |
+| a | 1 | 5 |
+| a | 1 | 6 |
+| a | 1 | 7 |
+| a | 2 | 1 |
+| a | 2 | 2 |
+| a | 2 | 3 |
+| a | 2 | 4 |
+| a | 2 | 5 |
+| a | 2 | 6 |
+| a | 2 | 7 |
+| a | 3 | 1 |
+| a | 3 | 2 |
+| a | 3 | 3 |
+| a | 3 | 4 |
+| a | 3 | 5 |
+| a | 3 | 6 |
+| a | 3 | 7 |
+| a | 4 | 1 |
+| a | 4 | 2 |
+| a | 4 | 3 |
+| a | 4 | 4 |
+| a | 4 | 5 |
+| a | 4 | 6 |
+| a | 4 | 7 |
+| a | 5 | 1 |
+| a | 5 | 2 |
+| a | 5 | 3 |
+| a | 5 | 4 |
+| a | 5 | 5 |
+| a | 5 | 6 |
+| a | 5 | 7 |
+| a | 6 | 1 |
+| a | 6 | 2 |
+| a | 6 | 3 |
+| a | 6 | 4 |
+| a | 6 | 5 |
+| a | 6 | 6 |
+| a | 6 | 7 |
+| a | 7 | 1 |
+| a | 7 | 2 |
+| a | 7 | 3 |
+| a | 7 | 4 |
+| a | 7 | 5 |
+| a | 7 | 6 |
+| a | 7 | 7 |
+#+END:
+
+** Two sub-cartesian-products in push mode
+
+Because the table has two keys (a & b), two completely unrelated
+cartesian products are created, each the square size of the source
+(3^2 + 2^2 = 13).
+
+#+tblname: buto
+#+ORGTBL: SEND buto2 orgtbl-to-joined-table :ref-table buto :mas-column "t" :ref-column t
+| t | n |
+|---+---|
+| a | 1 |
+| a | 2 |
+| a | 3 |
+| b | 4 |
+| b | 5 |
+
+#+BEGIN RECEIVE ORGTBL buto2
+| t | n | n |
+|---+---+---|
+| a | 1 | 1 |
+| a | 1 | 2 |
+| a | 1 | 3 |
+| a | 2 | 1 |
+| a | 2 | 2 |
+| a | 2 | 3 |
+| a | 3 | 1 |
+| a | 3 | 2 |
+| a | 3 | 3 |
+| b | 4 | 4 |
+| b | 4 | 5 |
+| b | 5 | 4 |
+| b | 5 | 5 |
+#+END RECEIVE ORGTBL buto2
