@@ -34,6 +34,8 @@
 (require 'org-table)
 (eval-when-compile (require 'cl-lib) (require 'cl))
 
+;;; Code:
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Utility functions
 
