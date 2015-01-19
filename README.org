@@ -228,7 +228,8 @@ or
 A wizard is available for the /pull/ mode.  It is invoked with either:
   =M-x org-insert-dblock:join=
 or
-  =C-c C-x i=
+  =C-c C-x i= (this key binding will be available in a few days;
+  if you cannot wait, get it by installing the =orgtbl-aggregate= package).
 
 For all questions, completion is available.  In the later case, you should
 answer =join= when asked for the kind of block.
