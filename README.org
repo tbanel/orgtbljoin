@@ -219,6 +219,11 @@ of fully.
 
 * Wizard
 
+You may install key-bindings and a menu entry by calling adding the
+following lines to your =.emacs= file:
+: (orgtbl-join-setup-keybindings)
+: (org-insert-dblock-setup-keybindings)
+
 The /in-place mode/ is run through a small wizard which asks questions, with
 completion available.  Invoke it with:
   =M-x orgtbl-join=

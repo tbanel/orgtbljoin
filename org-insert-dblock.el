@@ -1,5 +1,5 @@
-;; -*- coding:utf-8;-*-
 ;;; org-inset-dblock.el --- Wizzard to insert a dynamic block
+;; -*- coding:utf-8;-*-
 
 ;; Copyright (C) 2013, 2014, 2015  Thierry Banel
 
@@ -46,22 +46,25 @@
 (require 'org)
 
 ;; ------------------------------------
-;; A few adapters need to be defined 
+;; A few adapters need to be defined
 ;; to make present wizzards compliant with
 ;; the org-insert-dblock:* pattern naming
 
 ;;;###autoload
 (defun org-insert-dblock:columnview ()
+  "Adapter function for inserting a column view."
   (interactive)
   (org-insert-columns-dblock))
 
 ;;;###autoload
 (defun org-insert-dblock:clocktable ()
+  "Adapter function to insert a clock-table."
   (interactive)
   (org-clock-report))
 
 ;;;###autoload
 (defun org-insert-dblock:propview ()
+  "Adapter function to insert a property view."
   (interactive)
   (org-create-dblock
    (list
@@ -79,6 +82,7 @@
 
 ;;;###autoload
 (defun org-insert-dblock:invoice ()
+  "Adapter function to insert an invoce block."
   (interactive)
   (org-create-dblock
    (list
@@ -95,15 +99,15 @@
 
 ;;;###autoload
 (defun org-insert-dblock ()
-  "Inserts an org table dynamic block.
+  "Insert an org table dynamic block.
 This is a dispatching function which prompts for the type
-of dynamic block to insert. It dispatches to functions
-which names matches the pattern `org-insert-dblock:*'"
+of dynamic block to insert.  It dispatches to functions
+which names matches the pattern \\[org-insert-dblock:*]"
   (interactive)
   (let ((fun
 	 (intern
 	  (format
-	   "org-insert-dblock:%s" 
+	   "org-insert-dblock:%s"
 	   (org-icompleting-read
 	    "Kind of dynamic block: "
 	    (mapcar (lambda (x)
@@ -116,24 +120,14 @@ which names matches the pattern `org-insert-dblock:*'"
 	(funcall fun)
       (message "No such dynamic block: %s" fun))))
 
-;; Key-binding
-;; Suitable for packaging (for example on Melpa):
-;; handle all the cases (Org-mode already loaded or to be loaded later)
-
 ;;;###autoload
-(defun org-insert-dblock-bindings ()
-  (org-defkey org-mode-map "\C-c\C-xi" 'org-insert-dblock)
-  (easy-menu-add-item
-   org-org-menu '()
-   ["Insert Dynamic Block" org-insert-dblock t] "Agenda Command..."))
+(defun org-insert-dblock-setup-keybindings ()
+  "Setup key-binding.
+This function can be called in your .emacs. It will extend the
+C-c C-x i key-binding for inserting any dynamic block, not only
+\\[org-insert-columns-dblock]"
+  (eval-after-load 'org
+    (org-defkey org-mode-map "\C-c\C-xi" 'org-insert-dblock)))
 
-;;;###autoload
-(if (functionp 'org-defkey)
-    (org-insert-dblock-bindings) ;; org-mode already loaded
-  (setq org-load-hook            ;; org-mode will be loaded later
-	(cons 'org-insert-dblock-bindings
-	      (if (boundp 'org-load-hook)
-		  org-load-hook))))
-
-(provide 'org-inset-dblock)
-;;; org-inset-dblock.el ends here
+(provide 'org-insert-dblock)
+;;; org-insert-dblock.el ends here
