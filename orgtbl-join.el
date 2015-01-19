@@ -6,6 +6,7 @@
 ;; Contributors:
 ;; Version: 0.1
 ;; Keywords: org, table, join, filtering
+;; Package-Requires: ((cl-lib "0.5"))
 
 ;; orgtbl-join is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -32,7 +33,6 @@
 
 ;;; Requires:
 (require 'org-table)
-(eval-when-compile (require 'cl-lib) (require 'cl))
 
 ;;; Code:
 
@@ -45,7 +45,9 @@ COL may be:
 - a dollar form, like $5 which is converted to 4
 - a number, like 5 which is converted to 4
 - an alphanumeric name which appears in the column header (if any)
-When COL does not match any actual column, an error is generated."
+When COL does not match any actual column, an error is generated.
+TABLE is an Org mode table passed as a list of lists of cells.
+It is used to check COL against TABLE header."
   ;; skip first hlines if any
   (while (not (listp (car table)))
     (setq table (cdr table)))
@@ -75,8 +77,12 @@ When COL does not match any actual column, an error is generated."
   col)
 
 (defun orgtbl--join-query-column (prompt table)
-  "Interactively query a column among the HEADER columns,
-or $1, $2..."
+  "Interactively query a column.
+PROMPT is displayed to the user to explain what answer is expected.
+TABLE is the org mode table from which a column will be choosen
+by the user.  Its header is used for column names completion.  If
+TABLE has no header, completion is done on generic column names:
+$1, $2..."
   (while (eq 'hline (car table))
     (setq table (cdr table)))
   (org-icompleting-read
@@ -88,9 +94,10 @@ or $1, $2..."
 		(car table))))))
 
 (defun orgtbl--join-convert-to-hashtable (table col)
-  "Convert an Org-mode TABLE into a hash table, in order to provide fast
-lookup to its rows.  The COL column contains the keys for the hashtable
-entries.  Return a cons, the car contains the header, the cdr contains the
+  "Convert an Org-mode TABLE into a hash table.
+The purpose is to provide fast lookup to TABLE's rows.  The COL
+column contains the keys for the hashtable entries.  Return a
+cons, the car contains the header, the cdr contains the
 hashtable."
   ;; skip heading horinzontal lines if any
   (while (eq (car table) 'hline)
@@ -134,9 +141,9 @@ hashtable."
     tables))
 
 (defun orgtbl-get-distant-table (name-or-id)
-  "Find a table in the current buffer named NAME-OR-ID
-and returns it as a lisp list of lists.
-An horizontal line is translated as the special symbol `hline'."
+  "Find a table in the current buffer named NAME-OR-ID.
+Returns it as a list of lists of cells.  An horizontal line is
+translated as the special symbol `hline'."
   (unless (stringp name-or-id)
     (setq name-or-id (format "%s" name-or-id)))
   (let (buffer loc id-loc tbeg form)
@@ -170,10 +177,9 @@ An horizontal line is translated as the special symbol `hline'."
 	      (org-table-to-lisp))))))))
 
 (defun orgtbl-insert-elisp-table (table)
-    "Insert TABLE, which is a lisp list of lists,
-  into the current buffer, at the point location.
-  The list may contain the special symbol 'hline
-  to mean an horizontal line."
+  "Insert TABLE in current buffer at point.
+TABLE is a list of lists of cells.  The list may contain the
+special symbol 'hline to mean an horizontal line."
     (while table
       (let ((row (car table)))
 	(setq table (cdr table))
@@ -182,7 +188,7 @@ An horizontal line is translated as the special symbol `hline'."
 	       (insert (mapconcat #'identity row "|")))
 	      ((eq row 'hline)
 	       (insert "|-"))
-	      (t (error "bad row in elisp table")))
+	      (t (error "Bad row in elisp table")))
 	(insert "\n")))
     (delete-char -1)
     (org-table-align))
@@ -272,7 +278,11 @@ The DCOL columns (joining column) is skipped."
 ;; PULL & PUSH engine
 
 (defun orgtbl--join-append-mas-ref-row (masrow refrow refcol)
-  "Concatenate master and reference rows, skiping the reference column"
+  "Concatenate master and reference rows, skiping the reference column.
+MASROW is a list of cells from the master table.  REFROW is a
+list of cells from the reference table.  REFCOL is the position,
+numbered from zero, of the column in REFROW that should not be
+appended in the result, because it is already present in MASROW."
   (let ((result (reverse masrow))
 	(i 0))
     (while refrow
@@ -283,6 +293,12 @@ The DCOL columns (joining column) is skipped."
     (reverse result)))
 
 (defun orgtbl--create-table-joined (mastable mascol reftable refcol)
+  "Join a master table with a reference table.
+MASTABLE is the master table, as a list of lists of cells.
+MASCOL is the name of the joining column in the master table.
+REFTABLE is the reference table.
+REFCOL is the name of the joining column in the reference table.
+Returns MASTABLE enriched with material from REFTABLE."
   (let ((result)  ;; result built in reverse order
 	(refhead)
 	(refhash))
@@ -338,8 +354,7 @@ The DCOL columns (joining column) is skipped."
 
 ;;;###autoload
 (defun orgtbl-to-joined-table (table params)
-  "Create a version of this TABLE (the master table) joined with
-lines from another reference table.
+  "Enrich the master TABLE with lines from a reference table.
 
 PARAMS contains pairs of key-value with the following keys:
 
@@ -424,7 +439,7 @@ PARAMS contains pairs of key-value with the following keys:
 Columns names are either found in the header of the table, if the
 table have a header, or a dollar form: $1, $2, and so on.
 
-The 
+The
 #+BEGIN RECEIVE ORGTBL destination_table_name
 #+END RECEIVE ORGTBL destination_table_name"
   (interactive)
