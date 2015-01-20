@@ -121,7 +121,7 @@ which names matches the pattern \\[org-insert-dblock:*]"
       (message "No such dynamic block: %s" fun))))
 
 ;;;###autoload
-(defun org-insert-dblock-bindings ()
+(defun org-insert-dblock-setup-keybindings ()
   "Setup key-binding.
 This function can be called in your .emacs. It will extend the
 C-c C-x i key-binding for inserting any dynamic block, not only
