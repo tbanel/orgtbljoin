@@ -457,11 +457,11 @@ This function can be called in your .emacs. It will add the `C-c
 C-x j' key-binding for calling the orgtbl-join wizard, and a menu
 entry under Tbl > Column > Join with another table."
   (eval-after-load 'org
-    (progn
-      (org-defkey org-mode-map "\C-c\C-xj" 'orgtbl-join)
-      (easy-menu-add-item
-       org-tbl-menu '("Column")
-       ["Join with another table" orgtbl-join t]))))
+    '(progn
+       (org-defkey org-mode-map "\C-c\C-xj" 'orgtbl-join)
+       (easy-menu-add-item
+	org-tbl-menu '("Column")
+	["Join with another table" orgtbl-join t]))))
 
 (provide 'orgtbl-join)
 ;;; orgtbl-join.el ends here

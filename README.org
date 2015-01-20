@@ -219,7 +219,7 @@ of fully.
 
 * Wizard
 
-You may install key-bindings and a menu entry by calling adding the
+You may install key-bindings and a menu entry by adding the
 following lines to your =.emacs= file:
 : (orgtbl-join-setup-keybindings)
 : (org-insert-dblock-bindings)
@@ -229,6 +229,8 @@ completion available.  Invoke it with:
   =M-x orgtbl-join=
 or
   =C-c C-x j=
+or menue entry
+  =Tbl > Column > Join with another table=
 
 A wizard is available for the /pull/ mode.  It is invoked with either:
   =M-x org-insert-dblock:join=

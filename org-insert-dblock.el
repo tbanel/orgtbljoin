@@ -127,7 +127,7 @@ This function can be called in your .emacs. It will extend the
 C-c C-x i key-binding for inserting any dynamic block, not only
 \\[org-insert-columns-dblock]"
   (eval-after-load 'org
-    (org-defkey org-mode-map "\C-c\C-xi" 'org-insert-dblock)))
+    '(org-defkey org-mode-map "\C-c\C-xi" 'org-insert-dblock)))
 
 (provide 'org-insert-dblock)
 ;;; org-insert-dblock.el ends here
