@@ -121,13 +121,15 @@ which names matches the pattern \\[org-insert-dblock:*]"
       (message "No such dynamic block: %s" fun))))
 
 ;;;###autoload
-(defun org-insert-dblock-setup-keybindings ()
+(defun org-insert-dblock-bindings ()
   "Setup key-binding.
 This function can be called in your .emacs. It will extend the
 C-c C-x i key-binding for inserting any dynamic block, not only
 \\[org-insert-columns-dblock]"
-  (eval-after-load 'org
-    '(org-defkey org-mode-map "\C-c\C-xi" 'org-insert-dblock)))
+  (org-defkey org-mode-map "\C-c\C-xi" 'org-insert-dblock)
+  (easy-menu-add-item
+   org-org-menu '()
+   ["Insert Dynamic Block" org-insert-dblock t] "Agenda Command..."))
 
 (provide 'org-insert-dblock)
 ;;; org-insert-dblock.el ends here
