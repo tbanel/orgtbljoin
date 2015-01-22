@@ -131,6 +131,7 @@ A master table is unaware that it will be enriched in a joined table:
 Create somewhere else a /dynamic block/ which carries the specification of
 the join:
 
+#+BEGIN_EXAMPLE
 #+BEGIN: join :mas-table recipe :mas-column type :ref-table nut :ref-column type
 | type     | quty | type     | Fiber | Sugar | Protein | Carb |
 |----------+------+----------+-------+-------+---------+------|
@@ -139,6 +140,7 @@ the join:
 | eggplant |  300 | eggplant |   2.5 |   3.2 |     0.8 |  8.6 |
 | tofu     |  100 | tofu     |   0.7 |   0.5 |     6.6 |  1.4 |
 #+END:
+#+END_EXAMPLE
 
 Typing =C-c C-c= with the cursor on the =#+BEGIN:= line refreshes the
 table.
@@ -217,12 +219,20 @@ of the resulting table.  But if there is no room in the resulting
 table header, the reference table header lines will be ignored, partly
 of fully.
 
-* Wizard
+* Key-bindings, menu
 
-You may install key-bindings and a menu entry by adding the
+You may install key-bindings and menu entries by adding the
 following lines to your =.emacs= file:
 : (orgtbl-join-setup-keybindings)
 : (org-insert-dblock-bindings)
+
+This will give the following bindings:
+- =C-c C-x j= bound to =orgtbl-join=
+- =C-c C-x i= bound to =org-insert-dblock=
+- menu =Org > Insert dynamic block= bound to =org-insert-dblock=
+- menu =Tbl > Column > Join with another table= bound to =orgtbl-join=
+
+* Wizard
 
 The /in-place mode/ is run through a small wizard which asks questions, with
 completion available.  Invoke it with:
