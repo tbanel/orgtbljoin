@@ -235,18 +235,14 @@ This will give the following bindings:
 * Wizard
 
 The /in-place mode/ is run through a small wizard which asks questions, with
-completion available.  Invoke it with:
-  =M-x orgtbl-join=
-or
-  =C-c C-x j=
-or menue entry
-  =Tbl > Column > Join with another table=
+completion available.
+- Invoke it with: =M-x orgtbl-join=
+- or =C-c C-x j=
+- or menu entry =Tbl > Column > Join with another table=
 
-A wizard is available for the /pull/ mode.  It is invoked with either:
-  =M-x org-insert-dblock:join=
-or
-  =C-c C-x i= (this key binding will be available in a few days;
-  if you cannot wait, get it by installing the =orgtbl-aggregate= package).
+A wizard is available for the /pull/ mode.
+- It is invoked with either: =M-x org-insert-dblock:join=
+- or =C-c C-x i= .
 
 For all questions, completion is available.  In the later case, you should
 answer =join= when asked for the kind of block.
