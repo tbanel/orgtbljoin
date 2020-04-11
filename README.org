@@ -287,6 +287,8 @@ Thierry Banel, tbanelwebmin at free dot fr
 Comments, enhancements, etc. welcome.
 
 * GPL 3 License
+Copyright (C) 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020  Thierry Banel
+
 orgtbl-join is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
