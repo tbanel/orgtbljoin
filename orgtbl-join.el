@@ -443,12 +443,31 @@ The
 #+BEGIN RECEIVE ORGTBL destination_table_name
 #+END RECEIVE ORGTBL destination_table_name"
   (interactive)
-  (orgtbl-insert-elisp-table
-   (orgtbl--create-table-joined
-    (orgtbl-get-distant-table (plist-get params :mas-table))
-    (plist-get params :mas-column)
-    (orgtbl-get-distant-table (plist-get params :ref-table))
-    (plist-get params :ref-column))))
+  (let ((formula (plist-get params :formula))
+	(content (plist-get params :content))
+	(tblfm nil))
+    (when (and content
+	       (string-match "^\\([ \t]*#\\+\\(tbl\\)?name:.*\\)" content))
+      (insert (match-string 1 content) "\n"))
+    (orgtbl-insert-elisp-table
+     (orgtbl--create-table-joined
+      (orgtbl-get-distant-table (plist-get params :mas-table))
+      (plist-get params :mas-column)
+      (orgtbl-get-distant-table (plist-get params :ref-table))
+      (plist-get params :ref-column)))
+    (when (and content
+	       (string-match "^\\([ \t]*#\\+tblfm:.*\\)" content))
+      (setq tblfm (match-string 1 content)))
+    (when (stringp formula)
+      (if tblfm
+	  (unless (string-match (rx-to-string formula) tblfm)
+	    (setq tblfm (format "%s::%s" tblfm formula)))
+	(setq tblfm (format "#+TBLFM: %s" formula))))
+    (when tblfm
+      (end-of-line)
+      (insert "\n" tblfm)
+      (forward-line -1)
+      (org-table-recalculate 'all))))
 
 ;;;###autoload
 (defun orgtbl-join-setup-keybindings ()

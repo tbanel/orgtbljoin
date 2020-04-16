@@ -1,12 +1,12 @@
 #+TITLE: Unit Tests & Examples for Orgtbl Join
 Copyright (C) 2014, 2015, 2016, 2017, 2018, 2019, 2020  Thierry Banel
 
-org-aggregate is free software: you can redistribute it and/or modify
+orgtbl-join is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-org-aggregate is distributed in the hope that it will be useful,
+orgtbl-join is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -202,6 +202,25 @@ Without header.
 | eggplant  | 300 |  8.7 | 2.6 | 3.3 | 0.9 |
 | eggplant  | 300 |  8.5 |   ? |   ? |   ? |
 | corn      | 250 | 21.3 | 4.7 | 1.8 | 2.8 |
+#+END:
+
+** surviving name and formula
+
+#+BEGIN: join :mas-table meal_with_header :mas-column $1 :ref-table nut_with_header :ref-column 2 :formula "@1$7=totcarb"
+#+name: enriched
+| product   |   quty | Carb | Fiber | Sugar | Protein | totcarb |
+| common    |     in | ohyd |       |       |         |         |
+| name      | gramms | rate |       |       |         |         |
+| (english) |        |      |       |       |         |         |
+|-----------+--------+------+-------+-------+---------+---------|
+| onion     |     70 |  9.0 |   1.3 |   4.4 |     1.3 |    630. |
+| unknown   |    999 |      |       |       |         |       0 |
+| tomatoe   |    120 |  3.4 |   0.6 |   2.1 |     0.8 |    408. |
+| eggplant  |    300 |  8.6 |   2.5 |   3.2 |     0.8 |   2580. |
+| eggplant  |    300 |  8.7 |   2.6 |   3.3 |     0.9 |   2610. |
+| eggplant  |    300 |  8.5 |     ? |     ? |       ? |   2550. |
+| corn      |    250 | 21.3 |   4.7 |   1.8 |     2.8 |   5325. |
+#+TBLFM: $7=$2*$3::@1$7=totcarb
 #+END:
 
 * PUSH mode
