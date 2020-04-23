@@ -18,13 +18,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 Running all the tests should not change anything to this page.
 
 All pull-mode tests can be re-computed at once by executing:
-(org-update-all-dblocks)
+(let ((org-calc-default-modes
+       (cons 'calc-float-format (cons '(float 12) org-calc-default-modes))))
+  (org-update-all-dblocks))
 
 All push-mode tests can be re-computed at once by executing:
-(org-table-map-tables
-  (lambda ()
-    (org-table-align)
-    (orgtbl-send-table 'maybe)))
+(let ((org-calc-default-modes
+       (cons 'calc-float-format (cons '(float 12) org-calc-default-modes))))
+  (org-table-map-tables
+    (lambda ()
+      (org-table-align)
+      (orgtbl-send-table 'maybe))))
 
 * In-place mode
 
