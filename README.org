@@ -204,6 +204,32 @@ Then the resulting table will have those three rows appended:
 If you are familiar with SQL, this behavior is reminicent of the
 /left outer join/.
 
+* Malformed input tables
+
+Sometimes an input table may be unaligned or malformed, with
+incomplete rows, like those ones:
+
+#+BEGIN_EXAMPLE
+| type     | Fiber | Sugar |      | Carb |
+|----------+-------+-------+------+------|
+| eggplant |   2.5 |   3.2 |  0.8 |  8.6 |
+| tomatoe  |   0.6 |   2.1 |  0.8 |  3.4 |
+| onion    |   1.3 |   4.4 |  1.3 |  9.0 |
+    | egg      |     0 |  18.3 | 31.9 | 18.3 |
+| rice     |   0.2 |     0 |  1.5 | 16.0 |
+| tofu     |  0.7 
+| nut      |   2.6 |   1.3 |  4.9 |  7.2 |
+
+| type     | quty |
+|----------+------|
+| onion    |   70 |
+| tomatoe  |
+| eggplant |  300 |
+  | tofu     |  100 |
+#+END_EXAMPLE
+
+Missing cells are handled as though they were empty.
+
 * Headers
 
 The master and the reference tables may or may not have a header.  When
@@ -331,6 +357,7 @@ Contributors
 - remove duplicate reference column
 - fix keybindings
 - =#.NAME:= inside =#.BEGIN:= survives
+- missing input cells handled as empty ones
 
 * GPL 3 License
 Copyright (C) 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020  Thierry Banel

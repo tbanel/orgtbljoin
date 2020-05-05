@@ -180,16 +180,17 @@ translated as the special symbol `hline'."
   "Insert TABLE in current buffer at point.
 TABLE is a list of lists of cells.  The list may contain the
 special symbol 'hline to mean an horizontal line."
-    (while table
-      (let ((row (car table)))
-	(setq table (cdr table))
-	(cond ((consp row)
-	       (insert "|")
-	       (insert (mapconcat #'identity row "|")))
-	      ((eq row 'hline)
-	       (insert "|-"))
-	      (t (error "Bad row in elisp table")))
-	(insert "\n")))
+  (while table
+    (let ((row (car table)))
+      (setq table (cdr table))
+      (cond ((consp row)
+	     (mapc (lambda (field)
+		     (insert "| " (or field "")))
+		   row))
+	    ((eq row 'hline)
+	     (insert "|-"))
+	    (t (error "Bad row in elisp table")))
+      (insert "\n")))
     (delete-char -1)
     (org-table-align))
 
@@ -211,6 +212,7 @@ reference table, then the current row is kept, with empty cells
 appended to it."
   (interactive)
   (org-table-check-inside-data-field)
+  (org-table-align)
   (let* ((col (1- (org-table-current-column)))
 	 (tbl (org-table-to-lisp))
 	 (ref (orgtbl-get-distant-table
@@ -302,6 +304,16 @@ Returns MASTABLE enriched with material from REFTABLE."
   (let ((result)  ;; result built in reverse order
 	(refhead)
 	(refhash))
+    ;; make master table rectangular if not all rows
+    ;; share the same number of cells
+    (let ((width
+	   (cl-loop for row in mastable
+		    maximize (if (listp row) (length row) 0))))
+      (cl-loop for row in mastable
+	       do
+	       (if (listp row)
+		   (while (< (length row) width)
+		     (nconc row (list ""))))))
     ;; skip any hline a the top of both tables
     (while (eq (car mastable) 'hline)
       (setq result (cons 'hline result))
