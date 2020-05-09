@@ -176,24 +176,135 @@ translated as the special symbol `hline'."
 	      (setq tbeg (point-at-bol))
 	      (org-table-to-lisp))))))))
 
+;; version avec un seul gros insert, et cons plutôt que concat
+;; 1.90
+;;(defun orgtbl-insert-elisp-table (table)
+;;  "Insert TABLE, which is a lisp list of lists,
+;;into the current buffer, at the point location.
+;;The list may contain the special symbol 'hline
+;;to mean an horizontal line."
+;;  (let (result)
+;;    (cl-loop for row in table
+;;	     do
+;;	     (cond ((consp row)
+;;		    (cl-loop for field in row
+;;			     do (progn
+;;				  (push "| "          result)
+;;				  (push (or field "") result)))
+;;		    (push "\n" result))
+;;		   ((eq row 'hline)
+;;		    (push "|-" result)
+;;		    (push "\n" result))
+;;		   (t (error "bad row in elisp table"))))
+;;    (insert (apply #'concat (nreverse (cdr result)))))
+;;  (org-table-align))
+
+
+;; version aggregate publiée
+;; 2.38
+;;(defun orgtbl-insert-elisp-table (table)
+;;  "Insert TABLE, which is a lisp list of lists,
+;;into the current buffer, at the point location.
+;;The list may contain the special symbol 'hline
+;;to mean an horizontal line."
+;;  (cl-loop for row in table
+;;	   do
+;;	   (cond ((consp row)
+;;		  (cl-loop for field in row
+;;			   do (insert "| " (or field "")))
+;;		  (insert "\n"))
+;;		 ((eq row 'hline)
+;;		  (insert "|-\n"))
+;;		 (t (error "bad row in elisp table"))))
+;;  (delete-char -1)
+;;  (org-table-align))
+
+;; version join publiée autrefois
+;; 1.98
+;;(defun orgtbl-insert-elisp-table (table)
+;;  "Insert TABLE in current buffer at point.
+;;TABLE is a list of lists of cells.  The list may contain the
+;;special symbol 'hline to mean an horizontal line."
+;;    (while table
+;;      (let ((row (car table)))
+;;	(setq table (cdr table))
+;;	(cond ((consp row)
+;;	       (insert "|")
+;;	       (insert (mapconcat #'identity row "|")))
+;;	      ((eq row 'hline)
+;;	       (insert "|-"))
+;;	      (t (error "Bad row in elisp table")))
+;;	(insert "\n")))
+;;    (delete-char -1)
+;;    (org-table-align))
+
+;; version join publiée récemment
+;; 2.30
+;;(defun orgtbl-insert-elisp-table (table)
+;;  "Insert TABLE in current buffer at point.
+;;TABLE is a list of lists of cells.  The list may contain the
+;;special symbol 'hline to mean an horizontal line."
+;;  (while table
+;;    (let ((row (car table)))
+;;      (setq table (cdr table))
+;;      (cond ((consp row)
+;;	     (mapc (lambda (field)
+;;		     (insert "| " (or field "")))
+;;		   row))
+;;	    ((eq row 'hline)
+;;	     (insert "|-"))
+;;	    (t (error "Bad row in elisp table")))
+;;      (insert "\n")))
+;;    (delete-char -1)
+;;    (org-table-align))
+
+
 (defun orgtbl-insert-elisp-table (table)
   "Insert TABLE in current buffer at point.
 TABLE is a list of lists of cells.  The list may contain the
 special symbol 'hline to mean an horizontal line."
-  (while table
-    (let ((row (car table)))
-      (setq table (cdr table))
-      (cond ((consp row)
-	     (mapc (lambda (field)
-		     (insert "| " (or field "")))
-		   row))
-	    ((eq row 'hline)
-	     (insert "|-"))
-	    (t (error "Bad row in elisp table")))
-      (insert "\n")))
-    (delete-char -1)
-    (org-table-align))
-
+  (let* ((nbrows (length table))
+	 (nbcols (cl-loop
+		  for row in table
+		  maximize (if (listp row) (length row) 0)))
+	 (maxwidths  (make-list nbcols 0))
+	 (numbers    (make-list nbcols 0)))
+    
+    (cl-loop for row in table
+	     do
+	     (cl-loop for cell on row
+		      for mx on maxwidths
+		      for nu on numbers
+		      do
+		      (progn
+			(setcar cell (substring-no-properties (car cell)))
+			(when (string-match-p org-table-number-regexp (car cell))
+			  (cl-incf (car nu)))
+			(if (< (car mx) (length (car cell)))
+			    (setcar mx (length (car cell)))))))
+    (cl-loop for row in table
+	     do
+	     (if (listp row)
+		 (cl-loop for cell on row
+			  for mx in maxwidths
+			  for nu in numbers
+			  do
+			  (let ((pad (- mx (length (car cell)))))
+			    (if (> pad 0)
+				(setcar cell
+					(if (< nu (* org-table-number-fraction nbrows))
+					    (concat (car cell) (make-string pad ? ))
+					  (concat (make-string pad ? ) (car cell)))))))))
+    (cl-loop for row in table
+	     do
+	     (if (not (listp row))
+		 (cl-loop for mx in maxwidths
+			  do (insert "|" (make-string (+ mx 2) ?-)))
+	       (cl-loop for cell in row
+			do (insert "| " cell " ")))
+	     (insert "|\n"))
+    (delete-char -1)))
+			
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; In-place mode
 
