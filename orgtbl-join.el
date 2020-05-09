@@ -295,16 +295,17 @@ special symbol 'hline to mean an horizontal line."
 					(if (< nu (* org-table-number-fraction nbrows))
 					    (concat (car cell) (make-string pad ? ))
 					  (concat (make-string pad ? ) (car cell)))))))))
-    (cl-loop for row in table
-	     do
-	     (if (not (listp row))
-		 (cl-loop for mx in maxwidths
-			  do (insert "|" (make-string (+ mx 2) ?-)))
-	       (cl-loop for cell in row
-			do (insert "| " cell " ")))
-	     (insert "|\n"))
-    (delete-char -1)))
-			
+    (cl-letf (((symbol-function 'jit-lock-after-change) (lambda (a b c)) ))
+      (cl-loop for row in table
+	       do
+	       (if (not (listp row))
+		   (cl-loop for mx in maxwidths
+			    do (insert "|" (make-string (+ mx 2) ?-)))
+		 (cl-loop for cell in row
+			  do (insert "| " cell " ")))
+	       (insert "|\n"))
+      (delete-char -1))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; In-place mode
 
