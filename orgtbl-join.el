@@ -312,29 +312,43 @@ special symbol 'hline to mean an horizontal line."
 ;; In-place mode
 
 ;;;###autoload
-(defun orgtbl-join ()
+(defun orgtbl-join (&optional ref-table ref-column)
   "Add material from a reference table to the current table.
+
+Optional REF-TABLE is the name of a reference table, in the
+current buffer, as given by a #+NAME: name-of-reference
+tag above the table.  If not given, it is prompted interactively.
+
+Optional REF-COLUMN is the name of a column in the reference
+table, to be compared with the column the point in on.  If not
+given, it is prompted interactively.
+
 Rows from the reference table are appended to rows of the current
 table.  For each row of the current table, matching rows from the
 reference table are searched and appended.  The matching is
 performed by testing for equality of cells in the current column,
-and a joining column in the reference table.  If a row in the
-current table matches several rows in the reference table, then
-the current row is duplicated and each copy is appended with a
-different reference row.  If no matching row is found in the
-reference table, then the current row is kept, with empty cells
-appended to it."
+and a joining column in the reference table.
+
+If a row in the current table matches several rows in the
+reference table, then the current row is duplicated and each copy
+is appended with a different reference row.
+
+If no matching row is found in the reference table, then the
+current row is kept, with empty cells appended to it."
   (interactive)
   (org-table-check-inside-data-field)
   (org-table-align)
   (let* ((col (1- (org-table-current-column)))
 	 (tbl (org-table-to-lisp))
 	 (ref (orgtbl-get-distant-table
-	       (org-icompleting-read
-		"Reference table: "
-		(orgtbl-list-local-tables))))
+	       (or ref-table
+		   (org-icompleting-read
+		    "Reference table: "
+		    (orgtbl-list-local-tables)))))
 	 (dcol (orgtbl--join-colname-to-int
-		(orgtbl--join-query-column "Reference column: " ref)
+		(or ref-column
+		    (orgtbl--join-query-column
+		     "Reference column: " ref))
 		ref))
 	 (refhead)
 	 (refhash))
