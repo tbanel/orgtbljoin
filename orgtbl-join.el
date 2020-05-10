@@ -307,7 +307,7 @@ special symbol 'hline to mean an horizontal line."
 			    do (insert bar (make-string (+ mx 2) ?-))
 			    do (setq bar "+"))))
 	       (insert "|\n"))
-      (delete-char -1))))
+      )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; In-place mode
@@ -339,71 +339,120 @@ current row is kept, with empty cells appended to it."
   (interactive)
   (org-table-check-inside-data-field)
   (org-table-align)
-  (let* ((col (1- (org-table-current-column)))
+  (let* ((col (org-table-current-column))
 	 (tbl (org-table-to-lisp))
 	 (ref (orgtbl-get-distant-table
 	       (or ref-table
 		   (org-icompleting-read
 		    "Reference table: "
 		    (orgtbl-list-local-tables)))))
-	 (dcol (orgtbl--join-colname-to-int
-		(or ref-column
-		    (orgtbl--join-query-column
-		     "Reference column: " ref))
-		ref))
-	 (refhead)
-	 (refhash))
-    (setq ref (orgtbl--join-convert-to-hashtable ref dcol)
-	  refhead (car ref)
-	  refhash (cdr ref))
-    (goto-char (org-table-begin))
-    ;; Skip any hline a the top of tbl.
-    (while (eq (car tbl) 'hline)
-      (setq tbl (cdr tbl))
-      (forward-line 1))
-    ;; is there a header on tbl ? append the ref header (if any)
-    (when (memq 'hline tbl)
-      ;; for each line of header in tbl, add a header from ref
-      ;; if ref-header empties too fast, continue with nils
-      ;; if tbl-header empties too fast, ignore remaining ref-headers
-      (while (listp (pop tbl))
-	(end-of-line)
-	(when refhead
-	  (orgtbl--join-insert-ref-row (car refhead) dcol)
-	  (setq refhead (cdr refhead)))
-	(forward-line 1))
-      (forward-line 1))
-    ;; now the body of the tbl
-    (mapc (lambda (masline)
-	    (if (listp masline)
-		(let ((done))
-		  ;; if several ref-lines match, all of them are considered
-		  (mapc (lambda (refline)
-			  (end-of-line)
-			  (when done ;; make a copy of the current row
-			    (open-line 1)
-			    (forward-line 1)
-			    (insert "|")
-			    (mapc (lambda (y) (insert y) (insert "|"))
-				  masline))
-			  (orgtbl--join-insert-ref-row refline dcol)
-			  (setq done t))
-			(gethash (nth col masline) refhash))))
-	    (forward-line 1))
-	  tbl))
-  (forward-line -1)
-  (org-table-align))
+	 (dcol
+	  (or ref-column
+	      (orgtbl--join-query-column
+	       "Reference column: " ref)))
+	 (local-table
+	  (org-table-to-lisp)))
+    (delete-region (org-table-begin) (org-table-end))
+    (orgtbl-insert-elisp-table
+     (orgtbl--create-table-joined
+      local-table
+      col
+      ref
+      dcol))))
+    
 
-(defun orgtbl--join-insert-ref-row (row dcol)
-  "Insert a distant ROW in the buffer.
-The DCOL columns (joining column) is skipped."
-  (let ((i 0))
-    (while row
-      (unless (equal i dcol)
-	(insert (car row))
-	(insert "|"))
-      (setq i (1+ i))
-      (setq row (cdr row)))))
+;;;;;###autoload
+;;(defun orgtbl-join (&optional ref-table ref-column)
+;;  "Add material from a reference table to the current table.
+;;
+;;Optional REF-TABLE is the name of a reference table, in the
+;;current buffer, as given by a #+NAME: name-of-reference
+;;tag above the table.  If not given, it is prompted interactively.
+;;
+;;Optional REF-COLUMN is the name of a column in the reference
+;;table, to be compared with the column the point in on.  If not
+;;given, it is prompted interactively.
+;;
+;;Rows from the reference table are appended to rows of the current
+;;table.  For each row of the current table, matching rows from the
+;;reference table are searched and appended.  The matching is
+;;performed by testing for equality of cells in the current column,
+;;and a joining column in the reference table.
+;;
+;;If a row in the current table matches several rows in the
+;;reference table, then the current row is duplicated and each copy
+;;is appended with a different reference row.
+;;
+;;If no matching row is found in the reference table, then the
+;;current row is kept, with empty cells appended to it."
+;;  (interactive)
+;;  (org-table-check-inside-data-field)
+;;  (org-table-align)
+;;  (let* ((col (1- (org-table-current-column)))
+;;	 (tbl (org-table-to-lisp))
+;;	 (ref (orgtbl-get-distant-table
+;;	       (or ref-table
+;;		   (org-icompleting-read
+;;		    "Reference table: "
+;;		    (orgtbl-list-local-tables)))))
+;;	 (dcol (orgtbl--join-colname-to-int
+;;		(or ref-column
+;;		    (orgtbl--join-query-column
+;;		     "Reference column: " ref))
+;;		ref))
+;;	 (refhead)
+;;	 (refhash))
+;;    (setq ref (orgtbl--join-convert-to-hashtable ref dcol)
+;;	  refhead (car ref)
+;;	  refhash (cdr ref))
+;;    (goto-char (org-table-begin))
+;;    ;; Skip any hline a the top of tbl.
+;;    (while (eq (car tbl) 'hline)
+;;      (setq tbl (cdr tbl))
+;;      (forward-line 1))
+;;    ;; is there a header on tbl ? append the ref header (if any)
+;;    (when (memq 'hline tbl)
+;;      ;; for each line of header in tbl, add a header from ref
+;;      ;; if ref-header empties too fast, continue with nils
+;;      ;; if tbl-header empties too fast, ignore remaining ref-headers
+;;      (while (listp (pop tbl))
+;;	(end-of-line)
+;;	(when refhead
+;;	  (orgtbl--join-insert-ref-row (car refhead) dcol)
+;;	  (setq refhead (cdr refhead)))
+;;	(forward-line 1))
+;;      (forward-line 1))
+;;    ;; now the body of the tbl
+;;    (mapc (lambda (masline)
+;;	    (if (listp masline)
+;;		(let ((done))
+;;		  ;; if several ref-lines match, all of them are considered
+;;		  (mapc (lambda (refline)
+;;			  (end-of-line)
+;;			  (when done ;; make a copy of the current row
+;;			    (open-line 1)
+;;			    (forward-line 1)
+;;			    (insert "|")
+;;			    (mapc (lambda (y) (insert y) (insert "|"))
+;;				  masline))
+;;			  (orgtbl--join-insert-ref-row refline dcol)
+;;			  (setq done t))
+;;			(gethash (nth col masline) refhash))))
+;;	    (forward-line 1))
+;;	  tbl))
+;;  (forward-line -1)
+;;  (org-table-align))
+;;
+;;(defun orgtbl--join-insert-ref-row (row dcol)
+;;  "Insert a distant ROW in the buffer.
+;;The DCOL columns (joining column) is skipped."
+;;  (let ((i 0))
+;;    (while row
+;;      (unless (equal i dcol)
+;;	(insert (car row))
+;;	(insert "|"))
+;;      (setq i (1+ i))
+;;      (setq row (cdr row)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; PULL & PUSH engine
@@ -525,7 +574,7 @@ same file with a bloc like this:
 	  (plist-get params :ref-column))))
     (with-temp-buffer
       (orgtbl-insert-elisp-table joined-table)
-      (buffer-substring-no-properties (point-min) (point-max)))))
+      (buffer-substring-no-properties (point-min) (1- (point-max))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; PULL mode
@@ -596,6 +645,7 @@ The
       (plist-get params :mas-column)
       (orgtbl-get-distant-table (plist-get params :ref-table))
       (plist-get params :ref-column)))
+    (delete-char -1) ;; remove trailing \n which Org Mode will add again
     (when (and content
 	       (string-match "^[ \t]*\\(#\\+tblfm:.*\\)" content))
       (setq tblfm (match-string 1 content)))
