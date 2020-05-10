@@ -500,15 +500,15 @@ same file with a bloc like this:
 #+BEGIN RECEIVE ORGTBL destination_table_name
 #+END RECEIVE ORGTBL destination_table_name"
   (interactive)
-  (orgtbl-to-generic
-   (orgtbl--create-table-joined
-    table
-    (plist-get params :mas-column)
-    (orgtbl-get-distant-table (plist-get params :ref-table))
-    (plist-get params :ref-column))
-   (org-combine-plists
-    (list :sep "|" :hline "|-" :lstart "|" :lend "|")
-    params)))
+  (let ((joined-table
+	 (orgtbl--create-table-joined
+	  table
+	  (plist-get params :mas-column)
+	  (orgtbl-get-distant-table (plist-get params :ref-table))
+	  (plist-get params :ref-column))))
+    (with-temp-buffer
+      (orgtbl-insert-elisp-table joined-table)
+      (buffer-substring-no-properties (point-min) (point-max)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; PULL mode
