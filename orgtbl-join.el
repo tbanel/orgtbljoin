@@ -184,19 +184,25 @@ special symbol 'hline to mean an horizontal line."
 	 (nbcols (cl-loop
 		  for row in table
 		  maximize (if (listp row) (length row) 0)))
-	 (maxwidths  (make-list nbcols 0))
-	 (numbers    (make-list nbcols 0)))
+	 (maxwidths  (make-list nbcols 1))
+	 (numbers    (make-list nbcols 0))
+	 (non-empty  (make-list nbcols 0)))
     ;; remove text properties, compute maxwidths
     (cl-loop for row in table
 	     do
 	     (cl-loop for cell on row
 		      for mx on maxwidths
 		      for nu on numbers
+		      for ne on non-empty
 		      do
 		      (progn
-			(setcar cell (substring-no-properties (car cell)))
+			(setcar
+			 cell
+			 (substring-no-properties (or (car cell) "")))
 			(when (string-match-p org-table-number-regexp (car cell))
 			  (cl-incf (car nu)))
+			(unless (equal (car cell) "")
+			  (cl-incf (car ne)))
 			(if (< (car mx) (length (car cell)))
 			    (setcar mx (length (car cell)))))))
     ;; pad cells with spaces to maxwidths,
@@ -206,12 +212,13 @@ special symbol 'hline to mean an horizontal line."
 	     (cl-loop for cell on row
 		      for mx in maxwidths
 		      for nu in numbers
+		      for ne in non-empty
 		      do
 		      (let ((pad (- mx (length (car cell)))))
 			(if (> pad 0)
 			    (setcar
 			     cell
-			     (if (< nu (* org-table-number-fraction nbrows))
+			     (if (< nu (* org-table-number-fraction ne))
 				 (concat (car cell) (make-string pad ? ))
 			       (concat (make-string pad ? ) (car cell))))))))
     ;; inactivating jit-lock-after-change boosts performance a lot
