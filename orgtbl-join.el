@@ -295,6 +295,7 @@ special symbol 'hline to mean an horizontal line."
 					(if (< nu (* org-table-number-fraction nbrows))
 					    (concat (car cell) (make-string pad ? ))
 					  (concat (make-string pad ? ) (car cell)))))))))
+    ;; inactivating jit-lock-after-change boosts performance a lot
     (cl-letf (((symbol-function 'jit-lock-after-change) (lambda (a b c)) ))
       (cl-loop for row in table
 	       do
