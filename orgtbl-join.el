@@ -176,89 +176,6 @@ translated as the special symbol `hline'."
 	      (setq tbeg (point-at-bol))
 	      (org-table-to-lisp))))))))
 
-;; version avec un seul gros insert, et cons plutôt que concat
-;; 1.90
-;;(defun orgtbl-insert-elisp-table (table)
-;;  "Insert TABLE, which is a lisp list of lists,
-;;into the current buffer, at the point location.
-;;The list may contain the special symbol 'hline
-;;to mean an horizontal line."
-;;  (let (result)
-;;    (cl-loop for row in table
-;;	     do
-;;	     (cond ((consp row)
-;;		    (cl-loop for field in row
-;;			     do (progn
-;;				  (push "| "          result)
-;;				  (push (or field "") result)))
-;;		    (push "\n" result))
-;;		   ((eq row 'hline)
-;;		    (push "|-" result)
-;;		    (push "\n" result))
-;;		   (t (error "bad row in elisp table"))))
-;;    (insert (apply #'concat (nreverse (cdr result)))))
-;;  (org-table-align))
-
-
-;; version aggregate publiée
-;; 2.38
-;;(defun orgtbl-insert-elisp-table (table)
-;;  "Insert TABLE, which is a lisp list of lists,
-;;into the current buffer, at the point location.
-;;The list may contain the special symbol 'hline
-;;to mean an horizontal line."
-;;  (cl-loop for row in table
-;;	   do
-;;	   (cond ((consp row)
-;;		  (cl-loop for field in row
-;;			   do (insert "| " (or field "")))
-;;		  (insert "\n"))
-;;		 ((eq row 'hline)
-;;		  (insert "|-\n"))
-;;		 (t (error "bad row in elisp table"))))
-;;  (delete-char -1)
-;;  (org-table-align))
-
-;; version join publiée autrefois
-;; 1.98
-;;(defun orgtbl-insert-elisp-table (table)
-;;  "Insert TABLE in current buffer at point.
-;;TABLE is a list of lists of cells.  The list may contain the
-;;special symbol 'hline to mean an horizontal line."
-;;    (while table
-;;      (let ((row (car table)))
-;;	(setq table (cdr table))
-;;	(cond ((consp row)
-;;	       (insert "|")
-;;	       (insert (mapconcat #'identity row "|")))
-;;	      ((eq row 'hline)
-;;	       (insert "|-"))
-;;	      (t (error "Bad row in elisp table")))
-;;	(insert "\n")))
-;;    (delete-char -1)
-;;    (org-table-align))
-
-;; version join publiée récemment
-;; 2.30
-;;(defun orgtbl-insert-elisp-table (table)
-;;  "Insert TABLE in current buffer at point.
-;;TABLE is a list of lists of cells.  The list may contain the
-;;special symbol 'hline to mean an horizontal line."
-;;  (while table
-;;    (let ((row (car table)))
-;;      (setq table (cdr table))
-;;      (cond ((consp row)
-;;	     (mapc (lambda (field)
-;;		     (insert "| " (or field "")))
-;;		   row))
-;;	    ((eq row 'hline)
-;;	     (insert "|-"))
-;;	    (t (error "Bad row in elisp table")))
-;;      (insert "\n")))
-;;    (delete-char -1)
-;;    (org-table-align))
-
-
 (defun orgtbl-insert-elisp-table (table)
   "Insert TABLE in current buffer at point.
 TABLE is a list of lists of cells.  The list may contain the
@@ -269,7 +186,7 @@ special symbol 'hline to mean an horizontal line."
 		  maximize (if (listp row) (length row) 0)))
 	 (maxwidths  (make-list nbcols 0))
 	 (numbers    (make-list nbcols 0)))
-    
+    ;; remove text properties, compute maxwidths
     (cl-loop for row in table
 	     do
 	     (cl-loop for cell on row
@@ -282,21 +199,24 @@ special symbol 'hline to mean an horizontal line."
 			  (cl-incf (car nu)))
 			(if (< (car mx) (length (car cell)))
 			    (setcar mx (length (car cell)))))))
+    ;; pad cells with spaces to maxwidths,
+    ;; either left or right according to alignement
     (cl-loop for row in table
 	     do
-	     (if (listp row)
-		 (cl-loop for cell on row
-			  for mx in maxwidths
-			  for nu in numbers
-			  do
-			  (let ((pad (- mx (length (car cell)))))
-			    (if (> pad 0)
-				(setcar cell
-					(if (< nu (* org-table-number-fraction nbrows))
-					    (concat (car cell) (make-string pad ? ))
-					  (concat (make-string pad ? ) (car cell)))))))))
+	     (cl-loop for cell on row
+		      for mx in maxwidths
+		      for nu in numbers
+		      do
+		      (let ((pad (- mx (length (car cell)))))
+			(if (> pad 0)
+			    (setcar
+			     cell
+			     (if (< nu (* org-table-number-fraction nbrows))
+				 (concat (car cell) (make-string pad ? ))
+			       (concat (make-string pad ? ) (car cell))))))))
     ;; inactivating jit-lock-after-change boosts performance a lot
     (cl-letf (((symbol-function 'jit-lock-after-change) (lambda (a b c)) ))
+      ;; insert well padded and aligned cells at current buffer position
       (cl-loop for row in table
 	       do
 	       (if (listp row)
@@ -306,8 +226,7 @@ special symbol 'hline to mean an horizontal line."
 		   (cl-loop for mx in maxwidths
 			    do (insert bar (make-string (+ mx 2) ?-))
 			    do (setq bar "+"))))
-	       (insert "|\n"))
-      )))
+	       (insert "|\n")))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; In-place mode
@@ -338,121 +257,30 @@ If no matching row is found in the reference table, then the
 current row is kept, with empty cells appended to it."
   (interactive)
   (org-table-check-inside-data-field)
-  (org-table-align)
-  (let* ((col (org-table-current-column))
-	 (tbl (org-table-to-lisp))
-	 (ref (orgtbl-get-distant-table
-	       (or ref-table
-		   (org-icompleting-read
-		    "Reference table: "
-		    (orgtbl-list-local-tables)))))
-	 (dcol
-	  (or ref-column
-	      (orgtbl--join-query-column
-	       "Reference column: " ref)))
-	 (local-table
-	  (org-table-to-lisp)))
+  (let ((col (org-table-current-column))
+	(tbl (org-table-to-lisp))
+	(pt (line-number-at-pos))
+	(cn (- (point) (point-at-bol))))
+    (unless ref-table
+      (setq ref-table
+	    (org-icompleting-read
+	     "Reference table: "
+	     (orgtbl-list-local-tables))))
+    (setq ref-table (orgtbl-get-distant-table ref-table))
+    (unless ref-column
+      (setq ref-column
+	    (orgtbl--join-query-column
+	     "Reference column: "
+	     ref-table)))
     (delete-region (org-table-begin) (org-table-end))
     (orgtbl-insert-elisp-table
      (orgtbl--create-table-joined
-      local-table
+      tbl
       col
-      ref
-      dcol))))
-    
-
-;;;;;###autoload
-;;(defun orgtbl-join (&optional ref-table ref-column)
-;;  "Add material from a reference table to the current table.
-;;
-;;Optional REF-TABLE is the name of a reference table, in the
-;;current buffer, as given by a #+NAME: name-of-reference
-;;tag above the table.  If not given, it is prompted interactively.
-;;
-;;Optional REF-COLUMN is the name of a column in the reference
-;;table, to be compared with the column the point in on.  If not
-;;given, it is prompted interactively.
-;;
-;;Rows from the reference table are appended to rows of the current
-;;table.  For each row of the current table, matching rows from the
-;;reference table are searched and appended.  The matching is
-;;performed by testing for equality of cells in the current column,
-;;and a joining column in the reference table.
-;;
-;;If a row in the current table matches several rows in the
-;;reference table, then the current row is duplicated and each copy
-;;is appended with a different reference row.
-;;
-;;If no matching row is found in the reference table, then the
-;;current row is kept, with empty cells appended to it."
-;;  (interactive)
-;;  (org-table-check-inside-data-field)
-;;  (org-table-align)
-;;  (let* ((col (1- (org-table-current-column)))
-;;	 (tbl (org-table-to-lisp))
-;;	 (ref (orgtbl-get-distant-table
-;;	       (or ref-table
-;;		   (org-icompleting-read
-;;		    "Reference table: "
-;;		    (orgtbl-list-local-tables)))))
-;;	 (dcol (orgtbl--join-colname-to-int
-;;		(or ref-column
-;;		    (orgtbl--join-query-column
-;;		     "Reference column: " ref))
-;;		ref))
-;;	 (refhead)
-;;	 (refhash))
-;;    (setq ref (orgtbl--join-convert-to-hashtable ref dcol)
-;;	  refhead (car ref)
-;;	  refhash (cdr ref))
-;;    (goto-char (org-table-begin))
-;;    ;; Skip any hline a the top of tbl.
-;;    (while (eq (car tbl) 'hline)
-;;      (setq tbl (cdr tbl))
-;;      (forward-line 1))
-;;    ;; is there a header on tbl ? append the ref header (if any)
-;;    (when (memq 'hline tbl)
-;;      ;; for each line of header in tbl, add a header from ref
-;;      ;; if ref-header empties too fast, continue with nils
-;;      ;; if tbl-header empties too fast, ignore remaining ref-headers
-;;      (while (listp (pop tbl))
-;;	(end-of-line)
-;;	(when refhead
-;;	  (orgtbl--join-insert-ref-row (car refhead) dcol)
-;;	  (setq refhead (cdr refhead)))
-;;	(forward-line 1))
-;;      (forward-line 1))
-;;    ;; now the body of the tbl
-;;    (mapc (lambda (masline)
-;;	    (if (listp masline)
-;;		(let ((done))
-;;		  ;; if several ref-lines match, all of them are considered
-;;		  (mapc (lambda (refline)
-;;			  (end-of-line)
-;;			  (when done ;; make a copy of the current row
-;;			    (open-line 1)
-;;			    (forward-line 1)
-;;			    (insert "|")
-;;			    (mapc (lambda (y) (insert y) (insert "|"))
-;;				  masline))
-;;			  (orgtbl--join-insert-ref-row refline dcol)
-;;			  (setq done t))
-;;			(gethash (nth col masline) refhash))))
-;;	    (forward-line 1))
-;;	  tbl))
-;;  (forward-line -1)
-;;  (org-table-align))
-;;
-;;(defun orgtbl--join-insert-ref-row (row dcol)
-;;  "Insert a distant ROW in the buffer.
-;;The DCOL columns (joining column) is skipped."
-;;  (let ((i 0))
-;;    (while row
-;;      (unless (equal i dcol)
-;;	(insert (car row))
-;;	(insert "|"))
-;;      (setq i (1+ i))
-;;      (setq row (cdr row)))))
+      ref-table
+      ref-column))
+    (goto-line pt)
+    (forward-char cn)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; PULL & PUSH engine
