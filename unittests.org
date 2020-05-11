@@ -44,7 +44,6 @@ All push-mode tests can be re-computed at once by executing:
       (when (save-excursion
 	      (forward-line -1)
 	      (looking-at-p (rx (or "#+begin" "#+orgtbl"))))
-	(org-table-align)
 	(orgtbl-send-table 'maybe)))))
 #+end_src
 
@@ -174,10 +173,10 @@ Without header.
 | product   |   quty | Carb | Fiber | Sugar | Protein |
 | common    |     in | ohyd |       |       |         |
 | name      | gramms | rate |       |       |         |
-| (english) |        |      |       |       |         |
+| (english) |        |
 |-----------+--------+------+-------+-------+---------|
 | onion     |     70 |  9.0 |   1.3 |   4.4 |     1.3 |
-| unknown   |    999 |      |       |       |         |
+| unknown   |    999 |
 | tomatoe   |    120 |  3.4 |   0.6 |   2.1 |     0.8 |
 | eggplant  |    300 |  8.6 |   2.5 |   3.2 |     0.8 |
 | eggplant  |    300 |  8.7 |   2.6 |   3.3 |     0.9 |
@@ -188,13 +187,13 @@ Without header.
 ** join header+bare
 
 #+BEGIN: join :mas-table "meal_with_header" :mas-column "product" :ref-table "nut_no_header" :ref-column "2"
-| product   |   quty |      |     |     |     |
-| common    |     in |      |     |     |     |
-| name      | gramms |      |     |     |     |
-| (english) |        |      |     |     |     |
+| product   |   quty |
+| common    |     in |
+| name      | gramms |
+| (english) |        |
 |-----------+--------+------+-----+-----+-----|
 | onion     |     70 |  9.0 | 1.3 | 4.4 | 1.3 |
-| unknown   |    999 |      |     |     |     |
+| unknown   |    999 |
 | tomatoe   |    120 |  3.4 | 0.6 | 2.1 | 0.8 |
 | eggplant  |    300 |  8.6 | 2.5 | 3.2 | 0.8 |
 | eggplant  |    300 |  8.7 | 2.6 | 3.3 | 0.9 |
@@ -206,7 +205,7 @@ Without header.
 
 #+BEGIN: join :mas-table meal_no_header :mas-column $1 :ref-table nut_with_header :ref-column type
 | onion     |  70 |  9.0 | 1.3 | 4.4 | 1.3 |
-| not known | 999 |      |     |     |     |
+| not known | 999 |
 | tomatoe   | 120 |  3.4 | 0.6 | 2.1 | 0.8 |
 | eggplant  | 300 |  8.6 | 2.5 | 3.2 | 0.8 |
 | eggplant  | 300 |  8.7 | 2.6 | 3.3 | 0.9 |
@@ -218,7 +217,7 @@ Without header.
 
 #+BEGIN: join :mas-table meal_no_header :mas-column 1 :ref-table nut_no_header :ref-column $2
 | onion     |  70 |  9.0 | 1.3 | 4.4 | 1.3 |
-| not known | 999 |      |     |     |     |
+| not known | 999 |
 | tomatoe   | 120 |  3.4 | 0.6 | 2.1 | 0.8 |
 | eggplant  | 300 |  8.6 | 2.5 | 3.2 | 0.8 |
 | eggplant  | 300 |  8.7 | 2.6 | 3.3 | 0.9 |
@@ -268,7 +267,7 @@ Without header.
 | (yes)         |  (g) | ohyd |       |       |         |
 |---------------+------+------+-------+-------+---------|
 | onion         |   70 |  9.0 |   1.3 |   4.4 |     1.3 |
-| not specified |  999 |      |       |       |         |
+| not specified |  999 |
 | tomatoe       |  120 |  3.4 |   0.6 |   2.1 |     0.8 |
 | eggplant      |  300 |  8.6 |   2.5 |   3.2 |     0.8 |
 | eggplant      |  300 |  8.7 |   2.6 |   3.3 |     0.9 |
@@ -277,11 +276,11 @@ Without header.
 #+END RECEIVE ORGTBL joined1
 
 #+BEGIN RECEIVE ORGTBL joined2
-| product       | quty |      |     |     |     |
-| (yes)         |  (g) |      |     |     |     |
+| product       | quty |
+| (yes)         |  (g) |
 |---------------+------+------+-----+-----+-----|
 | onion         |   70 |  9.0 | 1.3 | 4.4 | 1.3 |
-| not specified |  999 |      |     |     |     |
+| not specified |  999 |
 | tomatoe       |  120 |  3.4 | 0.6 | 2.1 | 0.8 |
 | eggplant      |  300 |  8.6 | 2.5 | 3.2 | 0.8 |
 | eggplant      |  300 |  8.7 | 2.6 | 3.3 | 0.9 |
@@ -304,7 +303,7 @@ Without header.
 
 #+BEGIN RECEIVE ORGTBL joined3
 | onion         |  70 |  9.0 | 1.3 | 4.4 | 1.3 |
-| not specified | 999 |      |     |     |     |
+| not specified | 999 |
 | tomatoe       | 120 |  3.4 | 0.6 | 2.1 | 0.8 |
 | eggplant      | 300 |  8.6 | 2.5 | 3.2 | 0.8 |
 | eggplant      | 300 |  8.7 | 2.6 | 3.3 | 0.9 |
@@ -314,7 +313,7 @@ Without header.
 
 #+BEGIN RECEIVE ORGTBL joined4
 | onion         |  70 |  9.0 | 1.3 | 4.4 | 1.3 |
-| not specified | 999 |      |     |     |     |
+| not specified | 999 |
 | tomatoe       | 120 |  3.4 | 0.6 | 2.1 | 0.8 |
 | eggplant      | 300 |  8.6 | 2.5 | 3.2 | 0.8 |
 | eggplant      | 300 |  8.7 | 2.6 | 3.3 | 0.9 |
@@ -469,5 +468,5 @@ Missing cells are handled as though they were empty
 | onion    |   70 |   1.3 |   4.4 | 1.3 |  9.0 |
 | tomatoe  |      |   0.6 |   2.1 | 0.8 |  3.4 |
 | eggplant |  300 |   2.5 |   3.2 | 0.8 |  8.6 |
-| tofu     |  100 |   0.7 |       |     |      |
+| tofu     |  100 |   0.7 |
 #+END:
