@@ -361,6 +361,7 @@ Contributors
 - back-port Org Mode =9.4= speed up
 - increase performance when inserting result into the buffer
 - aligned output in push mode
+- 2 as column name no longer supported, write $2
 
 * GPL 3 License
 Copyright (C) 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020  Thierry Banel

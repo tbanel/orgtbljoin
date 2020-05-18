@@ -75,42 +75,45 @@ The table is taken from the parameter TXT, or from the buffer at point."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Utility functions
 
-(defun orgtbl--join-colname-to-int (col table)
-  "Convert the column name into an integer (first column is numbered 0)
-COL may be:
-- a dollar form, like $5 which is converted to 4
-- a number, like 5 which is converted to 4
+(defun orgtbl--join-colname-to-int (colname table &optional err)
+  "Convert the column name into an integer (first column is numbered 1)
+COLNAME may be:
+- a dollar form, like $5 which is converted to 5
 - an alphanumeric name which appears in the column header (if any)
-When COL does not match any actual column, an error is generated.
-TABLE is an Org mode table passed as a list of lists of cells.
-It is used to check COL against TABLE header."
+- the special symbol `hline' which is converted into 0
+If COLNAME is quoted (single or double quotes),
+quotes are removed beforhand.
+When COLNAME does not match any actual column,
+an error is generated if ERR optional parameter is true
+otherwise nil is returned."
+  (if (symbolp colname)
+      (setq colname (symbol-name colname)))
+  (if (or (string-match "^'\\(.*\\)'$" colname)
+	  (string-match "^\"\\(.*\\)\"$" colname))
+      (setq colname (match-string 1 colname)))
   ;; skip first hlines if any
   (while (not (listp (car table)))
     (setq table (cdr table)))
-  (if (symbolp col)
-      (setq col (symbol-name col)))
-  (cond ((numberp col)
-	 t)
-	((string-match "^\\$?\\([0-9]+\\)$" col)
-	 (setq col (string-to-number (match-string 1 col))))
+  (cond ((equal colname "hline")
+	 0)
+	((string-match "^\\$\\([0-9]+\\)$" colname)
+	 (let ((n (string-to-number (match-string 1 colname))))
+	   (if (<= n (length (car table)))
+	       n
+	     (if err
+		 (user-error "Column %s outside table" colname)))))
+	((string-match "^\\([0-9]+\\)$" colname)
+	 (user-error "%s as column name no longer supported, write $%s"
+		     colname colname))
 	(t
-	 ;; TABLE has no header, COL does not make sense
-	 (unless (memq 'hline table)
-	   (user-error "No header on the table, and no such column '%s'" col))
-	 ;; iterate over first line of header to find COL
-	 (let ((i 0)
-	       (n))
-	   (mapc (lambda (c)
-		   (setq i (1+ i))
-		   (if (equal col c)
-		       (setq n i)))
-		 (car table))
-	   (unless n (user-error "No such column '%s'" col))
-	   (setq col n))))
-  (setq col (1- col))
-  (if (or (< col 0) (>= col (length (car table))))
-      (user-error "Column %s outside table" col))
-  col)
+	 (or
+	  (cl-loop
+	   for h in (car table)
+	   for i from 1
+	   thereis (and (equal h colname) i))
+	  (and
+	   err
+	   (user-error "Column %s not found in table" colname))))))
 
 (defun orgtbl--join-query-column (prompt table)
   "Interactively query a column.
@@ -167,50 +170,41 @@ hashtable."
   (interactive)
   (let ((tables))
     (save-excursion
-      (save-restriction
-	(widen)
-	(goto-char (point-min))
-	(while (re-search-forward "^[ \t]*#\\+\\(tbl\\)?name:[ \t]*\\(.*\\)" nil t)
-	  (let ((text (match-string 2)))
-	    (set-text-properties 0 (length text) () text)
-	    (setq tables (cons text tables))))))
+      (goto-char (point-min))
+      (while (re-search-forward "^[ \t]*#\\+\\(tbl\\)?name:[ \t]*\\(.*\\)" nil t)
+	(push (match-string-no-properties 2) tables)))
     tables))
 
 (defun orgtbl-get-distant-table (name-or-id)
-  "Find a table in the current buffer named NAME-OR-ID.
-Returns it as a list of lists of cells.  An horizontal line is
-translated as the special symbol `hline'."
+  "Find a table in the current buffer named NAME-OR-ID
+and returns it as a lisp list of lists.
+An horizontal line is translated as the special symbol `hline'."
   (unless (stringp name-or-id)
     (setq name-or-id (format "%s" name-or-id)))
-  (let (buffer loc id-loc tbeg form)
+  (let (buffer loc)
     (save-excursion
-      (save-restriction
-	(widen)
-	(save-excursion
-	  (goto-char (point-min))
-	  (if (re-search-forward
-	       (concat "^[ \t]*#\\+\\(tbl\\)?name:[ \t]*"
-		       (regexp-quote name-or-id)
-		       "[ \t]*$")
-	       nil t)
-	      (setq buffer (current-buffer) loc (match-beginning 0))
-	    (setq id-loc (org-id-find name-or-id 'marker))
-	    (unless (and id-loc (markerp id-loc))
-	      (error "Can't find remote table \"%s\"" name-or-id))
-	    (setq buffer (marker-buffer id-loc)
-		  loc (marker-position id-loc))
-	    (move-marker id-loc nil)))
-	(with-current-buffer buffer
-	  (save-excursion
-	    (save-restriction
-	      (widen)
-	      (goto-char loc)
-	      (forward-char 1)
-	      (unless (and (re-search-forward "^\\(\\*+ \\)\\|[ \t]*|" nil t)
-			   (not (match-beginning 1)))
-		(user-error "Cannot find a table at NAME or ID %s" name-or-id))
-	      (setq tbeg (point-at-bol))
-	      (org-table-to-lisp-9-4))))))))
+      (goto-char (point-min))
+      (if (re-search-forward
+	   (concat "^[ \t]*#\\+\\(tbl\\)?name:[ \t]*"
+		   (regexp-quote name-or-id)
+		   "[ \t]*$")
+	   nil t)
+	  (setq buffer (current-buffer)
+		loc (match-beginning 0))
+	(let ((id-loc (org-id-find name-or-id 'marker)))
+	  (unless (and id-loc (markerp id-loc))
+	    (error "Can't find remote table \"%s\"" name-or-id))
+	  (setq buffer (marker-buffer id-loc)
+		loc (marker-position id-loc))
+	  (move-marker id-loc nil))))
+    (with-current-buffer buffer
+      (save-excursion
+	(goto-char loc)
+	(forward-char 1)
+	(unless (and (re-search-forward "^\\(\\*+ \\)\\|[ \t]*|" nil t)
+		     (not (match-beginning 1)))
+	  (user-error "Cannot find a table at NAME or ID %s" name-or-id))
+	(org-table-to-lisp-9-4)))))
 
 (defun orgtbl-insert-elisp-table (table)
   "Insert TABLE in current buffer at point.
@@ -230,33 +224,15 @@ special symbol 'hline to mean an horizontal line."
 		      for mx on maxwidths
 		      for nu on numbers
 		      for ne on non-empty
-		      do
-		      (progn
-			(setcar
-			 cell
-			 (substring-no-properties (or (car cell) "")))
-			(when (string-match-p org-table-number-regexp (car cell))
-			  (cl-incf (car nu)))
-			(unless (equal (car cell) "")
-			  (cl-incf (car ne)))
-			(if (< (car mx) (length (car cell)))
-			    (setcar mx (length (car cell)))))))
-    ;; pad cells with spaces to maxwidths,
-    ;; either left or right according to alignement
-    (cl-loop for row in table
-	     do
-	     (cl-loop for cell on row
-		      for mx in maxwidths
-		      for nu in numbers
-		      for ne in non-empty
-		      do
-		      (let ((pad (- mx (length (car cell)))))
-			(if (> pad 0)
-			    (setcar
-			     cell
-			     (if (< nu (* org-table-number-fraction ne))
-				 (concat (car cell) (make-string pad ? ))
-			       (concat (make-string pad ? ) (car cell))))))))
+		      for cellnp = (substring-no-properties (or (car cell) ""))
+		      do (setcar cell cellnp)
+		      do (when (string-match-p org-table-number-regexp cellnp)
+			   (cl-incf (car nu)))
+		      do (unless (equal cellnp "")
+			   (cl-incf (car ne)))
+		      do (if (< (car mx) (length cellnp))
+			    (setcar mx (length cellnp)))))
+
     ;; inactivating jit-lock-after-change boosts performance a lot
     (cl-letf (((symbol-function 'jit-lock-after-change) (lambda (a b c)) ))
       ;; insert well padded and aligned cells at current buffer position
@@ -264,12 +240,24 @@ special symbol 'hline to mean an horizontal line."
 	       do
 	       (if (listp row)
 		   (cl-loop for cell in row
-			    do (insert "| " cell " "))
-		 (let ((bar "|"))
-		   (cl-loop for mx in maxwidths
-			    do (insert bar (make-string (+ mx 2) ?-))
-			    do (setq bar "+"))))
-	       (insert "|\n")))))
+			    for mx in maxwidths
+			    for nu in numbers
+			    for ne in non-empty
+			    for pad = (- mx (length cell))
+			    do (cond ((<= pad 0)
+				      ;; no alignment
+				      (insert "| " cell " "))
+				     ((< nu (* org-table-number-fraction ne))
+				      ;; left alignment
+				      (insert "| " cell (make-string pad ? ) " "))
+				     (t
+				      ;; right alignment
+				      (insert "| " (make-string pad ? ) cell " "))))
+		 (cl-loop with bar = "|"
+			  for mx in maxwidths
+			  do (insert bar (make-string (+ mx 2) ?-))
+			  do (setq bar "+")))
+	       do (insert "|\n")))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; In-place mode
@@ -370,8 +358,8 @@ Returns MASTABLE enriched with material from REFTABLE."
     (while (eq (car reftable) 'hline)
       (setq reftable (cdr reftable)))
     ;; convert column-names to numbers
-    (setq mascol (orgtbl--join-colname-to-int mascol mastable))
-    (setq refcol (orgtbl--join-colname-to-int refcol reftable))
+    (setq mascol (1- (orgtbl--join-colname-to-int mascol mastable t)))
+    (setq refcol (1- (orgtbl--join-colname-to-int refcol reftable t)))
     ;; convert reference table into fast-lookup hashtable
     (setq reftable (orgtbl--join-convert-to-hashtable reftable refcol)
 	  refhead (car reftable)
@@ -508,7 +496,9 @@ The
 	(content (plist-get params :content))
 	(tblfm nil))
     (when (and content
-	       (string-match "^[ \t]*\\(#\\+\\(tbl\\)?name:.*\\)" content))
+	       (string-match
+		(rx bos (* (any " \t")) (group "#+" (? "tbl") "name:" (* not-newline)))
+		content))
       (insert (match-string 1 content) "\n"))
     (orgtbl-insert-elisp-table
      (orgtbl--create-table-joined
