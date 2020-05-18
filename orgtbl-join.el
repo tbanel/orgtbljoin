@@ -33,6 +33,8 @@
 
 ;;; Requires:
 (require 'org-table)
+(eval-when-compile (require 'cl-lib))
+(require 'rx)
 
 ;;; Code:
 
