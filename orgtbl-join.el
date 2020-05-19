@@ -288,7 +288,7 @@ If no matching row is found in the reference table, then the
 current row is kept, with empty cells appended to it."
   (interactive)
   (org-table-check-inside-data-field)
-  (let ((col (org-table-current-column))
+  (let ((col (format "$%s" (org-table-current-column)))
 	(tbl (org-table-to-lisp-9-4))
 	(pt (line-number-at-pos))
 	(cn (- (point) (point-at-bol))))
@@ -303,14 +303,19 @@ current row is kept, with empty cells appended to it."
 	    (orgtbl--join-query-column
 	     "Reference column: "
 	     ref-table)))
-    (delete-region (org-table-begin) (org-table-end))
-    (orgtbl-insert-elisp-table
-     (orgtbl--create-table-joined
-      tbl
-      col
-      ref-table
-      ref-column))
-    (goto-line pt)
+    (let ((b (org-table-begin))
+	  (e (org-table-end)))
+      (save-excursion
+	(goto-char e)
+	(orgtbl-insert-elisp-table
+	 (orgtbl--create-table-joined
+	  tbl
+	  col
+	  ref-table
+	  ref-column)))
+      (delete-region b e))
+    (goto-char (point-min))
+    (forward-line (1- pt))
     (forward-char cn)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
