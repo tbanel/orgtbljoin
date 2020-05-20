@@ -39,7 +39,7 @@
 ;;; Code:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; The function (org-table-to-lisp) have been greatly enhanced
+;; The function (org-table-to-lisp) has been greatly enhanced
 ;; in Org Mode version 9.4
 ;; To benefit from this speedup in older versions of Org Mode,
 ;; this function is copied here with a slightly different name
@@ -128,9 +128,10 @@ $1, $2..."
     prompt
     (if (memq 'hline table) ;; table has a header
 	(car table)
-      (let ((i 0))
-	(mapcar (lambda (x) (format "$%s" (setq i (1+ i))))
-		(car table))))))
+      (cl-loop              ;; table does not have a header
+       for row in (car table)
+       for i from 1
+       collect (format "$%s" i)))))
 
 (defun orgtbl--join-convert-to-hashtable (table col)
   "Convert an Org-mode TABLE into a hash table.
@@ -154,11 +155,11 @@ hashtable."
 	  (setq h (cdr h)))
 	(setcdr h nil)))
     ;; fill-in the hashtable
-    (mapc (lambda (row)
-	    (when (listp row)
-	      (let ((key (nth col row)))
-		(puthash key (nconc (gethash key hash) (list row)) hash))))
-	  body)
+    (cl-loop for row in body
+	     if (listp row)
+	     do
+	     (let ((key (nth col row)))
+	       (puthash key (nconc (gethash key hash) (list row)) hash)))
     (cons head hash)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -351,11 +352,13 @@ Returns MASTABLE enriched with material from REFTABLE."
     (let ((width
 	   (cl-loop for row in mastable
 		    maximize (if (listp row) (length row) 0))))
-      (cl-loop for row in mastable
-	       do
-	       (if (listp row)
-		   (while (< (length row) width)
-		     (nconc row (list ""))))))
+      (cl-loop for row on mastable
+	       if (listp (car row))
+	       do (let ((n (- width (length (car row)))))
+		    (if (> n 0)
+			(setcar
+			 row
+			 (nconc (car row) (make-list n "")))))))
     ;; skip any hline a the top of both tables
     (while (eq (car mastable) 'hline)
       (setq result (cons 'hline result))
@@ -383,24 +386,24 @@ Returns MASTABLE enriched with material from REFTABLE."
 	  (if refhead
 	      (setq refhead (cdr refhead)))))
     ;; create the joined table
-    (mapc (lambda (masline)
-	    (if (not (listp masline))
-		(setq result (cons masline result))
-	      (let ((result0 result))
-		;; if several ref-lines match, all of them are considered
-		(mapc (lambda (refline)
-			(setq result
-			      (cons
-			       (orgtbl--join-append-mas-ref-row
-				masline
-				refline
-				refcol)
-			       result)))
-		      (gethash (nth mascol masline) refhash))
-		;; if no ref-line matches, add the non-matching master-line anyway
-		(if (eq result result0)
-		    (setq result (cons masline result))))))
-	  mastable)
+    (cl-loop
+     for masline in mastable
+     do
+     (if (not (listp masline))
+	 (setq result (cons masline result))
+       (let ((result0 result))
+	 ;; if several ref-lines match, all of them are considered
+	 (cl-loop
+	  for refline in (gethash (nth mascol masline) refhash)
+	  do
+	  (setq
+	   result
+	   (cons
+	    (orgtbl--join-append-mas-ref-row masline refline refcol)
+	    result)))
+	 ;; if no ref-line matches, add the non-matching master-line anyway
+	 (if (eq result result0)
+	     (setq result (cons masline result))))))
     (nreverse result)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -423,7 +426,7 @@ PARAMS contains pairs of key-value with the following keys:
              This column names one of the reference table columns.
 
 Columns names are either found in the header of the table, if the
-table have a header, or a dollar form: $1, $2, and so on.
+table has a header, or a dollar form: $1, $2, and so on.
 
 The destination must be specified somewhere in the
 same file with a bloc like this:
@@ -491,7 +494,7 @@ PARAMS contains pairs of key-value with the following keys:
              This column names one of the reference table columns.
 
 Columns names are either found in the header of the table, if the
-table have a header, or a dollar form: $1, $2, and so on.
+table has a header, or a dollar form: $1, $2, and so on.
 
 The
 #+BEGIN RECEIVE ORGTBL destination_table_name
