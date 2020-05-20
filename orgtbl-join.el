@@ -135,17 +135,21 @@ $1, $2..."
 
 (defun orgtbl--join-convert-to-hashtable (table col)
   "Convert an Org-mode TABLE into a hash table.
-The purpose is to provide fast lookup to TABLE's rows.  The COL
-column contains the keys for the hashtable entries.  Return a
-cons, the car contains the header, the cdr contains the
-hashtable."
+The purpose is to provide fast look-up to Tabbies rows.  The COL
+column contains the keys for the hashtable entries.
+An entry is the hastable for a key KEY is:
+(0 row1 row2 row3)
+where row1, row2, row3 are rows in the reference-table with the
+KEY column.  The leading 0 will be how many times this particular
+hashtable entry has been consumed.  Return a cons, the car
+contains the header, the cdr contains the hashtable."
   ;; skip heading horinzontal lines if any
   (while (eq (car table) 'hline)
     (setq table (cdr table)))
   ;; split header and body
   (let ((head)
 	(body (memq 'hline table))
-	(hash (make-hash-table :test 'equal :size (+ 20 (length table)))))
+	(refhash (make-hash-table :test 'equal :size (+ 20 (length table)))))
     (if (not body)
 	(setq body table)
       (setq head table)
@@ -159,8 +163,12 @@ hashtable."
 	     if (listp row)
 	     do
 	     (let ((key (nth col row)))
-	       (puthash key (nconc (gethash key hash) (list row)) hash)))
-    (cons head hash)))
+	       (puthash key
+			(nconc
+			 (or (gethash key refhash) (list 0))
+			 (list row))
+			refhash)))
+    (cons head refhash)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; The following functions are borrowed
@@ -346,19 +354,19 @@ REFCOL is the name of the joining column in the reference table.
 Returns MASTABLE enriched with material from REFTABLE."
   (let ((result)  ;; result built in reverse order
 	(refhead)
-	(refhash))
+	(refhash)
+	(width
+	 (cl-loop for row in mastable
+		  maximize (if (listp row) (length row) 0))))
     ;; make master table rectangular if not all rows
     ;; share the same number of cells
-    (let ((width
-	   (cl-loop for row in mastable
-		    maximize (if (listp row) (length row) 0))))
-      (cl-loop for row on mastable
-	       if (listp (car row))
-	       do (let ((n (- width (length (car row)))))
-		    (if (> n 0)
-			(setcar
-			 row
-			 (nconc (car row) (make-list n "")))))))
+    (cl-loop for row on mastable
+	     if (listp (car row))
+	     do (let ((n (- width (length (car row)))))
+		  (if (> n 0)
+		      (setcar
+		       row
+		       (nconc (car row) (make-list n ""))))))
     ;; skip any hline a the top of both tables
     (while (eq (car mastable) 'hline)
       (setq result (cons 'hline result))
@@ -391,19 +399,39 @@ Returns MASTABLE enriched with material from REFTABLE."
      do
      (if (not (listp masline))
 	 (setq result (cons masline result))
-       (let ((result0 result))
+       (let ((result0 result)
+	     (hashentry (gethash (nth mascol masline) refhash)))
 	 ;; if several ref-lines match, all of them are considered
 	 (cl-loop
-	  for refline in (gethash (nth mascol masline) refhash)
+	  for refline in (cdr hashentry)
 	  do
 	  (setq
 	   result
 	   (cons
 	    (orgtbl--join-append-mas-ref-row masline refline refcol)
 	    result)))
-	 ;; if no ref-line matches, add the non-matching master-line anyway
 	 (if (eq result result0)
-	     (setq result (cons masline result))))))
+	     ;; if no ref-line matches, add the non-matching master-line anyway
+	     (setq result (cons masline result))
+	   ;; if ref-table rows were consumed, increment counter
+	   (setcar hashentry (1+ (car hashentry)))))))
+    ;; add rows from the ref-table not consumed
+    (if nil
+	(cl-loop for hashentry being the hash-values of refhash
+		 if (equal (car hashentry) 0)
+		 do
+		 (let ((fake-masrow (make-list width "")))
+		   (setcar (nthcdr mascol fake-masrow) (nth refcol (car (cdr hashentry))))
+		   (cl-loop for refrow in (cdr hashentry)
+			    do
+			    (setq
+			     result
+			     (cons
+			      (orgtbl--join-append-mas-ref-row
+			       fake-masrow
+			       refrow
+			       refcol)
+			      result))))))
     (nreverse result)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
