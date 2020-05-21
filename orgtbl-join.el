@@ -239,7 +239,7 @@ special symbol 'hline to mean an horizontal line."
 ;; In-place mode
 
 ;;;###autoload
-(defun orgtbl-join (&optional ref-table ref-column)
+(defun orgtbl-join (&optional ref-table ref-column full)
   "Add material from a reference table to the current table.
 
 Optional REF-TABLE is the name of a reference table, in the
@@ -279,6 +279,12 @@ current row is kept, with empty cells appended to it."
 	    (orgtbl--join-query-column
 	     "Reference column: "
 	     ref-table)))
+    (unless full
+      (setq full
+	    (org-icompleting-read
+	     "Which table should appear entirely? "
+	     '("mas" "ref" "mas+ref" "none")
+	     nil nil "mas")))
     (let ((b (org-table-begin))
 	  (e (org-table-end)))
       (save-excursion
@@ -288,7 +294,8 @@ current row is kept, with empty cells appended to it."
 	  tbl
 	  col
 	  ref-table
-	  ref-column)))
+	  ref-column
+	  full)))
       (delete-region b e))
     (goto-char (point-min))
     (forward-line (1- pt))
@@ -310,20 +317,31 @@ appended in the result, because it is already present in MASROW."
 	   do (push cell result)
 	   finally return (nreverse result)))
 
-(defun orgtbl--create-table-joined (mastable mascol reftable refcol)
+(defun orgtbl--create-table-joined (mastable mascol reftable refcol full)
   "Join a master table with a reference table.
 MASTABLE is the master table, as a list of lists of cells.
 MASCOL is the name of the joining column in the master table.
 REFTABLE is the reference table.
 REFCOL is the name of the joining column in the reference table.
+FULL is a flag to specify whether or not tables should be fully extracted
+to the result:
+if it contains \"mas\" then the master    table will appear entirely
+if it contains \"ref\" then the reference table will appear entirely
+if it contains both (like \"mas+ref\") then both table will appear
+entirely.
 Returns MASTABLE enriched with material from REFTABLE."
+  (message "full = %s" full)
+  (unless full (setq full "mas")) ;; default value is "mas"
+  (unless (stringp full) (setq full (format "%s" full)))
   (let ((result)  ;; result built in reverse order
 	(width
 	 (cl-loop for row in mastable
 		  maximize (if (listp row) (length row) 0)))
 	(refhead)
 	(refbody)
-	(refhash (make-hash-table :test 'equal)))
+	(refhash (make-hash-table :test 'equal))
+	(full-mas (string-match "mas" full))
+	(full-ref (string-match "ref" full)))
     ;; make master table rectangular if not all rows
     ;; share the same number of cells
     (cl-loop for row on mastable
@@ -388,7 +406,7 @@ Returns MASTABLE enriched with material from REFTABLE."
        (let ((hashentry (gethash (nth mascol masline) refhash)))
 	 (if (not hashentry)
 	     ;; if no ref-line matches, add the non-matching master-line anyway
-	     (push masline result)
+	     (if full-mas (push masline result))
 	   ;; if several ref-lines match, all of them are considered
 	   (cl-loop
 	    for refline in (cdr hashentry)
@@ -399,25 +417,24 @@ Returns MASTABLE enriched with material from REFTABLE."
 	   ;; ref-table rows were consumed, increment counter
 	   (setcar hashentry (1+ (car hashentry)))))))
     ;; add rows from the ref-table not consumed
-    (if nil
-    (cl-loop
-     for refrow in refbody
-     if (listp refrow)
-     do
-     (let ((hashentry (gethash (nth refcol refrow) refhash)))
-       (if (equal (car hashentry) 0)
-	   (let ((fake-masrow (make-list width "")))
-	     (setcar (nthcdr mascol fake-masrow) (nth refcol (cadr hashentry)))
-	     (push
-	      (orgtbl--join-append-mas-ref-row
-	       fake-masrow
-	       refrow
-	       refcol)
-	      result))))
-     else
-     do
-     (push 'hline result))
-    )
+    (if full-ref
+	(cl-loop
+	 for refrow in refbody
+	 if (listp refrow)
+	 do
+	 (let ((hashentry (gethash (nth refcol refrow) refhash)))
+	   (if (equal (car hashentry) 0)
+	       (let ((fake-masrow (make-list width "")))
+		 (setcar (nthcdr mascol fake-masrow) (nth refcol (cadr hashentry)))
+		 (push
+		  (orgtbl--join-append-mas-ref-row
+		   fake-masrow
+		   refrow
+		   refcol)
+		  result))))
+	 else
+	 do
+	 (push 'hline result)))
     (nreverse result)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -452,7 +469,8 @@ same file with a bloc like this:
 	  table
 	  (plist-get params :mas-column)
 	  (orgtbl-get-distant-table (plist-get params :ref-table))
-	  (plist-get params :ref-column))))
+	  (plist-get params :ref-column)
+	  (plist-get params :full))))
     (with-temp-buffer
       (orgtbl-insert-elisp-table joined-table)
       (buffer-substring-no-properties (point-min) (1- (point-max))))))
@@ -527,7 +545,8 @@ The
       (orgtbl-get-distant-table (plist-get params :mas-table))
       (plist-get params :mas-column)
       (orgtbl-get-distant-table (plist-get params :ref-table))
-      (plist-get params :ref-column)))
+      (plist-get params :ref-column)
+      (plist-get params :full)))
     (delete-char -1) ;; remove trailing \n which Org Mode will add again
     (when (and content
 	       (string-match "^[ \t]*\\(#\\+tblfm:.*\\)" content))

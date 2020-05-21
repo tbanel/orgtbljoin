@@ -60,7 +60,8 @@ the needed nutrition facts:
 * SQL equivalent
 
 If you are familiar with SQL, you would get a similar result with the
-a /join/ (actually a /left outer join/).
+a /join/ (actually a /left outer join/ by default, but that can be
+configured with the =:full= parameter).
 
 #+begin_src sql
   select *
@@ -154,25 +155,7 @@ easier to use than the /push/, because there is a wizard bound to =C-c C-x i=
 (see below).  Other than that, the two modes use the same underlying engine,
 so using one or the other is just a matter or convenience.
 
-* Duplicates or missing values
-
-It may happen that no row in the reference table matches a value in
-the master table.  In this case, the master row is kept, with empty
-cells added to it.  Information from the master table is never lost.
-If, for example, a line in the recipe refers to an unkown "amarante"
-product (a cereal known by the ancient Incas), then the resulting
-table will still contain the "amarante" row, with empty nutritional
-facts.
-
-#+BEGIN_EXAMPLE
-| type     | quty | type     | Fiber | Sugar | Protein | Carb |
-|----------+------+----------+-------+-------+---------+------|
-| onion    |   70 | onion    |   1.3 |   4.4 |     1.3 |  9.0 |
-| tomatoe  |  120 | tomatoe  |   0.6 |   2.1 |     0.8 |  3.4 |
-| eggplant |  300 | eggplant |   2.5 |   3.2 |     0.8 |  8.6 |
-| tofu     |  100 | tofu     |   0.7 |   0.5 |     6.6 |  1.4 |
-| amarante |  120 |          |       |       |         |      |
-#+END_EXAMPLE
+* Duplicates
 
 The reference table may contain several matching rows for the same
 value in the master table.  In this case, as many rows are created in
@@ -203,6 +186,51 @@ Then the resulting table will have those three rows appended:
 
 If you are familiar with SQL, this behavior is reminicent of the
 /left outer join/.
+
+* How to handle missing rows?
+
+It may happen that no row in the reference table matches a value in
+the master table.  By default, in this case, the master row is kept,
+with empty cells added to it.  Information from the master table is
+not lost.  If, for example, a line in the recipe refers to an unkown
+"amarante" product (a cereal known by the ancient Incas), then the
+resulting table will still contain the "amarante" row, with empty
+nutritional facts.
+
+#+BEGIN_EXAMPLE
+| type     | quty | type     | Fiber | Sugar | Protein | Carb |
+|----------+------+----------+-------+-------+---------+------|
+| onion    |   70 | onion    |   1.3 |   4.4 |     1.3 |  9.0 |
+| tomatoe  |  120 | tomatoe  |   0.6 |   2.1 |     0.8 |  3.4 |
+| eggplant |  300 | eggplant |   2.5 |   3.2 |     0.8 |  8.6 |
+| tofu     |  100 | tofu     |   0.7 |   0.5 |     6.6 |  1.4 |
+| amarante |  120 |          |       |       |         |      |
+#+END_EXAMPLE
+
+This behavior is controlled by the =:full= parameter:
+- =:full mas= the joined result contains the full master table (the
+  default)
+- =:full ref= the joined result contains the full reference table
+- =:full mas+ref= the joined result contains all rows from both mater
+  and reference tables
+- =:full none= or =:full nil= or =:full ""= the joined result contains
+  only rows that appear in both tables
+
+The use cases may be as follow:
+
+- =:full mas= is useful when the reference table is large, as a
+  dictionary or a nutritional facts. We just pick the needed row from
+  the reference.
+
+- =:full mas+ref= is useful when both tables are similar. For
+  instance, one table has been grown by a team, and the other
+  independently by another team. The joined table will contain
+  additional rows from both teams.
+
+- =:full none= is useful create the intersection of both tables. For
+  instance we have a list of items in the main warehouse, and another
+  list of damaged items. We are interested only in damaged items in
+  the main warehouse.
 
 * Malformed input tables
 
@@ -362,6 +390,7 @@ Contributors
 - increase performance when inserting result into the buffer
 - aligned output in push mode
 - 2 as column name no longer supported, write $2
+- add =:full= parameter
 
 * GPL 3 License
 Copyright (C) 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020  Thierry Banel
