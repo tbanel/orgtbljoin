@@ -135,14 +135,16 @@ $1, $2..."
 
 (defun orgtbl--join-convert-to-hashtable (table col)
   "Convert an Org-mode TABLE into a hash table.
-The purpose is to provide fast look-up to Tabbies rows.  The COL
+The purpose is to provide fast look-up to table rows.  The COL
 column contains the keys for the hashtable entries.
-An entry is the hastable for a key KEY is:
+An entry in the hastable for a key KEY is:
 (0 row1 row2 row3)
 where row1, row2, row3 are rows in the reference-table with the
 KEY column.  The leading 0 will be how many times this particular
-hashtable entry has been consumed.  Return a cons, the car
-contains the header, the cdr contains the hashtable."
+hashtable entry has been consumed.  Return this list:
+ (car) is the header
+ (cadr) is the body
+ (cddr) is the hashtable"
   ;; skip heading horinzontal lines if any
   (while (eq (car table) 'hline)
     (setq table (cdr table)))
@@ -168,7 +170,7 @@ contains the header, the cdr contains the hashtable."
 			 (or (gethash key refhash) (list 0))
 			 (list row))
 			refhash)))
-    (cons head refhash)))
+    (cons head (cons body refhash))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; The following functions are borrowed
@@ -377,9 +379,10 @@ Returns MASTABLE enriched with material from REFTABLE."
     (setq mascol (1- (orgtbl--join-colname-to-int mascol mastable t)))
     (setq refcol (1- (orgtbl--join-colname-to-int refcol reftable t)))
     ;; convert reference table into fast-lookup hashtable
-    (setq reftable (orgtbl--join-convert-to-hashtable reftable refcol)
-	  refhead (car reftable)
-	  refhash (cdr reftable))
+    (let ((x (orgtbl--join-convert-to-hashtable reftable refcol)))
+      (setq refhead (car x))
+      (setq refbody (cadr x))
+      (setq refhash (cddr x)))
     ;; iterate over master table header if any
     ;; and join it with reference table header if any
     (if (memq 'hline mastable)
@@ -416,22 +419,23 @@ Returns MASTABLE enriched with material from REFTABLE."
 	   ;; if ref-table rows were consumed, increment counter
 	   (setcar hashentry (1+ (car hashentry)))))))
     ;; add rows from the ref-table not consumed
-    (if nil
-	(cl-loop for hashentry being the hash-values of refhash
-		 if (equal (car hashentry) 0)
-		 do
-		 (let ((fake-masrow (make-list width "")))
-		   (setcar (nthcdr mascol fake-masrow) (nth refcol (car (cdr hashentry))))
-		   (cl-loop for refrow in (cdr hashentry)
-			    do
-			    (setq
-			     result
-			     (cons
-			      (orgtbl--join-append-mas-ref-row
-			       fake-masrow
-			       refrow
-			       refcol)
-			      result))))))
+    (cl-loop for refrow in refbody
+	     if (listp refrow)
+	     do
+	     (let ((hashentry (gethash (nth refcol refrow) refhash)))
+		 (if (equal (car hashentry) 0)
+		     (let ((fake-masrow (make-list width "")))
+		       (setcar (nthcdr mascol fake-masrow) (nth refcol (car (cdr hashentry))))
+		       (push
+			(orgtbl--join-append-mas-ref-row
+			 fake-masrow
+			 refrow
+			 refcol)
+			result))))
+	     else
+	     do
+	     (push 'hline result)
+	     )
     (nreverse result)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
