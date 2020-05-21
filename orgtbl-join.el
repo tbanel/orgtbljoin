@@ -135,7 +135,6 @@ $1, $2..."
 	    for row in (car table)
 	    for i from 1
 	    collect (format "$%s" i)))))
-    (message "default = %s %s" default (and (member default completions) default))
     (org-icompleting-read
      prompt
      completions
@@ -336,7 +335,6 @@ if it contains \"ref\" then the reference table will appear entirely
 if it contains both (like \"mas+ref\") then both table will appear
 entirely.
 Returns MASTABLE enriched with material from REFTABLE."
-  (message "full = %s" full)
   (unless full (setq full "mas")) ;; default value is "mas"
   (unless (stringp full) (setq full (format "%s" full)))
   (let ((result)  ;; result built in reverse order
