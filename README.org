@@ -41,7 +41,7 @@ Jozwiak).
 | corn     |   4.7 |   1.8 |     2.8 | 21.3 |
 #+END_EXAMPLE
 
-Let us put the cursor on the "type" column of the recipe table, and
+Let us put the cursor on the =type= column of the recipe table, and
 type
    =C-c C-x j= or =M-x orgtbl-join=.
 
@@ -187,6 +187,12 @@ Then the resulting table will have those three rows appended:
 If you are familiar with SQL, this behavior is reminicent of the
 /left outer join/.
 
+Duplicate entries my happen both in the master and the reference
+table. The joined table will have all combinations. Sot for instance
+if there are 2 =eggplant= rows in the master table, and 3 =eggplant=
+rows in the reference table, then the joined table will get 6
+=eggplant= rows.
+
 * How to handle missing rows?
 
 It may happen that no row in the reference table matches a value in
@@ -194,7 +200,7 @@ the master table.  By default, in this case, the master row is kept,
 with empty cells added to it.  Information from the master table is
 not lost.  If, for example, a line in the recipe refers to an unkown
 "amarante" product (a cereal known by the ancient Incas), then the
-resulting table will still contain the "amarante" row, with empty
+resulting table will still contain the =amarante= row, with empty
 nutritional facts.
 
 #+BEGIN_EXAMPLE
@@ -272,6 +278,11 @@ The reference table header (if any), will fill-in the header (if any)
 of the resulting table.  But if there is no room in the resulting
 table header, the reference table header lines will be ignored, partly
 of fully.
+
+Header are useful to refer to columns. If there is no header, then
+columns must be referred with =$= names: =$1= is the name of the first
+column, =$2= is the name of the second column, and so on. This is
+pretty much the same as in the Org Mode spreadsheet.
 
 * Key-bindings, menu
 
