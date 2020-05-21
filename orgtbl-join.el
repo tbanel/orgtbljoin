@@ -119,7 +119,7 @@ otherwise nil is returned."
 	   err
 	   (user-error "Column %s not found in table" colname))))))
 
-(defun orgtbl--join-query-column (prompt table)
+(defun orgtbl--join-query-column (prompt table default)
   "Interactively query a column.
 PROMPT is displayed to the user to explain what answer is expected.
 TABLE is the org mode table from which a column will be choosen
@@ -128,14 +128,19 @@ TABLE has no header, completion is done on generic column names:
 $1, $2..."
   (while (eq 'hline (car table))
     (pop-simple table))
-  (org-icompleting-read
-    prompt
-    (if (memq 'hline table) ;; table has a header
-	(car table)
-      (cl-loop              ;; table does not have a header
-       for row in (car table)
-       for i from 1
-       collect (format "$%s" i)))))
+  (let ((completions
+	 (if (memq 'hline table) ;; table has a header
+	     (car table)
+	   (cl-loop ;; table does not have a header
+	    for row in (car table)
+	    for i from 1
+	    collect (format "$%s" i)))))
+    (message "default = %s %s" default (and (member default completions) default))
+    (org-icompleting-read
+     prompt
+     completions
+     nil 'confirm
+     (and (member default completions) default))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; The following functions are borrowed
@@ -264,7 +269,7 @@ If no matching row is found in the reference table, then the
 current row is kept, with empty cells appended to it."
   (interactive)
   (org-table-check-inside-data-field)
-  (let ((col (format "$%s" (org-table-current-column)))
+  (let ((col (org-table-current-column))
 	(tbl (org-table-to-lisp-9-4))
 	(pt (line-number-at-pos))
 	(cn (- (point) (point-at-bol))))
@@ -278,7 +283,8 @@ current row is kept, with empty cells appended to it."
       (setq ref-column
 	    (orgtbl--join-query-column
 	     "Reference column: "
-	     ref-table)))
+	     ref-table
+	     (if (memq 'hline tbl) (nth (1- col) (car tbl)) ""))))
     (unless full
       (setq full
 	    (org-icompleting-read
@@ -292,7 +298,7 @@ current row is kept, with empty cells appended to it."
 	(orgtbl-insert-elisp-table
 	 (orgtbl--create-table-joined
 	  tbl
-	  col
+	  (format "$%s" col)
 	  ref-table
 	  ref-column
 	  full)))
@@ -483,6 +489,7 @@ same file with a bloc like this:
   "Wizard to interactively insert a joined table as a dynamic block."
   (interactive)
   (let* ((localtables (orgtbl-list-local-tables))
+	 (mas-table)
 	 (mastable
 	  (org-icompleting-read
 	   "Master table: "
@@ -490,7 +497,8 @@ same file with a bloc like this:
 	 (mascol
 	  (orgtbl--join-query-column
 	   "Master joining column: "
-	   (orgtbl-get-distant-table mastable)))
+	   (orgtbl-get-distant-table mastable)
+	   ""))
 	 (reftable
 	  (org-icompleting-read
 	   "Reference table: "
@@ -498,11 +506,17 @@ same file with a bloc like this:
 	 (refcol
 	  (orgtbl--join-query-column
 	   "Reference joining column: "
-	   (orgtbl-get-distant-table reftable))))
+	   (orgtbl-get-distant-table reftable)
+	   mascol))
+	 (full (org-icompleting-read
+		"Which table should appear entirely? "
+		'("mas" "ref" "mas+ref" "none")
+		nil nil "mas")))
     (org-create-dblock
      (list :name "join"
 	   :mas-table mastable :mas-column mascol
-	   :ref-table reftable :ref-column refcol))
+	   :ref-table reftable :ref-column refcol
+	   :full full))
     (org-update-dblock)))
 
 ;;;###autoload
