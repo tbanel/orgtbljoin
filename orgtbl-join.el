@@ -75,6 +75,10 @@ The table is taken from the parameter TXT, or from the buffer at point."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Utility functions
 
+(defmacro pop-simple (place)
+  "like pop, but without returning (car place)"
+  `(setq ,place (cdr ,place)))
+
 (defun orgtbl--join-colname-to-int (colname table &optional err)
   "Convert the column name into an integer (first column is numbered 1)
 COLNAME may be:
@@ -93,7 +97,7 @@ otherwise nil is returned."
       (setq colname (match-string 1 colname)))
   ;; skip first hlines if any
   (while (not (listp (car table)))
-    (setq table (cdr table)))
+    (pop-simple table))
   (cond ((equal colname "hline")
 	 0)
 	((string-match "^\\$\\([0-9]+\\)$" colname)
@@ -123,7 +127,7 @@ by the user.  Its header is used for column names completion.  If
 TABLE has no header, completion is done on generic column names:
 $1, $2..."
   (while (eq 'hline (car table))
-    (setq table (cdr table)))
+    (pop-simple table))
   (org-icompleting-read
     prompt
     (if (memq 'hline table) ;; table has a header
@@ -132,45 +136,6 @@ $1, $2..."
        for row in (car table)
        for i from 1
        collect (format "$%s" i)))))
-
-(defun orgtbl--join-convert-to-hashtable (table col)
-  "Convert an Org-mode TABLE into a hash table.
-The purpose is to provide fast look-up to table rows.  The COL
-column contains the keys for the hashtable entries.
-An entry in the hastable for a key KEY is:
-(0 row1 row2 row3)
-where row1, row2, row3 are rows in the reference-table with the
-KEY column.  The leading 0 will be how many times this particular
-hashtable entry has been consumed.  Return this list:
- (car) is the header
- (cadr) is the body
- (cddr) is the hashtable"
-  ;; skip heading horinzontal lines if any
-  (while (eq (car table) 'hline)
-    (setq table (cdr table)))
-  ;; split header and body
-  (let ((head)
-	(body (memq 'hline table))
-	(refhash (make-hash-table :test 'equal :size (+ 20 (length table)))))
-    (if (not body)
-	(setq body table)
-      (setq head table)
-      ;; terminate header with nil
-      (let ((h head))
-	(while (not (eq (cadr h) 'hline))
-	  (setq h (cdr h)))
-	(setcdr h nil)))
-    ;; fill-in the hashtable
-    (cl-loop for row in body
-	     if (listp row)
-	     do
-	     (let ((key (nth col row)))
-	       (puthash key
-			(nconc
-			 (or (gethash key refhash) (list 0))
-			 (list row))
-			refhash)))
-    (cons head (cons body refhash))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; The following functions are borrowed
@@ -338,14 +303,12 @@ MASROW is a list of cells from the master table.  REFROW is a
 list of cells from the reference table.  REFCOL is the position,
 numbered from zero, of the column in REFROW that should not be
 appended in the result, because it is already present in MASROW."
-  (let ((result (reverse masrow))
-	(i 0))
-    (while refrow
-      (unless (equal i refcol)
-	(setq result (cons (car refrow) result)))
-      (setq refrow (cdr refrow))
-      (setq i (1+ i)))
-    (reverse result)))
+  (cl-loop with result = (reverse masrow)
+	   for cell in refrow
+	   for i from 0
+	   unless (equal i refcol)
+	   do (push cell result)
+	   finally return (nreverse result)))
 
 (defun orgtbl--create-table-joined (mastable mascol reftable refcol)
   "Join a master table with a reference table.
@@ -355,11 +318,12 @@ REFTABLE is the reference table.
 REFCOL is the name of the joining column in the reference table.
 Returns MASTABLE enriched with material from REFTABLE."
   (let ((result)  ;; result built in reverse order
-	(refhead)
-	(refhash)
 	(width
 	 (cl-loop for row in mastable
-		  maximize (if (listp row) (length row) 0))))
+		  maximize (if (listp row) (length row) 0)))
+	(refhead)
+	(refbody)
+	(refhash (make-hash-table :test 'equal)))
     ;; make master table rectangular if not all rows
     ;; share the same number of cells
     (cl-loop for row on mastable
@@ -371,71 +335,89 @@ Returns MASTABLE enriched with material from REFTABLE."
 		       (nconc (car row) (make-list n ""))))))
     ;; skip any hline a the top of both tables
     (while (eq (car mastable) 'hline)
-      (setq result (cons 'hline result))
-      (setq mastable (cdr mastable)))
+      (push 'hline result)
+      (pop-simple mastable))
     (while (eq (car reftable) 'hline)
-      (setq reftable (cdr reftable)))
+      (pop-simple reftable))
     ;; convert column-names to numbers
     (setq mascol (1- (orgtbl--join-colname-to-int mascol mastable t)))
     (setq refcol (1- (orgtbl--join-colname-to-int refcol reftable t)))
+    ;; split header and body
+    (setq refbody (memq 'hline reftable))
+    (if (not refbody)
+	(setq refbody reftable)
+      (setq refhead reftable)
+      ;; terminate header with nil
+      (let ((h refhead))
+	(while (not (eq (cadr h) 'hline))
+	  (pop-simple h))
+	(setcdr h nil)))
     ;; convert reference table into fast-lookup hashtable
-    (let ((x (orgtbl--join-convert-to-hashtable reftable refcol)))
-      (setq refhead (car x))
-      (setq refbody (cadr x))
-      (setq refhash (cddr x)))
+    ;; an entry in the hastable for a key KEY is:
+    ;; (0 row1 row2 row3)
+    ;; where row1, row2, row3 are rows in the reftable with the KEY column
+    ;; the leading 0 will be how many times this particular
+    ;; hashtable entry has been consumed
+    (cl-loop for row in refbody
+	     if (listp row)
+	     do
+	     (let ((key (nth refcol row)))
+	       (puthash key
+			(nconc
+			 (or (gethash key refhash) (list 0))
+			 (list row))
+			refhash)))
     ;; iterate over master table header if any
     ;; and join it with reference table header if any
     (if (memq 'hline mastable)
 	(while (listp (car mastable))
-	  (setq result
-		(cons (orgtbl--join-append-mas-ref-row
-		       (car mastable)
-		       (and refhead (car refhead))
-		       refcol)
-		      result))
-	  (setq mastable (cdr mastable))
+	  (push (orgtbl--join-append-mas-ref-row
+		 (car mastable)
+		 (and refhead (car refhead))
+		 refcol)
+		result)
+	  (pop-simple mastable)
 	  (if refhead
-	      (setq refhead (cdr refhead)))))
+	      (pop-simple refhead))))
     ;; create the joined table
     (cl-loop
      for masline in mastable
      do
      (if (not (listp masline))
-	 (setq result (cons masline result))
-       (let ((result0 result)
-	     (hashentry (gethash (nth mascol masline) refhash)))
-	 ;; if several ref-lines match, all of them are considered
-	 (cl-loop
-	  for refline in (cdr hashentry)
-	  do
-	  (setq
-	   result
-	   (cons
-	    (orgtbl--join-append-mas-ref-row masline refline refcol)
-	    result)))
-	 (if (eq result result0)
+	 (push masline result)
+       (let ((hashentry (gethash (nth mascol masline) refhash)))
+	 (if (not hashentry)
 	     ;; if no ref-line matches, add the non-matching master-line anyway
-	     (setq result (cons masline result))
-	   ;; if ref-table rows were consumed, increment counter
+	     (push masline result)
+	   ;; if several ref-lines match, all of them are considered
+	   (cl-loop
+	    for refline in (cdr hashentry)
+	    do
+	    (push
+	     (orgtbl--join-append-mas-ref-row masline refline refcol)
+	     result))
+	   ;; ref-table rows were consumed, increment counter
 	   (setcar hashentry (1+ (car hashentry)))))))
     ;; add rows from the ref-table not consumed
-    (cl-loop for refrow in refbody
-	     if (listp refrow)
-	     do
-	     (let ((hashentry (gethash (nth refcol refrow) refhash)))
-		 (if (equal (car hashentry) 0)
-		     (let ((fake-masrow (make-list width "")))
-		       (setcar (nthcdr mascol fake-masrow) (nth refcol (car (cdr hashentry))))
-		       (push
-			(orgtbl--join-append-mas-ref-row
-			 fake-masrow
-			 refrow
-			 refcol)
-			result))))
-	     else
-	     do
-	     (push 'hline result)
-	     )
+    (if nil
+    (cl-loop
+     for refrow in refbody
+     if (listp refrow)
+     do
+     (let ((hashentry (gethash (nth refcol refrow) refhash)))
+       (if (equal (car hashentry) 0)
+	   (let ((fake-masrow (make-list width "")))
+	     (setcar (nthcdr mascol fake-masrow) (nth refcol (cadr hashentry)))
+	     (push
+	      (orgtbl--join-append-mas-ref-row
+	       fake-masrow
+	       refrow
+	       refcol)
+	      result))))
+     else
+     do
+     (push 'hline result))
+    )
     (nreverse result)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
