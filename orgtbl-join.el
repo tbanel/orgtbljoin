@@ -229,31 +229,35 @@ special symbol 'hline to mean an horizontal line."
       ;; insert well padded and aligned cells at current buffer position
       (cl-loop for row in table
 	       do
+	       ;; time optimization: surprisingly,
+	       ;; (insert (concat a b c)) is faster than
+	       ;; (insert a b c)
 	       (insert
-		(if (listp row)
-		    (cl-loop for cell in row
-			     for mx in maxwidths
-			     for nu in numbers
-			     for pad = (- mx (length cell))
-			     ;; time optimization: suprisingly,
-			     ;; (insert (concat a b c)) is faster than
-			     ;; (insert a b c)
-			     concat
-			     (cond ((<= pad 0)
-				    ;; no alignment
-				    (concat "| " cell " "))
-				   (nu
-				    ;; left alignment
-				    (concat "| " cell (make-string pad ? ) " "))
-				   (t
-				    ;; right alignment
-				    (concat "| " (make-string pad ? ) cell " "))))
-		  (cl-loop with bar = "|"
-			   for mx in maxwidths
-			   concat bar
-			   concat (make-string (+ mx 2) ?-)
-			   do (setq bar "+")))
-		"|\n")))))
+		(concat
+		 (if (listp row)
+		     (cl-loop for cell in row
+			      for mx in maxwidths
+			      for nu in numbers
+			      for pad = (- mx (length cell))
+			      concat "| "
+			      ;; no alignment
+			      if (<= pad 0)
+			      concat cell
+			      ;; left alignment
+			      else if nu
+			      concat cell and
+			      concat (make-string pad ? )
+			      ;; right alignment
+			      else
+			      concat (make-string pad ? ) and
+			      concat cell
+			      concat " ")
+		   (cl-loop with bar = "|"
+			    for mx in maxwidths
+			    concat bar
+			    concat (make-string (+ mx 2) ?-)
+			    do (setq bar "+")))
+		 "|\n"))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; In-place mode
