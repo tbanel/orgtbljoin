@@ -201,6 +201,7 @@ special symbol 'hline to mean an horizontal line."
 	 (maxwidths  (make-list nbcols 1))
 	 (numbers    (make-list nbcols 0))
 	 (non-empty  (make-list nbcols 0)))
+
     ;; remove text properties, compute maxwidths
     (cl-loop for row in table
 	     do
@@ -210,12 +211,12 @@ special symbol 'hline to mean an horizontal line."
 		      for ne on non-empty
 		      for cellnp = (substring-no-properties (or (car cell) ""))
 		      do (setcar cell cellnp)
-		      do (when (string-match-p org-table-number-regexp cellnp)
-			   (cl-incf (car nu)))
-		      do (unless (equal cellnp "")
-			   (cl-incf (car ne)))
-		      do (when (< (car mx) (length cellnp))
-			   (setcar mx (length cellnp)))))
+		      if (string-match-p org-table-number-regexp cellnp)
+		      do (setcar nu (1+ (car nu)))
+		      unless (equal cellnp "")
+		      do (setcar ne (1+ (car ne)))
+		      if (< (car mx) (length cellnp))
+		      do (setcar mx (length cellnp))))
 
     ;; change meaning of numbers from quantity of cells with numbers
     ;; to flags saying whether alignment should be left (number alignment)
