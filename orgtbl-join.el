@@ -79,6 +79,11 @@ The table is taken from the parameter TXT, or from the buffer at point."
   "like pop, but without returning (car place)"
   `(setq ,place (cdr ,place)))
 
+(defmacro stringify (place)
+  "Enforce PLACE being a string"
+  `(unless (stringp ,place)
+     (setq ,place (format "%s" ,place))))
+
 (defun orgtbl--join-colname-to-int (colname table &optional err)
   "Convert the column name into an integer (first column is numbered 1)
 COLNAME may be:
@@ -159,8 +164,7 @@ $1, $2..."
   "Find a table in the current buffer named NAME-OR-ID
 and returns it as a lisp list of lists.
 An horizontal line is translated as the special symbol `hline'."
-  (unless (stringp name-or-id)
-    (setq name-or-id (format "%s" name-or-id)))
+  (stringify name-or-id)
   (let (buffer loc)
     (save-excursion
       (goto-char (point-min))
@@ -210,8 +214,8 @@ special symbol 'hline to mean an horizontal line."
 			   (cl-incf (car nu)))
 		      do (unless (equal cellnp "")
 			   (cl-incf (car ne)))
-		      do (if (< (car mx) (length cellnp))
-			    (setcar mx (length cellnp)))))
+		      do (when (< (car mx) (length cellnp))
+			   (setcar mx (length cellnp)))))
 
     ;; inactivating jit-lock-after-change boosts performance a lot
     (cl-letf (((symbol-function 'jit-lock-after-change) (lambda (a b c)) ))
@@ -336,26 +340,24 @@ if it contains both (like \"mas+ref\") then both table will appear
 entirely.
 Returns MASTABLE enriched with material from REFTABLE."
   (unless full (setq full "mas")) ;; default value is "mas"
-  (unless (stringp full) (setq full (format "%s" full)))
+  (stringify full)
   (let ((result)  ;; result built in reverse order
 	(width
 	 (cl-loop for row in mastable
 		  maximize (if (listp row) (length row) 0)))
 	(refhead)
 	(refbody)
-	(refhash (make-hash-table :test 'equal))
-	(full-mas (string-match "mas" full))
-	(full-ref (string-match "ref" full)))
+	(refhash (make-hash-table :test 'equal)))
     ;; make master table rectangular if not all rows
     ;; share the same number of cells
     (cl-loop for row on mastable
-	     if (listp (car row))
-	     do (let ((n (- width (length (car row)))))
-		  (if (> n 0)
-		      (setcar
-		       row
-		       (nconc (car row) (make-list n ""))))))
-    ;; skip any hline a the top of both tables
+	     if (listp (car row)) do
+	     (let ((n (- width (length (car row)))))
+	       (if (> n 0)
+		   (setcar
+		    row
+		    (nconc (car row) (make-list n ""))))))
+    ;; skip any hline at the top of both tables
     (while (eq (car mastable) 'hline)
       (push 'hline result)
       (pop-simple mastable))
@@ -370,10 +372,9 @@ Returns MASTABLE enriched with material from REFTABLE."
 	(setq refbody reftable)
       (setq refhead reftable)
       ;; terminate header with nil
-      (let ((h refhead))
-	(while (not (eq (cadr h) 'hline))
-	  (pop-simple h))
-	(setcdr h nil)))
+      (cl-loop for h on reftable
+	       until (eq (cadr h) 'hline)
+	       finally (setcdr h nil)))
     ;; convert reference table into fast-lookup hashtable
     ;; an entry in the hastable for a key KEY is:
     ;; (0 row1 row2 row3)
@@ -381,63 +382,60 @@ Returns MASTABLE enriched with material from REFTABLE."
     ;; the leading 0 will be how many times this particular
     ;; hashtable entry has been consumed
     (cl-loop for row in refbody
-	     if (listp row)
-	     do
-	     (let ((key (nth refcol row)))
-	       (puthash key
-			(nconc
-			 (or (gethash key refhash) (list 0))
-			 (list row))
-			refhash)))
+	     if (listp row) do
+	     (let* ((key (nth refcol row))
+		    (hashentry (gethash key refhash)))
+	       (if hashentry
+		   (nconc hashentry (list row))
+		 (puthash key (list 0 row) refhash))))
     ;; iterate over master table header if any
     ;; and join it with reference table header if any
     (if (memq 'hline mastable)
 	(while (listp (car mastable))
 	  (push (orgtbl--join-append-mas-ref-row
 		 (car mastable)
-		 (and refhead (car refhead))
+		 (car refhead) ;; nil if refhead is nil
 		 refcol)
 		result)
 	  (pop-simple mastable)
-	  (if refhead
-	      (pop-simple refhead))))
+	  (if refhead (pop-simple refhead))))
     ;; create the joined table
     (cl-loop
-     for masline in mastable
+     with full-mas = (string-match "mas" full)
+     for masrow in mastable
      do
-     (if (not (listp masline))
-	 (push masline result)
-       (let ((hashentry (gethash (nth mascol masline) refhash)))
+     (if (not (listp masrow))
+	 (push masrow result)
+       (let ((hashentry (gethash (nth mascol masrow) refhash)))
 	 (if (not hashentry)
 	     ;; if no ref-line matches, add the non-matching master-line anyway
-	     (if full-mas (push masline result))
+	     (if full-mas (push masrow result))
 	   ;; if several ref-lines match, all of them are considered
 	   (cl-loop
-	    for refline in (cdr hashentry)
+	    for refrow in (cdr hashentry)
 	    do
 	    (push
-	     (orgtbl--join-append-mas-ref-row masline refline refcol)
+	     (orgtbl--join-append-mas-ref-row masrow refrow refcol)
 	     result))
 	   ;; ref-table rows were consumed, increment counter
 	   (setcar hashentry (1+ (car hashentry)))))))
     ;; add rows from the ref-table not consumed
-    (if full-ref
+    (if (string-match "ref" full)
 	(cl-loop
 	 for refrow in refbody
-	 if (listp refrow)
-	 do
+	 if (listp refrow) do
 	 (let ((hashentry (gethash (nth refcol refrow) refhash)))
 	   (if (equal (car hashentry) 0)
 	       (let ((fake-masrow (make-list width "")))
-		 (setcar (nthcdr mascol fake-masrow) (nth refcol (cadr hashentry)))
+		 (setcar (nthcdr mascol fake-masrow)
+			 (nth refcol (cadr hashentry)))
 		 (push
 		  (orgtbl--join-append-mas-ref-row
 		   fake-masrow
 		   refrow
 		   refcol)
 		  result))))
-	 else
-	 do
+	 else do
 	 (push 'hline result)))
     (nreverse result)))
 
