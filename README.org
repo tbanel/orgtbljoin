@@ -233,10 +233,10 @@ The use cases may be as follow:
   independently by another team. The joined table will contain
   additional rows from both teams.
 
-- =:full none= is useful create the intersection of both tables. For
-  instance we have a list of items in the main warehouse, and another
-  list of damaged items. We are interested only in damaged items in
-  the main warehouse.
+- =:full none= is useful to create the intersection of both
+  tables. For instance we have a list of items in the main warehouse,
+  and another list of damaged items. We are interested only in damaged
+  items in the main warehouse.
 
 * Malformed input tables
 
