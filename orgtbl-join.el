@@ -217,6 +217,13 @@ special symbol 'hline to mean an horizontal line."
 		      do (when (< (car mx) (length cellnp))
 			   (setcar mx (length cellnp)))))
 
+    ;; change meaning of numbers from quantity of cells with numbers
+    ;; to flags saying whether alignment should be left (number alignment)
+    (cl-loop for nu on numbers
+	     for ne in non-empty
+	     do
+	     (setcar nu (< (car nu) (* org-table-number-fraction ne))))
+
     ;; inactivating jit-lock-after-change boosts performance a lot
     (cl-letf (((symbol-function 'jit-lock-after-change) (lambda (a b c)) ))
       ;; insert well padded and aligned cells at current buffer position
@@ -226,12 +233,11 @@ special symbol 'hline to mean an horizontal line."
 		   (cl-loop for cell in row
 			    for mx in maxwidths
 			    for nu in numbers
-			    for ne in non-empty
 			    for pad = (- mx (length cell))
 			    do (cond ((<= pad 0)
 				      ;; no alignment
 				      (insert "| " cell " "))
-				     ((< nu (* org-table-number-fraction ne))
+				     (nu
 				      ;; left alignment
 				      (insert "| " cell (make-string pad ? ) " "))
 				     (t
