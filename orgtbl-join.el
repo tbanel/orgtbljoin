@@ -140,7 +140,7 @@ $1, $2..."
 	    for row in (car table)
 	    for i from 1
 	    collect (format "$%s" i)))))
-    (org-icompleting-read
+    (completing-read
      prompt
      completions
      nil 'confirm
@@ -295,7 +295,7 @@ current row is kept, with empty cells appended to it."
 	(cn (- (point) (point-at-bol))))
     (unless ref-table
       (setq ref-table
-	    (org-icompleting-read
+	    (completing-read
 	     "Reference table: "
 	     (orgtbl-list-local-tables))))
     (setq ref-table (orgtbl-get-distant-table ref-table))
@@ -307,7 +307,7 @@ current row is kept, with empty cells appended to it."
 	     (if (memq 'hline tbl) (nth (1- col) (car tbl)) ""))))
     (unless full
       (setq full
-	    (org-icompleting-read
+	    (completing-read
 	     "Which table should appear entirely? "
 	     '("mas" "ref" "mas+ref" "none")
 	     nil nil "mas")))
@@ -504,7 +504,7 @@ same file with a bloc like this:
   (let* ((localtables (orgtbl-list-local-tables))
 	 (mas-table)
 	 (mastable
-	  (org-icompleting-read
+	  (completing-read
 	   "Master table: "
 	   localtables))
 	 (mascol
@@ -513,7 +513,7 @@ same file with a bloc like this:
 	   (orgtbl-get-distant-table mastable)
 	   ""))
 	 (reftable
-	  (org-icompleting-read
+	  (completing-read
 	   "Reference table: "
 	   localtables))
 	 (refcol
@@ -521,7 +521,7 @@ same file with a bloc like this:
 	   "Reference joining column: "
 	   (orgtbl-get-distant-table reftable)
 	   mascol))
-	 (full (org-icompleting-read
+	 (full (completing-read
 		"Which table should appear entirely? "
 		'("mas" "ref" "mas+ref" "none")
 		nil nil "mas")))

@@ -4,7 +4,7 @@
 ;; Copyright (C) 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020  Thierry Banel
 
 ;; Author: Thierry Banel
-;; Version: 0.2
+;; Version: 1.0
 ;; Package-Requires: ((cl-lib "0.5"))
 ;; Keywords: org, table
 
@@ -23,9 +23,9 @@
 
 ;;; Commentary:
 
-;; A wizzard to insert Org-mode dynamic blocks.
-;; The toplevel wizzard calls specialized wizzards.
-;; Specialized wizzards are functions matching org-insert-dblock:*
+;; A wizard to insert Org-mode dynamic blocks.
+;; The top-level wizard calls specialized wizards.
+;; Specialized wizards are functions matching org-insert-dblock:*
 ;; Right now, the following are available:
 ;;   org-insert-dblock:columnview   (calls org-insert-columns-dblock)
 ;;   org-insert-dblock:clocktable   (calls org-clock-report)
@@ -35,26 +35,35 @@
 ;;   org-insert-dblock:transpose
 ;;   org-insert-dblock:join
 ;;
-;; The toplevel wizzards extends the C-c C-x i keybinding.
+;; The top-level wizards extends the C-c C-x i key-binding.
 ;; (The C-c C-x i binding was limited to org-insert-columns-dblock,
-;; which can be invoqued by answering "columnview"
-;; at the toplevel wizzard prompt)
+;; which can be invoked by answering "columnview"
+;; at the top-level wizard prompt)
+
+;; NOTE! The latest releases of Org Mode provide a similar wizard.
+;; Call it with C-c C-x x
 
 ;;; Code:
 
 (require 'easymenu)
 (require 'org)
 
+(if (fboundp 'org-dynamic-block-define)
+    (org-dynamic-block-define "aggregate" 'org-insert-dblock:aggregate))
+
 ;; ------------------------------------
-;; A few adapters need to be defined
-;; to make present wizzards compliant with
+;; A few adapters need to be defined 
+;; to make present wizards compliant with
 ;; the org-insert-dblock:* pattern naming
 
 ;;;###autoload
 (defun org-insert-dblock:columnview ()
   "Adapter function for inserting a column view."
   (interactive)
-  (org-insert-columns-dblock))
+  (if (functionp 'org-columns-insert-dblock)
+      (org-columns-insert-dblock)
+    ;; compatibility for Org Mode older than 9.0
+    (funcall (intern "org-insert-columns-dblock"))))
 
 ;;;###autoload
 (defun org-insert-dblock:clocktable ()
@@ -92,23 +101,23 @@
     :headers t
     :summary t)))
 
-;; The top-level wizzard collects sub-wizzards by looking
+;; The top-level wizard collects sub-wizards by looking
 ;; for functions named following the org-insert-dblock:* pattern
-;; The wizzard can find any loaded or auto-loadable sub-wizzard
-;; It is up to each sub-wizzard to do whatever completion they need.
+;; The wizard can find any loaded or auto-loadable sub-wizard
+;; It is up to each sub-wizard to do whatever completion they need.
 
 ;;;###autoload
 (defun org-insert-dblock ()
   "Insert an org table dynamic block.
 This is a dispatching function which prompts for the type
-of dynamic block to insert.  It dispatches to functions
-which names matches the pattern \\[org-insert-dblock:*]"
+of dynamic block to insert. It dispatches to functions
+which names matches the pattern `org-insert-dblock:*'"
   (interactive)
   (let ((fun
 	 (intern
 	  (format
 	   "org-insert-dblock:%s"
-	   (org-icompleting-read
+	   (completing-read
 	    "Kind of dynamic block: "
 	    (mapcar (lambda (x)
 		      (replace-regexp-in-string
@@ -120,16 +129,28 @@ which names matches the pattern \\[org-insert-dblock:*]"
 	(funcall fun)
       (message "No such dynamic block: %s" fun))))
 
+;; Key-binding
+;; Suitable for packaging (for example on Melpa):
+;; handle all the cases (Org-mode already loaded or to be loaded later)
+
 ;;;###autoload
 (defun org-insert-dblock-bindings ()
   "Setup key-binding.
 This function can be called in your .emacs. It will extend the
 C-c C-x i key-binding for inserting any dynamic block, not only
-\\[org-insert-columns-dblock]"
+`org-insert-columns-dblock'"
   (org-defkey org-mode-map "\C-c\C-xi" 'org-insert-dblock)
   (easy-menu-add-item
    org-org-menu '()
    ["Insert Dynamic Block" org-insert-dblock t] "Agenda Command..."))
 
-(provide 'org-insert-dblock)
-;;; org-insert-dblock.el ends here
+;;;###autoload
+(if (functionp 'org-defkey)
+    (org-insert-dblock-bindings) ;; org-mode already loaded
+  (setq org-load-hook            ;; org-mode will be loaded later
+	(cons 'org-insert-dblock-bindings
+	      (if (boundp 'org-load-hook)
+		  org-load-hook))))
+
+(provide 'org-inset-dblock)
+;;; org-inset-dblock.el ends here
