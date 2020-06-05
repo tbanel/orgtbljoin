@@ -219,7 +219,7 @@ This behavior is controlled by the =:full= parameter:
 - =:full ref= the joined result contains the full reference table
 - =:full mas+ref= the joined result contains all rows from both mater
   and reference tables
-- =:full none= or =:full nil= or =:full ""= the joined result contains
+- =:full none= or =:full nil= the joined result contains
   only rows that appear in both tables
 
 The use cases may be as follow:

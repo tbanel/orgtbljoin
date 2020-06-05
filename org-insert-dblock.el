@@ -48,8 +48,9 @@
 (require 'easymenu)
 (require 'org)
 
-(if (fboundp 'org-dynamic-block-define)
-    (org-dynamic-block-define "aggregate" 'org-insert-dblock:aggregate))
+;; Insert a dynamic bloc with the C-c C-c x dispatcher
+(when (fboundp 'org-dynamic-block-define)
+  (org-dynamic-block-define "join" #'org-insert-dblock:join))
 
 ;; ------------------------------------
 ;; A few adapters need to be defined 
@@ -105,6 +106,7 @@
 ;; for functions named following the org-insert-dblock:* pattern
 ;; The wizard can find any loaded or auto-loadable sub-wizard
 ;; It is up to each sub-wizard to do whatever completion they need.
+;; Call this wizard dispatcher with C-c C-c i
 
 ;;;###autoload
 (defun org-insert-dblock ()
