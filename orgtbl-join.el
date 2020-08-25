@@ -156,7 +156,8 @@ $1, $2..."
   (let ((tables))
     (save-excursion
       (goto-char (point-min))
-      (while (re-search-forward "^[ \t]*#\\+\\(tbl\\)?name:[ \t]*\\(.*\\)" nil t)
+      (while (let ((case-fold-search t))
+	       (re-search-forward "^[ \t]*#\\+\\(tbl\\)?name:[ \t]*\\(.*\\)" nil t))
 	(push (match-string-no-properties 2) tables)))
     tables))
 
@@ -168,11 +169,12 @@ An horizontal line is translated as the special symbol `hline'."
   (let (buffer loc)
     (save-excursion
       (goto-char (point-min))
-      (if (re-search-forward
-	   (concat "^[ \t]*#\\+\\(tbl\\)?name:[ \t]*"
-		   (regexp-quote name-or-id)
-		   "[ \t]*$")
-	   nil t)
+      (if (let ((case-fold-search t))
+	    (re-search-forward
+	     (concat "^[ \t]*#\\+\\(tbl\\)?name:[ \t]*"
+		     (regexp-quote name-or-id)
+		     "[ \t]*$")
+	     nil t))
 	  (setq buffer (current-buffer)
 		loc (match-beginning 0))
 	(let ((id-loc (org-id-find name-or-id 'marker)))
@@ -563,9 +565,10 @@ The
 	(content (plist-get params :content))
 	(tblfm nil))
     (when (and content
-	       (string-match
-		(rx bos (* (any " \t")) (group "#+" (? "tbl") "name:" (* not-newline)))
-		content))
+	       (let ((case-fold-search t))
+		 (string-match
+		  (rx bos (* (any " \t")) (group "#+" (? "tbl") "name:" (* not-newline)))
+		  content)))
       (insert (match-string 1 content) "\n"))
     (orgtbl-insert-elisp-table
      (orgtbl--create-table-joined
@@ -576,7 +579,8 @@ The
       (plist-get params :full)))
     (delete-char -1) ;; remove trailing \n which Org Mode will add again
     (when (and content
-	       (string-match "^[ \t]*\\(#\\+tblfm:.*\\)" content))
+	       (let ((case-fold-search t))
+		 (string-match "^[ \t]*\\(#\\+tblfm:.*\\)" content)))
       (setq tblfm (match-string 1 content)))
     (when (stringp formula)
       (if tblfm
