@@ -1,5 +1,5 @@
 #+TITLE: Unit Tests & Examples for Orgtbl Join
-Copyright (C) 2014, 2015, 2016, 2017, 2018, 2019, 2020  Thierry Banel
+Copyright (C) 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021  Thierry Banel
 
 orgtbl-join is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,9 +15,18 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-Running all the tests should not change anything to this page.
+* How to run?
+** Running tests should leave the file unchanged
+Running all the tests should not change anything to this
+page. Therefore the suggested workflow is:
+- make a temporary copy of this file, then on this copy:
+- optionaly clean the computed tables
+- run all pull-mode tests
+- run all push-mode test
+- compare the copy and the original, there should be no difference
+  (=M-x compare-windows= is handy)
 
-Old resulting tables can be cleaned prior to running tests
+** Old resulting tables can be cleaned prior to running tests
 this is optional
 #+begin_src elisp :results none
 (save-excursion
@@ -28,14 +37,14 @@ this is optional
    "\\1"))
 #+end_src
 
-All pull-mode tests can be re-computed at once by executing:
+** All pull-mode tests can be re-computed at once by executing:
 #+begin_src elisp :results none
 (let ((org-calc-default-modes
        (cons 'calc-float-format (cons '(float 12) org-calc-default-modes))))
   (org-update-all-dblocks))
 #+end_src
 
-All push-mode tests can be re-computed at once by executing:
+** All push-mode tests can be re-computed at once by executing:
 #+begin_src elisp :results none
 (let ((org-calc-default-modes
        (cons 'calc-float-format (cons '(float 12) org-calc-default-modes))))

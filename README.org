@@ -404,7 +404,7 @@ Contributors
 - add =:full= parameter
 
 * GPL 3 License
-Copyright (C) 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020  Thierry Banel
+Copyright (C) 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021  Thierry Banel
 
 orgtbl-join is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
