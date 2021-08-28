@@ -33,6 +33,7 @@
 
 ;;; Requires:
 (require 'org-table)
+(require 'org)
 (eval-when-compile (require 'cl-lib))
 (require 'rx)
 
@@ -595,6 +596,9 @@ The
 	  (org-table-recalculate 'all)
 	(args-out-of-range nil)))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; key bindings, menu, wizard
+
 ;;;###autoload
 (defun orgtbl-join-setup-keybindings ()
   "Setup key-binding and menu entry.
@@ -607,6 +611,12 @@ entry under Tbl > Column > Join with another table."
        (easy-menu-add-item
 	org-tbl-menu '("Column")
 	["Join with another table" orgtbl-join t]))))
+
+;; Insert a dynamic bloc with the C-c C-x x dispatcher
+;;;###autoload
+(eval-after-load 'org
+  '(when (fboundp 'org-dynamic-block-define)
+     (org-dynamic-block-define "join" #'org-insert-dblock:join)))
 
 (provide 'orgtbl-join)
 ;;; orgtbl-join.el ends here

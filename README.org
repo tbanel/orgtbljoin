@@ -151,7 +151,7 @@ table.
 For quick and once-only processing, use /in-place/ mode.
 
 Use /pull/ or /push/ modes for reproductible work.  The /pull/ mode might be
-easier to use than the /push/, because there is a wizard bound to =C-c C-x i=
+easier to use than the /push/, because there is a wizard bound to =C-c C-x x=
 (see below).  Other than that, the two modes use the same underlying engine,
 so using one or the other is just a matter or convenience.
 
@@ -187,8 +187,8 @@ Then the resulting table will have those three rows appended:
 If you are familiar with SQL, this behavior is reminicent of the
 /left outer join/.
 
-Duplicate entries my happen both in the master and the reference
-table. The joined table will have all combinations. Sot for instance
+Duplicate entries may happen both in the master and the reference
+table. The joined table will have all combinations. So for instance
 if there are 2 =eggplant= rows in the master table, and 3 =eggplant=
 rows in the reference table, then the joined table will get 6
 =eggplant= rows.
@@ -287,14 +287,11 @@ pretty much the same as in the Org Mode spreadsheet.
 * Key-bindings, menu
 
 You may install key-bindings and menu entries by adding the
-following lines to your =.emacs= file:
+following line to your =.emacs= file:
 : (orgtbl-join-setup-keybindings)
-: (org-insert-dblock-bindings)
 
 This will give the following bindings:
 - =C-c C-x j= bound to =orgtbl-join=
-- =C-c C-x i= bound to =org-insert-dblock=
-- menu =Org > Insert dynamic block= bound to =org-insert-dblock=
 - menu =Tbl > Column > Join with another table= bound to =orgtbl-join=
 
 * Wizard
@@ -307,23 +304,12 @@ completion available.
 
 A wizard is available for the /pull/ mode.
 - It is invoked with either: =M-x org-insert-dblock:join=
-- or =C-c C-x i= .
+- or =C-c C-x x= .
 
 For all questions, completion is available.  In the later case, you should
 answer =join= when asked for the kind of block.
 
-Note: there are many kinds of dynamic blocks that can be inserted.
-Actually all those which define a function with a name like:
-=org-insert-dblock:xxxx=
-
-Right now available wizards include:
-- =org-insert-dblock:join=  (with this ~join~ package)
-- =org-insert-dblock:aggregate=   (with the ~aggregate~ package)
-- =org-insert-dblock:transpose=   (with the ~aggregate~ package)
-- =org-insert-dblock:columnview=
-- =org-insert-dblock:clocktable=
-- =org-insert-dblock:propview=
-- =org-insert-dblock:invoice=   (with the ~invoice~ package)
+Note: there many kinds of dynamic blocks can be inserted besides =join=.
 
 * Post-joining spreadsheet formulas
 
@@ -402,6 +388,7 @@ Contributors
 - aligned output in push mode
 - 2 as column name no longer supported, write $2
 - add =:full= parameter
+- remove =C-c C-x i=, use standard =C-c C-x x= instead
 
 * GPL 3 License
 Copyright (C) 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021  Thierry Banel
