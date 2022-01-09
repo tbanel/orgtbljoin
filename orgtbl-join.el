@@ -90,11 +90,6 @@ The table is taken from the parameter TXT, or from the buffer at point."
   "like pop, but without returning (car place)"
   `(setq ,place (cdr ,place)))
 
-(defmacro stringify (place)
-  "Enforce PLACE being a string"
-  `(unless (stringp ,place)
-     (setq ,place (format "%s" ,place))))
-
 (defun orgtbl-to-aggregated-table-colname-to-int (colname table &optional err)
   "Convert the column name into an integer (first column is numbered 1)
 COLNAME may be:
@@ -399,7 +394,8 @@ if it contains both (like \"mas+ref\") then both table will appear
 entirely.
 Returns MASTABLE enriched with material from REFTABLE."
   (unless full (setq full "mas")) ;; default value is "mas"
-  (stringify full)
+  (unless (stringp full)
+    (setq full (format "%s" full)))
   (let ((result)  ;; result built in reverse order
 	(width
 	 (cl-loop for row in mastable
