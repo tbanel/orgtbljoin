@@ -627,9 +627,10 @@ The
       (end-of-line)
       (insert "\n" tblfm)
       (forward-line -1)
-      (condition-case nil
-	  (org-table-recalculate 'all)
-	(args-out-of-range nil)))))
+      (let ((org-table-formula-create-columns t)) 
+	(condition-case nil
+	    (org-table-recalculate 'all)
+	  (args-out-of-range nil))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; key bindings, menu, wizard
