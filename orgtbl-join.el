@@ -629,7 +629,7 @@ The
       (forward-line -1)
       (let ((org-table-formula-create-columns t)) 
 	(condition-case nil
-	    (org-table-recalculate 'all)
+	    (org-table-recalculate 'iterate)
 	  (args-out-of-range nil))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
