@@ -13,7 +13,7 @@ Here is a list of products for a cooking recipe.
 | type     | quty |
 |----------+------|
 | onion    |   70 |
-| tomatoe  |  120 |
+| tomato   |  120 |
 | eggplant |  300 |
 | tofu     |  100 |
 #+END_EXAMPLE
@@ -29,7 +29,7 @@ Jozwiak).
 | type     | Fiber | Sugar | Protein | Carb |
 |----------+-------+-------+---------+------|
 | eggplant |   2.5 |   3.2 |     0.8 |  8.6 |
-| tomatoe  |   0.6 |   2.1 |     0.8 |  3.4 |
+| tomato   |   0.6 |   2.1 |     0.8 |  3.4 |
 | onion    |   1.3 |   4.4 |     1.3 |  9.0 |
 | egg      |     0 |  18.3 |    31.9 | 18.3 |
 | rice     |   0.2 |     0 |     1.5 | 16.0 |
@@ -52,7 +52,7 @@ the needed nutrition facts:
 | type     | quty | Fiber | Sugar | Protein | Carb |
 |----------+------+-------+-------+---------+------|
 | onion    |   70 |   1.3 |   4.4 |     1.3 |  9.0 |
-| tomatoe  |  120 |   0.6 |   2.1 |     0.8 |  3.4 |
+| tomato   |  120 |   0.6 |   2.1 |     0.8 |  3.4 |
 | eggplant |  300 |   2.5 |   3.2 |     0.8 |  8.6 |
 | tofu     |  100 |   0.7 |   0.5 |     6.6 |  1.4 |
 #+END_EXAMPLE
@@ -85,7 +85,7 @@ The master table is changed (in-place) by appending columns from the
 reference table.
 
 Invoke it with the =M-x orgtbl-join= command, also bound to =C-c C-x j=.  The
-cursor must be positionned on the column used to perform the join.
+cursor must be positioned on the column used to perform the join.
 
 ** In /push/ mode
 
@@ -97,7 +97,7 @@ result in =#+ORGTBL: SEND= directives (as many as desired):
 | type     | quty |
 |----------+------|
 | onion    |   70 |
-| tomatoe  |  120 |
+| tomato   |  120 |
 | eggplant |  300 |
 | tofu     |  100 |
 #+END_EXAMPLE
@@ -124,7 +124,7 @@ A master table is unaware that it will be enriched in a joined table:
 | type     | quty |
 |----------+------|
 | onion    |   70 |
-| tomatoe  |  120 |
+| tomato   |  120 |
 | eggplant |  300 |
 | tofu     |  100 |
 #+END_EXAMPLE
@@ -137,7 +137,7 @@ the join:
 | type     | quty | Fiber | Sugar | Protein | Carb |
 |----------+------+-------+-------+---------+------|
 | onion    |   70 |   1.3 |   4.4 |     1.3 |  9.0 |
-| tomatoe  |  120 |   0.6 |   2.1 |     0.8 |  3.4 |
+| tomato   |  120 |   0.6 |   2.1 |     0.8 |  3.4 |
 | eggplant |  300 |   2.5 |   3.2 |     0.8 |  8.6 |
 | tofu     |  100 |   0.7 |   0.5 |     6.6 |  1.4 |
 #+END:
@@ -150,7 +150,7 @@ table.
 
 For quick and once-only processing, use /in-place/ mode.
 
-Use /pull/ or /push/ modes for reproductible work.  The /pull/ mode might be
+Use /pull/ or /push/ modes for reproducible work.  The /pull/ mode might be
 easier to use than the /push/, because there is a wizard bound to =C-c C-x x=
 (see below).  Other than that, the two modes use the same underlying engine,
 so using one or the other is just a matter or convenience.
@@ -184,7 +184,7 @@ Then the resulting table will have those three rows appended:
 | eggplant |  300 | eggplant | raw     |   2.8 |   1.9 |     0.8 |  4.7 |
 #+END_EXAMPLE
 
-If you are familiar with SQL, this behavior is reminicent of the
+If you are familiar with SQL, this behavior is reminiscent of the
 /left outer join/.
 
 Duplicate entries may happen both in the master and the reference
@@ -193,24 +193,77 @@ if there are 2 =eggplant= rows in the master table, and 3 =eggplant=
 rows in the reference table, then the joined table will get 6
 =eggplant= rows.
 
+* Selecting the output columns
+
+By default, all columns from both the master table and the reference
+table are output (except the joining column, which is output only
+once).
+
+This can be customized with the =:cols= parameter. Give it the list of
+desired columns, in the order they should be output.
+
+Columns may be specified by their name (if they have one) or by a
+dollar form. Thus, =$3= means the third column (numbering begins with
+1).
+
+By default, the first example give all columns (except =type= which
+appears only once):
+
+#+BEGIN_EXAMPLE
+#+BEGIN: join :mas-table recipe :mas-column type :ref-table nut :ref-column type
+| type     | quty | Fiber | Sugar | Protein | Carb |
+|----------+------+-------+-------+---------+------|
+| onion    |   70 |   1.3 |   4.4 |     1.3 |  9.0 |
+| tomato   |  120 |   0.6 |   2.1 |     0.8 |  3.4 |
+| eggplant |  300 |   2.5 |   3.2 |     0.8 |  8.6 |
+| tofu     |  100 |   0.7 |   0.5 |     6.6 |  1.4 |
+#+END:
+#+END_EXAMPLE
+
+If we want only =quty= and =Protein=, we specify it like that:
+
+#+BEGIN_EXAMPLE
+#+BEGIN: join :cols (quty Protein) :mas-table recipe :mas-column type :ref-table nut :ref-column type
+| quty | Protein |
+|------+---------|
+|   70 |     1.3 |
+|  120 |     0.8 |
+|  300 |     0.8 |
+|  100 |     6.6 |
+#+END:
+#+END_EXAMPLE
+
+Or like that:
+
+#+BEGIN_EXAMPLE
+#+BEGIN: join :cols "quty Protein" :mas-table recipe :mas-column type :ref-table nut :ref-column type
+| quty | Protein |
+|------+---------|
+|   70 |     1.3 |
+|  120 |     0.8 |
+|  300 |     0.8 |
+|  100 |     6.6 |
+#+END:
+#+END_EXAMPLE
+
 * How to handle missing rows?
 
 It may happen that no row in the reference table matches a value in
 the master table.  By default, in this case, the master row is kept,
 with empty cells added to it.  Information from the master table is
-not lost.  If, for example, a line in the recipe refers to an unkown
-"amarante" product (a cereal known by the ancient Incas), then the
-resulting table will still contain the =amarante= row, with empty
+not lost.  If, for example, a line in the recipe refers to an unknown
+"amaranth" product (a cereal known by the ancient Incas), then the
+resulting table will still contain the =amaranth= row, with empty
 nutritional facts.
 
 #+BEGIN_EXAMPLE
 | type     | quty | type     | Fiber | Sugar | Protein | Carb |
 |----------+------+----------+-------+-------+---------+------|
 | onion    |   70 | onion    |   1.3 |   4.4 |     1.3 |  9.0 |
-| tomatoe  |  120 | tomatoe  |   0.6 |   2.1 |     0.8 |  3.4 |
+| tomato   |  120 | tomato   |   0.6 |   2.1 |     0.8 |  3.4 |
 | eggplant |  300 | eggplant |   2.5 |   3.2 |     0.8 |  8.6 |
 | tofu     |  100 | tofu     |   0.7 |   0.5 |     6.6 |  1.4 |
-| amarante |  120 |          |       |       |         |      |
+| amaranth |  120 |          |       |       |         |      |
 #+END_EXAMPLE
 
 This behavior is controlled by the =:full= parameter:
@@ -247,7 +300,7 @@ incomplete rows, like those ones:
 | type     | Fiber | Sugar |      | Carb |
 |----------+-------+-------+------+------|
 | eggplant |   2.5 |   3.2 |  0.8 |  8.6 |
-| tomatoe  |   0.6 |   2.1 |  0.8 |  3.4 |
+| tomato   |   0.6 |   2.1 |  0.8 |  3.4 |
 | onion    |   1.3 |   4.4 |  1.3 |  9.0 |
     | egg      |     0 |  18.3 | 31.9 | 18.3 |
 | rice     |   0.2 |     0 |  1.5 | 16.0 |
@@ -257,7 +310,7 @@ incomplete rows, like those ones:
 | type     | quty |
 |----------+------|
 | onion    |   70 |
-| tomatoe  |
+| tomato   |
 | eggplant |  300 |
   | tofu     |  100 |
 #+END_EXAMPLE
@@ -328,7 +381,7 @@ into a usual =#+TBLFM:= spreadsheet line.
 | type     | quty | Fiber | Sugar | Protein | Carb | totfiber |
 |----------+------+-------+-------+---------+------+----------|
 | onion    |   70 |   1.3 |   4.4 |     1.3 |  9.0 |      91. |
-| tomatoe  |  120 |   0.6 |   2.1 |     0.8 |  3.4 |      72. |
+| tomato   |  120 |   0.6 |   2.1 |     0.8 |  3.4 |      72. |
 | eggplant |  300 |   2.5 |   3.2 |     0.8 |  8.6 |     750. |
 | tofu     |  100 |   0.7 |   0.5 |     6.6 |  1.4 |      70. |
 #+TBLFM: $7=$2*$3::@1$7=totfiber
@@ -349,7 +402,7 @@ blocks.
 
 * Installation
 
-Emacs package on Melpa: add the following lignes to your =.emacs= file, and reload it.
+Emacs package on Melpa: add the following lines to your =.emacs= file, and reload it.
 
 #+BEGIN_EXAMPLE
 (add-to-list 'package-archives '("melpa" . "http://melpa.milkbox.net/packages/") t)
@@ -377,6 +430,7 @@ Author
 
 Contributors
 - Dirk Schmitt, surviving =#.NAME:= line
+- wuqui, =:cols= parameter
 
 * Changes
 - remove duplicate reference column
@@ -389,6 +443,7 @@ Contributors
 - 2 as column name no longer supported, write $2
 - add =:full= parameter
 - remove =C-c C-x i=, use standard =C-c C-x x= instead
+- added the =:cols= parameter
 
 * GPL 3 License
 Copyright (C) 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022  Thierry Banel
@@ -400,6 +455,3 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-
-

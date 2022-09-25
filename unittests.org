@@ -14,7 +14,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
 * How to run?
 ** Running tests should leave the file unchanged
 Running all the tests should not change anything to this
@@ -459,7 +458,7 @@ Missing cells are handled as though they were empty
 | bread    |   0.7 |   0.7 |  3.3 | 16.0 |
 | orange   |   3.1 |  11.9 |  1.3 | 17.6 |
 | banana   |   2.1 |   9.9 |  0.9 | 18.5 |
-| tofu     |  0.7 
+| tofu     |  0.7
 | nut      |   2.6 |   1.3 |  4.9 |  7.2 |
 | corn     |   4.7 |   1.8 |  2.8 | 21.3 |
 
@@ -570,4 +569,36 @@ Missing cells are handled as though they were empty
 | tofu      |        |  1.4 |   0.7 |   0.5 |     6.6 |
 | nut       |        |  7.2 |   2.6 |   1.3 |     4.9 |
 |           |        |      |       |       |         |
+#+END:
+
+* :cols specification
+
+#+BEGIN: join :cols (Fiber quty product $2) :mas-table meal_with_header :mas-column product :ref-table nut_with_header :ref-column type
+| Fiber |   quty | product   |   quty |
+|       |     in | common    |     in |
+|       | gramms | name      | gramms |
+|       |        | (english) |        |
+|-------+--------+-----------+--------|
+|   1.3 |     70 | onion     |     70 |
+|       |    999 | unknown   |    999 |
+|   0.6 |    120 | tomatoe   |    120 |
+|   2.5 |    300 | eggplant  |    300 |
+|   2.6 |    300 | eggplant  |    300 |
+|     ? |    300 | eggplant  |    300 |
+|   4.7 |    250 | corn      |    250 |
+#+END:
+
+#+BEGIN: join :cols "Sugar quty $1 $6 $0" :mas-table meal_with_header :mas-column product :ref-table nut_with_header :ref-column type :full mas
+| Sugar |   quty | product   | Protein | product   |
+|       |     in | common    |         | common    |
+|       | gramms | name      |         | name      |
+|       |        | (english) |         | (english) |
+|-------+--------+-----------+---------+-----------|
+|   4.4 |     70 | onion     |     1.3 | onion     |
+|       |    999 | unknown   |         | unknown   |
+|   2.1 |    120 | tomatoe   |     0.8 | tomatoe   |
+|   3.2 |    300 | eggplant  |     0.8 | eggplant  |
+|   3.3 |    300 | eggplant  |     0.9 | eggplant  |
+|     ? |    300 | eggplant  |       ? | eggplant  |
+|   1.8 |    250 | corn      |     2.8 | corn      |
 #+END:
