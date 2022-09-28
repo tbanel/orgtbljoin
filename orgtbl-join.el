@@ -32,8 +32,8 @@
 ;;   https://github.com/tbanel/orgtbljoin/blob/master/README.org
 
 ;;; Requires:
-(require 'org-table)
 (require 'org)
+(require 'org-table)
 (eval-when-compile (require 'cl-lib))
 (require 'rx)
 
@@ -57,29 +57,14 @@
 (defmacro -appendable-list-get (ls)
   `(cdr ,ls))
 
-(defun split-string-with-quotes (string)
-  "Like `split-string', but also allows single or double quotes
-to protect space characters, and also single quotes to protect
-double quotes and the other way around"
-  (let ((l (length string))
-	(start 0)
-	(result (-appendable-list-create))
-	)
-    (save-match-data
-      (while (and (< start l)
-		  (string-match
-		   (rx
-		    (* (any " \f\t\n\r\v"))
-		    (group
-		     (+ (or
-			 (seq ?'  (* (not (any ?')))  ?' )
-			 (seq ?\" (* (not (any ?\"))) ?\")
-			 (not (any " '\""))))))
-		   string start))
-	(-appendable-list-append result (match-string 1 string))
-	(setq start (match-end 1))
-	))
-    (-appendable-list-get result)))
+(defmacro pop-simple (place)
+  "like pop, but without returning (car place)"
+  `(setq ,place (cdr ,place)))
+
+(defmacro orgtbl-pop-leading-hline (table)
+  "Remove leading hlines from the table, if any" 
+  `(while (not (listp (car ,table)))
+     (pop-simple ,table)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; The function (org-table-to-lisp) have been greatly enhanced
@@ -122,83 +107,10 @@ The table is taken from the parameter TXT, or from the buffer at point."
 	  (forward-line))
 	(nreverse table)))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Utility functions
-
-(defmacro pop-simple (place)
-  "like pop, but without returning (car place)"
-  `(setq ,place (cdr ,place)))
-
-(defun orgtbl--join-query-column (prompt table default)
-  "Interactively query a column.
-PROMPT is displayed to the user to explain what answer is expected.
-TABLE is the org mode table from which a column will be choosen
-by the user.  Its header is used for column names completion.  If
-TABLE has no header, completion is done on generic column names:
-$1, $2..."
-  (while (eq 'hline (car table))
-    (pop-simple table))
-  (let ((completions
-	 (if (memq 'hline table) ;; table has a header
-	     (car table)
-	   (cl-loop ;; table does not have a header
-	    for row in (car table)
-	    for i from 1
-	    collect (format "$%s" i)))))
-    (completing-read
-     prompt
-     completions
-     nil 'confirm
-     (and (member default completions) default))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; The following functions are borrowed
-;; from the orgtbl-aggregate package.
-
-(defun orgtbl-to-aggregated-table-colname-to-int (colname table &optional err)
-  "Convert the column name into an integer (first column is numbered 1)
-COLNAME may be:
-- a dollar form, like $5 which is converted to 5
-- an alphanumeric name which appears in the column header (if any)
-- the special symbol `hline' which is converted into 0
-If COLNAME is quoted (single or double quotes),
-quotes are removed beforhand.
-When COLNAME does not match any actual column,
-an error is generated if ERR optional parameter is true
-otherwise nil is returned."
-  (if (symbolp colname)
-      (setq colname (symbol-name colname)))
-  (if (string-match
-       (rx
-	bol
-	(or
-	 (seq ?'  (group-n 1 (* (not (any ?' )))) ?' )
-	 (seq ?\" (group-n 1 (* (not (any ?\")))) ?\"))
-	eol)
-       colname)
-      (setq colname (match-string 1 colname)))
-  ;; skip first hlines if any
-  (while (not (listp (car table)))
-    (setq table (cdr table)))
-  (cond ((equal colname "")
-	 (and err (user-error "Empty column name")))
-	((equal colname "hline")
-	 0)
-	((string-match "^\\$\\([0-9]+\\)$" colname)
-	 (let ((n (string-to-number (match-string 1 colname))))
-	   (if (<= n (length (car table)))
-	       n
-	     (if err
-		 (user-error "Column %s outside table" colname)))))
-	(t
-	 (or
-	  (cl-loop
-	   for h in (car table)
-	   for i from 1
-	   thereis (and (equal h colname) i))
-	  (and
-	   err
-	   (user-error "Column %s not found in table" colname))))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Here is a bunch of useful utilities,
+;; generic enough to be detached from the orgtbl-join package.
+;; For the time being, they are here.
 
 (defun orgtbl-list-local-tables ()
   "Search for available tables in the current file."
@@ -254,7 +166,75 @@ An horizontal line is translated as the special symbol `hline'."
 	  (user-error "Cannot find a table at NAME or ID %s" name-or-id))
 	(org-table-to-lisp-post-9-4)))))
 
-(defun orgtbl-aggregate-make-spaces (n spaces-cache)
+(defun split-string-with-quotes (string)
+  "Like `split-string', but also allows single or double quotes
+to protect space characters, and also single quotes to protect
+double quotes and the other way around"
+  (let ((l (length string))
+	(start 0)
+	(result (-appendable-list-create))
+	)
+    (save-match-data
+      (while (and (< start l)
+		  (string-match
+		   (rx
+		    (* (any " \f\t\n\r\v"))
+		    (group
+		     (+ (or
+			 (seq ?'  (* (not (any ?')))  ?' )
+			 (seq ?\" (* (not (any ?\"))) ?\")
+			 (not (any " '\""))))))
+		   string start))
+	(-appendable-list-append result (match-string 1 string))
+	(setq start (match-end 1))
+	))
+    (-appendable-list-get result)))
+
+(defun orgtbl-colname-to-int (colname table &optional err)
+  "Convert the column name into an integer (first column is numbered 1)
+COLNAME may be:
+- a dollar form, like $5 which is converted to 5
+- an alphanumeric name which appears in the column header (if any)
+- the special symbol `hline' which is converted into 0
+If COLNAME is quoted (single or double quotes),
+quotes are removed beforhand.
+When COLNAME does not match any actual column,
+an error is generated if ERR optional parameter is true
+otherwise nil is returned."
+  (if (symbolp colname)
+      (setq colname (symbol-name colname)))
+  (if (string-match
+       (rx
+	bol
+	(or
+	 (seq ?'  (group-n 1 (* (not (any ?' )))) ?' )
+	 (seq ?\" (group-n 1 (* (not (any ?\")))) ?\"))
+	eol)
+       colname)
+      (setq colname (match-string 1 colname)))
+  ;; skip first hlines if any
+  (orgtbl-pop-leading-hline table)
+  (cond ((equal colname "")
+	 (and err (user-error "Empty column name")))
+	((equal colname "hline")
+	 0)
+	((string-match "^\\$\\([0-9]+\\)$" colname)
+	 (let ((n (string-to-number (match-string 1 colname))))
+	   (if (<= n (length (car table)))
+	       n
+	     (if err
+		 (user-error "Column %s outside table" colname)))))
+	(t
+	 (or
+	  (cl-loop
+	   for h in (car table)
+	   for i from 1
+	   thereis (and (equal h colname) i))
+	  (and
+	   err
+	   (user-error "Column %s not found in table" colname))))))
+
+(defun orgtbl-insert--make-spaces (n spaces-cache)
   "Makes a string of N spaces.
 Caches results to avoid re-allocating again and again
 the same string"
@@ -283,8 +263,11 @@ special symbol 'hline to mean an horizontal line."
 		      for mx on maxwidths
 		      for nu on numbers
 		      for ne on non-empty
-		      for cellnp = (or (car cell) "")
-		      do (setcar cell cellnp)
+		      for cellnp = (car cell)
+		      do (cond ((not cellnp)
+				(setcar cell (setq cellnp "")))
+		       	       ((not (stringp cellnp))
+		      		(setcar cell (setq cellnp (format "%s" cellnp)))))
 		      if (string-match-p org-table-number-regexp cellnp)
 		      do (setcar nu (1+ (car nu)))
 		      unless (equal cellnp "")
@@ -323,10 +306,10 @@ special symbol 'hline to mean an horizontal line."
 			       ;; left alignment
 			       else if nu
 			       collect cell and
-			       collect (orgtbl-aggregate-make-spaces pad spaces-cache)
+			       collect (orgtbl-insert--make-spaces pad spaces-cache)
 			       ;; right alignment
 			       else
-			       collect (orgtbl-aggregate-make-spaces pad spaces-cache) and
+			       collect (orgtbl-insert--make-spaces pad spaces-cache) and
 			       collect cell
 			       collect " ")
 		    (cl-loop for bar = "|" then "+"
@@ -335,6 +318,30 @@ special symbol 'hline to mean an horizontal line."
 			     collect (make-string (+ mx 2) ?-)))
 		  (list "|\n"))
 		 ""))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; The Org Table Join package really begins here
+
+(defun orgtbl--join-query-column (prompt table default)
+  "Interactively query a column.
+PROMPT is displayed to the user to explain what answer is expected.
+TABLE is the org mode table from which a column will be choosen
+by the user.  Its header is used for column names completion.  If
+TABLE has no header, completion is done on generic column names:
+$1, $2..."
+  (orgtbl-pop-leading-hline table)
+  (let ((completions
+	 (if (memq 'hline table) ;; table has a header
+	     (car table)
+	   (cl-loop ;; table does not have a header
+	    for row in (car table)
+	    for i from 1
+	    collect (format "$%s" i)))))
+    (completing-read
+     prompt
+     completions
+     nil 'confirm
+     (and (member default completions) default))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; In-place mode
@@ -460,11 +467,10 @@ Returns MASTABLE enriched with material from REFTABLE."
     (while (eq (car mastable) 'hline)
       (-appendable-list-append result 'hline)
       (pop-simple mastable))
-    (while (eq (car reftable) 'hline)
-      (pop-simple reftable))
+    (orgtbl-pop-leading-hline reftable)
     ;; convert column-names to numbers
-    (setq mascol (1- (orgtbl-to-aggregated-table-colname-to-int mascol mastable t)))
-    (setq refcol (1- (orgtbl-to-aggregated-table-colname-to-int refcol reftable t)))
+    (setq mascol (1- (orgtbl-colname-to-int mascol mastable t)))
+    (setq refcol (1- (orgtbl-colname-to-int refcol reftable t)))
     ;; split header and body
     (setq refbody (memq 'hline reftable))
     (if (not refbody)
@@ -551,7 +557,7 @@ specified in :cols and in the same order"
   (setq cols
 	(cl-loop
 	 for c in cols
-	 collect (1- (orgtbl-to-aggregated-table-colname-to-int c table t))))
+	 collect (1- (orgtbl-colname-to-int c table t))))
   (cl-loop
    for rrow on table
    for row = (car rrow)
