@@ -1,12 +1,13 @@
-;;; orgtbl-join.el --- join columns from another table
+;;; orgtbl-join.el --- Join columns from another Org Mode table -*- lexical-binding: t;-*-
 
 ;; Copyright (C) 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022  Thierry Banel
 
 ;; Author: Thierry Banel tbanelwebmin at free dot fr
 ;; Contributors:
 ;; Version: 0.1
-;; Keywords: org, table, join, filtering
-;; Package-Requires: ((cl-lib "0.5"))
+;; Keywords: data, extensions
+;; Package-Requires: ((cl-lib "0.5") (emacs "24.1"))
+;; URL: https://github.com/tbanel/orgtbljoin/blob/master/README.org
 
 ;; orgtbl-join is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -47,27 +48,27 @@
 ;; a cons at the head of the list is used for housekeeping
 ;; the actual list is (cdr ls)
 
-(defsubst -appendable-list-create ()
+(defsubst orgtbl-join--list-create ()
   "Create an appendable list."
   (let ((x (cons nil nil)))
     (setcar x x)))
 
-(defmacro -appendable-list-append (ls value)
+(defmacro orgtbl-join--list-append (ls value)
   "Append VALUE at the end of LS in O(1) time."
   `(setcar ,ls (setcdr (car ,ls) (cons ,value nil))))
 
-(defmacro -appendable-list-get (ls)
+(defmacro orgtbl-join--list-get (ls)
   "Return the regular Lisp list from LS."
   `(cdr ,ls))
 
-(defmacro pop-simple (place)
+(defmacro orgtbl-join--pop-simple (place)
   "Like (pop PLACE), but without returning (car PLACE)."
   `(setq ,place (cdr ,place)))
 
-(defmacro orgtbl-pop-leading-hline (table)
+(defmacro orgtbl-join--pop-leading-hline (table)
   "Remove leading hlines from TABLE, if any."
   `(while (not (listp (car ,table)))
-     (pop-simple ,table)))
+     (orgtbl-join--pop-simple ,table)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; The function (org-table-to-lisp) have been greatly enhanced
@@ -76,7 +77,7 @@
 ;; this function is copied here with a slightly different name
 ;; It has also undergone near 2x speedup
 
-(defun org-table-to-lisp-post-9-4 (&optional txt)
+(defun orgtbl-join--table-to-lisp-post-9-4 (&optional txt)
   "Convert the table at point to a Lisp structure.
 
 The structure will be a list.  Each item is either the symbol `hline'
@@ -87,7 +88,7 @@ The table is taken from the parameter TXT, or from the buffer at point."
 	(buffer-disable-undo)
         (insert txt)
         (goto-char (point-min))
-        (org-table-to-lisp-post-9-4))
+        (orgtbl-join--table-to-lisp-post-9-4))
     (save-excursion
       (goto-char (org-table-begin))
       (let ((inhibit-changing-match-data t)
@@ -115,7 +116,7 @@ The table is taken from the parameter TXT, or from the buffer at point."
 ;; generic enough to be detached from the orgtbl-join package.
 ;; For the time being, they are here.
 
-(defun orgtbl-list-local-tables ()
+(defun orgtbl-join--list-local-tables ()
   "Search for available tables in the current file."
   (interactive)
   (let ((tables))
@@ -130,7 +131,7 @@ The table is taken from the parameter TXT, or from the buffer at point."
 	(push (match-string-no-properties 1) tables)))
     tables))
 
-(defun orgtbl-get-distant-table (name-or-id)
+(defun orgtbl-join--get-distant-table (name-or-id)
   "Find a table in the current buffer named NAME-OR-ID.
 Return it as a Lisp list of lists.
 An horizontal line is translated as the special symbol `hline'."
@@ -167,16 +168,16 @@ An horizontal line is translated as the special symbol `hline'."
 	(unless (and (re-search-forward "^\\(\\*+ \\)\\|[ \t]*|" nil t)
 		     (not (match-beginning 1)))
 	  (user-error "Cannot find a table at NAME or ID %s" name-or-id))
-	(org-table-to-lisp-post-9-4)))))
+	(orgtbl-join--table-to-lisp-post-9-4)))))
 
-(defun split-string-with-quotes (string)
+(defun orgtbl-join--split-string-with-quotes (string)
   "Like (split-string STRING), but with quote protection.
 Single and double quotes protect space characters,
 and also single quotes protect double quotes
 and the other way around."
   (let ((l (length string))
 	(start 0)
-	(result (-appendable-list-create))
+	(result (orgtbl-join--list-create))
 	)
     (save-match-data
       (while (and (< start l)
@@ -189,12 +190,12 @@ and the other way around."
 			 (seq ?\" (* (not (any ?\"))) ?\")
 			 (not (any " '\""))))))
 		   string start))
-	(-appendable-list-append result (match-string 1 string))
+	(orgtbl-join--list-append result (match-string 1 string))
 	(setq start (match-end 1))
 	))
-    (-appendable-list-get result)))
+    (orgtbl-join--list-get result)))
 
-(defun orgtbl-colname-to-int (colname table &optional err)
+(defun orgtbl-join--colname-to-int (colname table &optional err)
   "Convert the COLNAME into an integer.
 COLNAME is a column name of TABLE.
 The first column is numbered 1.
@@ -219,7 +220,7 @@ otherwise nil is returned."
        colname)
       (setq colname (match-string 1 colname)))
   ;; skip first hlines if any
-  (orgtbl-pop-leading-hline table)
+  (orgtbl-join--pop-leading-hline table)
   (cond ((equal colname "")
 	 (and err (user-error "Empty column name")))
 	((equal colname "hline")
@@ -240,7 +241,7 @@ otherwise nil is returned."
 	   err
 	   (user-error "Column %s not found in table" colname))))))
 
-(defun orgtbl-insert--make-spaces (n spaces-cache)
+(defun orgtbl-join--insert-make-spaces (n spaces-cache)
   "Make a string of N spaces.
 Caches results into SPACES-CACHE to avoid re-allocating
 again and again the same string."
@@ -249,12 +250,11 @@ again and again the same string."
 	  (aset spaces-cache n (make-string n ? )))
     (make-string n ? )))
 
-(defun orgtbl-insert-elisp-table (table)
+(defun orgtbl-join--insert-elisp-table (table)
   "Insert TABLE in current buffer at point.
 TABLE is a list of lists of cells.  The list may contain the
 special symbol 'hline to mean an horizontal line."
-  (let* ((nbrows (length table))
-	 (nbcols (cl-loop
+  (let* ((nbcols (cl-loop
 		  for row in table
 		  maximize (if (listp row) (length row) 0)))
 	 (maxwidths  (make-list nbcols 1))
@@ -289,7 +289,7 @@ special symbol 'hline to mean an horizontal line."
 	     (setcar nu (< (car nu) (* org-table-number-fraction ne))))
 
     ;; inactivating jit-lock-after-change boosts performance a lot
-    (cl-letf (((symbol-function 'jit-lock-after-change) (lambda (a b c)) ))
+    (cl-letf (((symbol-function 'jit-lock-after-change) (lambda (_a _b _c)) ))
       ;; insert well padded and aligned cells at current buffer position
       (cl-loop for row in table
 	       do
@@ -312,10 +312,10 @@ special symbol 'hline to mean an horizontal line."
 			       ;; left alignment
 			       else if nu
 			       collect cell and
-			       collect (orgtbl-insert--make-spaces pad spaces-cache)
+			       collect (orgtbl-join--insert-make-spaces pad spaces-cache)
 			       ;; right alignment
 			       else
-			       collect (orgtbl-insert--make-spaces pad spaces-cache) and
+			       collect (orgtbl-join--insert-make-spaces pad spaces-cache) and
 			       collect cell
 			       collect " ")
 		    (cl-loop for bar = "|" then "+"
@@ -328,7 +328,7 @@ special symbol 'hline to mean an horizontal line."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; The Org Table Join package really begins here
 
-(defun orgtbl--join-query-column (prompt table default)
+(defun orgtbl-join--join-query-column (prompt table default)
   "Interactively query a column.
 PROMPT is displayed to the user to explain what answer is expected.
 TABLE is the Org Mode table from which a column will be choosen
@@ -336,12 +336,12 @@ by the user.  Its header is used for column names completion.  If
 TABLE has no header, completion is done on generic column names:
 $1, $2...
 DEFAULT is a proposed column name."
-  (orgtbl-pop-leading-hline table)
+  (orgtbl-join--pop-leading-hline table)
   (let ((completions
 	 (if (memq 'hline table) ;; table has a header
 	     (car table)
 	   (cl-loop ;; table does not have a header
-	    for row in (car table)
+	    for _row in (car table)
 	    for i from 1
 	    collect (format "$%s" i)))))
     (completing-read
@@ -384,18 +384,18 @@ current row is kept, with empty cells appended to it."
   (interactive)
   (org-table-check-inside-data-field)
   (let ((col (org-table-current-column))
-	(tbl (org-table-to-lisp-post-9-4))
+	(tbl (orgtbl-join--table-to-lisp-post-9-4))
 	(pt (line-number-at-pos))
 	(cn (- (point) (point-at-bol))))
     (unless ref-table
       (setq ref-table
 	    (completing-read
 	     "Reference table: "
-	     (orgtbl-list-local-tables))))
-    (setq ref-table (orgtbl-get-distant-table ref-table))
+	     (orgtbl-join--list-local-tables))))
+    (setq ref-table (orgtbl-join--get-distant-table ref-table))
     (unless ref-column
       (setq ref-column
-	    (orgtbl--join-query-column
+	    (orgtbl-join--join-query-column
 	     "Reference column: "
 	     ref-table
 	     (if (memq 'hline tbl) (nth (1- col) (car tbl)) ""))))
@@ -409,8 +409,8 @@ current row is kept, with empty cells appended to it."
 	  (e (org-table-end)))
       (save-excursion
 	(goto-char e)
-	(orgtbl-insert-elisp-table
-	 (orgtbl--create-table-joined
+	(orgtbl-join--insert-elisp-table
+	 (orgtbl-join--create-table-joined
 	  tbl
 	  (format "$%s" col)
 	  ref-table
@@ -425,22 +425,22 @@ current row is kept, with empty cells appended to it."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; PULL & PUSH engine
 
-(defun orgtbl--join-append-mas-ref-row (masrow refrow refcol)
+(defun orgtbl-join--join-append-mas-ref-row (masrow refrow refcol)
   "Concatenate master and reference rows, skiping the reference column.
 MASROW is a list of cells from the master table.  REFROW is a
 list of cells from the reference table.  REFCOL is the position,
 numbered from zero, of the column in REFROW that should not be
 appended in the result, because it is already present in MASROW."
-  (let ((result (-appendable-list-create)))
+  (let ((result (orgtbl-join--list-create)))
     (cl-loop for cell in masrow
-	     do (-appendable-list-append result cell))
+	     do (orgtbl-join--list-append result cell))
     (cl-loop for cell in refrow
 	     for i from 0
 	     unless (equal i refcol)
-	     do (-appendable-list-append result cell))
-    (-appendable-list-get result)))
+	     do (orgtbl-join--list-append result cell))
+    (orgtbl-join--list-get result)))
 
-(defun orgtbl--create-table-joined (mastable mascol reftable refcol full cols)
+(defun orgtbl-join--create-table-joined (mastable mascol reftable refcol full cols)
   "Join a master table with a reference table.
 MASTABLE is the master table, as a list of lists of cells.
 MASCOL is the name of the joining column in the master table.
@@ -458,7 +458,7 @@ Returns MASTABLE enriched with material from REFTABLE."
   (unless full (setq full "mas")) ;; default value is "mas"
   (unless (stringp full)
     (setq full (format "%s" full)))
-  (let ((result (-appendable-list-create))
+  (let ((result (orgtbl-join--list-create))
 	(width
 	 (cl-loop for row in mastable
 		  maximize (if (listp row) (length row) 0)))
@@ -476,12 +476,12 @@ Returns MASTABLE enriched with material from REFTABLE."
 		    (nconc (car row) (make-list n ""))))))
     ;; skip any hline at the top of both tables
     (while (eq (car mastable) 'hline)
-      (-appendable-list-append result 'hline)
-      (pop-simple mastable))
-    (orgtbl-pop-leading-hline reftable)
+      (orgtbl-join--list-append result 'hline)
+      (orgtbl-join--pop-simple mastable))
+    (orgtbl-join--pop-leading-hline reftable)
     ;; convert column-names to numbers
-    (setq mascol (1- (orgtbl-colname-to-int mascol mastable t)))
-    (setq refcol (1- (orgtbl-colname-to-int refcol reftable t)))
+    (setq mascol (1- (orgtbl-join--colname-to-int mascol mastable t)))
+    (setq refcol (1- (orgtbl-join--colname-to-int refcol reftable t)))
     ;; split header and body
     (setq refbody (memq 'hline reftable))
     (if (not refbody)
@@ -508,32 +508,32 @@ Returns MASTABLE enriched with material from REFTABLE."
     ;; and join it with reference table header if any
     (if (memq 'hline mastable)
 	(while (listp (car mastable))
-	  (-appendable-list-append
+	  (orgtbl-join--list-append
 	   result
-	   (orgtbl--join-append-mas-ref-row
+	   (orgtbl-join--join-append-mas-ref-row
 	    (car mastable)
 	    (car refhead) ;; nil if refhead is nil
 	    refcol))
-	  (pop-simple mastable)
-	  (if refhead (pop-simple refhead))))
+	  (orgtbl-join--pop-simple mastable)
+	  (if refhead (orgtbl-join--pop-simple refhead))))
     ;; create the joined table
     (cl-loop
      with full-mas = (string-match "mas" full)
      for masrow in mastable
      do
      (if (not (listp masrow))
-	 (-appendable-list-append result masrow)
+	 (orgtbl-join--list-append result masrow)
        (let ((hashentry (gethash (nth mascol masrow) refhash)))
 	 (if (not hashentry)
 	     ;; if no ref-line matches, add the non-matching master-line anyway
-	     (if full-mas (-appendable-list-append result masrow ))
+	     (if full-mas (orgtbl-join--list-append result masrow ))
 	   ;; if several ref-lines match, all of them are considered
 	   (cl-loop
 	    for refrow in (cdr hashentry)
 	    do
-	    (-appendable-list-append
+	    (orgtbl-join--list-append
 	     result
-	     (orgtbl--join-append-mas-ref-row masrow refrow refcol)))
+	     (orgtbl-join--join-append-mas-ref-row masrow refrow refcol)))
 	   ;; ref-table rows were consumed, increment counter
 	   (setcar hashentry (1+ (car hashentry)))))))
     ;; add rows from the ref-table not consumed
@@ -546,30 +546,30 @@ Returns MASTABLE enriched with material from REFTABLE."
 	       (let ((fake-masrow (make-list width "")))
 		 (setcar (nthcdr mascol fake-masrow)
 			 (nth refcol (cadr hashentry)))
-		 (-appendable-list-append
+		 (orgtbl-join--list-append
 		  result
-		  (orgtbl--join-append-mas-ref-row
+		  (orgtbl-join--join-append-mas-ref-row
 		   fake-masrow
 		   refrow
 		   refcol)))))
 	 else do
-	 (-appendable-list-append result 'hline)))
-    (setq result (-appendable-list-get result))
+	 (orgtbl-join--list-append result 'hline)))
+    (setq result (orgtbl-join--list-get result))
     (if cols
-	(orgtbl--join-rearrange-columns result cols))
+	(orgtbl-join--join-rearrange-columns result cols))
     result))
 
-(defun orgtbl--join-rearrange-columns (table cols)
+(defun orgtbl-join--join-rearrange-columns (table cols)
   "Rearrange the joined TABLE to select columns.
 COLS contains a user-specified list of columns as given
 in the :cols parameter.  This function rearranges
 TABLE so that it contains only COLS, in the same order."
   (if (stringp cols)
-      (setq cols (split-string-with-quotes cols)))
+      (setq cols (orgtbl-join--split-string-with-quotes cols)))
   (setq cols
 	(cl-loop
 	 for c in cols
-	 collect (1- (orgtbl-colname-to-int c table t))))
+	 collect (1- (orgtbl-join--colname-to-int c table t))))
   (cl-loop
    for rrow on table
    for row = (car rrow)
@@ -606,46 +606,49 @@ table has a header, or a dollar form: $1, $2, and so on.
 The destination must be specified somewhere in the
 same file with a bloc like this:
 #+BEGIN RECEIVE ORGTBL destination_table_name
-#+END RECEIVE ORGTBL destination_table_name"
+#+END RECEIVE ORGTBL destination_table_name
+
+Note:
+ The name `orgtbl-to-joined-table' follows the Org Mode standard
+ with functions like `orgtbl-to-csv', `orgtbl-to-html'..."
   (interactive)
   (let ((joined-table
-	 (orgtbl--create-table-joined
+	 (orgtbl-join--create-table-joined
 	  table
 	  (plist-get params :mas-column)
-	  (orgtbl-get-distant-table (plist-get params :ref-table))
+	  (orgtbl-join--get-distant-table (plist-get params :ref-table))
 	  (plist-get params :ref-column)
 	  (plist-get params :full)
 	  (plist-get params :cols))))
     (with-temp-buffer
-      (orgtbl-insert-elisp-table joined-table)
+      (orgtbl-join--insert-elisp-table joined-table)
       (buffer-substring-no-properties (point-min) (1- (point-max))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; PULL mode
 
 ;;;###autoload
-(defun org-insert-dblock:join ()
+(defun orgtbl-join-insert-dblock-join ()
   "Wizard to interactively insert a joined table as a dynamic block."
   (interactive)
-  (let* ((localtables (orgtbl-list-local-tables))
-	 (mas-table)
+  (let* ((localtables (orgtbl-join--list-local-tables))
 	 (mastable
 	  (completing-read
 	   "Master table: "
 	   localtables))
 	 (mascol
-	  (orgtbl--join-query-column
+	  (orgtbl-join--join-query-column
 	   "Master joining column: "
-	   (orgtbl-get-distant-table mastable)
+	   (orgtbl-join--get-distant-table mastable)
 	   ""))
 	 (reftable
 	  (completing-read
 	   "Reference table: "
 	   localtables))
 	 (refcol
-	  (orgtbl--join-query-column
+	  (orgtbl-join--join-query-column
 	   "Reference joining column: "
-	   (orgtbl-get-distant-table reftable)
+	   (orgtbl-join--get-distant-table reftable)
 	   mascol))
 	 (full (completing-read
 		"Which table should appear entirely? "
@@ -694,11 +697,11 @@ The
 		  (rx bos (* (any " \t")) (group "#+" (? "tbl") "name:" (* not-newline)))
 		  content)))
       (insert (match-string 1 content) "\n"))
-    (orgtbl-insert-elisp-table
-     (orgtbl--create-table-joined
-      (orgtbl-get-distant-table (plist-get params :mas-table))
+    (orgtbl-join--insert-elisp-table
+     (orgtbl-join--create-table-joined
+      (orgtbl-join--get-distant-table (plist-get params :mas-table))
       (plist-get params :mas-column)
-      (orgtbl-get-distant-table (plist-get params :ref-table))
+      (orgtbl-join--get-distant-table (plist-get params :ref-table))
       (plist-get params :ref-column)
       (plist-get params :full)
       (plist-get params :cols)))
@@ -742,7 +745,7 @@ and a menu entry under Tbl > Column > Join with another table."
 ;;;###autoload
 (eval-after-load 'org
   '(when (fboundp 'org-dynamic-block-define)
-     (org-dynamic-block-define "join" #'org-insert-dblock:join)))
+     (org-dynamic-block-define "join" #'orgtbl-join-insert-dblock-join)))
 
 (provide 'orgtbl-join)
 ;;; orgtbl-join.el ends here
