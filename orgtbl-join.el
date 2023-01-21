@@ -732,6 +732,24 @@ This function can be called in your .emacs.  It will add the
 \\<org-tbl-menu> & \\[orgtbl-join] key binding for calling the
 `orgtbl-join' wizard,
 and a menu entry under Tbl > Column > Join with another table."
+
+  (message "Function orgtbl-join-setup-keybindings is obsolete
+as of [2023-01-21 Sat]. See:
+https://github.com/tbanel/orgtbljoin/blob/master/README.org
+or put this in your .emacs:
+(use-package orgtbl-join
+  :after (org)
+  :bind (\"C-c j\" . orgtbl-join)
+  :init
+  (easy-menu-add-item
+   org-tbl-menu '(\"Column\")
+   [\"Join with another table\" orgtbl-join (org-at-table-p)]))")
+
+  (declare (obsolete "Look at
+https://github.com/tbanel/orgtbljoin/blob/master/README.org
+for how to make the key binding and menu binding in .emacs"
+                     "[2023-01-21 Sat]"))
+
   (eval-after-load 'org
     '(progn
        (org-defkey org-mode-map "\C-c\C-xj" 'orgtbl-join)

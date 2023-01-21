@@ -304,7 +304,7 @@ incomplete rows, like those ones:
 | onion    |   1.3 |   4.4 |  1.3 |  9.0 |
     | egg      |     0 |  18.3 | 31.9 | 18.3 |
 | rice     |   0.2 |     0 |  1.5 | 16.0 |
-| tofu     |  0.7 
+| tofu     |  0.7
 | nut      |   2.6 |   1.3 |  4.9 |  7.2 |
 
 | type     | quty |
@@ -418,8 +418,25 @@ Alternatively, you can download the lisp files, and load them:
 
 #+BEGIN_EXAMPLE
 (load-file "orgtbl-join.el")
-(load-file "org-insert-dblock.el") ;; optional, extends C-c C-c i
 #+END_EXAMPLE
+
+You may want to add an entry in the ~Table~ menu, ~Column~ sub-menu. You
+may also want to call ~orgtbl-join~ with ~C-c j~. One way to do so is to
+use ~use-package~ in your ~.emacs~ init file:
+
+#+begin_src elisp
+(use-package orgtbl-join
+  :after (org)
+  :bind ("C-c j" . orgtbl-join)
+  :init
+  (easy-menu-add-item
+   org-tbl-menu '("Column")
+   ["Join with another table" orgtbl-join (org-at-table-p)]))
+#+end_src
+
+Note: there used to be a ~orgtbl-join-setup-keybindings~ function to do
+just what the above ~use-package~ does. In this way, key binding and
+menu binding are no longer hard-coded in the package.
 
 * Author, contributors
 
