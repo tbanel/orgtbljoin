@@ -48,21 +48,24 @@
 ;; the actual list is (cdr ls)
 
 (defsubst -appendable-list-create ()
+  "Create an appendable list."
   (let ((x (cons nil nil)))
     (setcar x x)))
 
 (defmacro -appendable-list-append (ls value)
+  "Append VALUE at the end of LS in O(1) time."
   `(setcar ,ls (setcdr (car ,ls) (cons ,value nil))))
 
 (defmacro -appendable-list-get (ls)
+  "Return the regular Lisp list from LS."
   `(cdr ,ls))
 
 (defmacro pop-simple (place)
-  "like pop, but without returning (car place)"
+  "Like (pop PLACE), but without returning (car PLACE)."
   `(setq ,place (cdr ,place)))
 
 (defmacro orgtbl-pop-leading-hline (table)
-  "Remove leading hlines from the table, if any" 
+  "Remove leading hlines from TABLE, if any."
   `(while (not (listp (car ,table)))
      (pop-simple ,table)))
 
@@ -128,8 +131,8 @@ The table is taken from the parameter TXT, or from the buffer at point."
     tables))
 
 (defun orgtbl-get-distant-table (name-or-id)
-  "Find a table in the current buffer named NAME-OR-ID
-and returns it as a lisp list of lists.
+  "Find a table in the current buffer named NAME-OR-ID.
+Return it as a Lisp list of lists.
 An horizontal line is translated as the special symbol `hline'."
   (unless (stringp name-or-id)
     (setq name-or-id (format "%s" name-or-id)))
@@ -167,9 +170,10 @@ An horizontal line is translated as the special symbol `hline'."
 	(org-table-to-lisp-post-9-4)))))
 
 (defun split-string-with-quotes (string)
-  "Like `split-string', but also allows single or double quotes
-to protect space characters, and also single quotes to protect
-double quotes and the other way around"
+  "Like (split-string STRING), but with quote protection.
+Single and double quotes protect space characters,
+and also single quotes protect double quotes
+and the other way around."
   (let ((l (length string))
 	(start 0)
 	(result (-appendable-list-create))
@@ -191,7 +195,9 @@ double quotes and the other way around"
     (-appendable-list-get result)))
 
 (defun orgtbl-colname-to-int (colname table &optional err)
-  "Convert the column name into an integer (first column is numbered 1)
+  "Convert the COLNAME into an integer.
+COLNAME is a column name of TABLE.
+The first column is numbered 1.
 COLNAME may be:
 - a dollar form, like $5 which is converted to 5
 - an alphanumeric name which appears in the column header (if any)
@@ -235,9 +241,9 @@ otherwise nil is returned."
 	   (user-error "Column %s not found in table" colname))))))
 
 (defun orgtbl-insert--make-spaces (n spaces-cache)
-  "Makes a string of N spaces.
-Caches results to avoid re-allocating again and again
-the same string"
+  "Make a string of N spaces.
+Caches results into SPACES-CACHE to avoid re-allocating
+again and again the same string."
   (if (< n (length spaces-cache))
       (or (aref spaces-cache n)
 	  (aset spaces-cache n (make-string n ? )))
@@ -325,10 +331,11 @@ special symbol 'hline to mean an horizontal line."
 (defun orgtbl--join-query-column (prompt table default)
   "Interactively query a column.
 PROMPT is displayed to the user to explain what answer is expected.
-TABLE is the org mode table from which a column will be choosen
+TABLE is the Org Mode table from which a column will be choosen
 by the user.  Its header is used for column names completion.  If
 TABLE has no header, completion is done on generic column names:
-$1, $2..."
+$1, $2...
+DEFAULT is a proposed column name."
   (orgtbl-pop-leading-hline table)
   (let ((completions
 	 (if (memq 'hline table) ;; table has a header
@@ -357,6 +364,10 @@ tag above the table.  If not given, it is prompted interactively.
 Optional REF-COLUMN is the name of a column in the reference
 table, to be compared with the column the point in on.  If not
 given, it is prompted interactively.
+
+FULL if given is any of \"mas\" \"ref\" \"mas+ref\" \"none\"
+which controls how to deal with rows that are on only one
+of the master or reference tables.
 
 Rows from the reference table are appended to rows of the current
 table.  For each row of the current table, matching rows from the
@@ -549,9 +560,10 @@ Returns MASTABLE enriched with material from REFTABLE."
     result))
 
 (defun orgtbl--join-rearrange-columns (table cols)
-  "If a :cols parameter was specified, this function
-rearranges the joined table to display only columns
-specified in :cols and in the same order"
+  "Rearrange the joined TABLE to select columns.
+COLS contains a user-specified list of columns as given
+in the :cols parameter.  This function rearranges
+TABLE so that it contains only COLS, in the same order."
   (if (stringp cols)
       (setq cols (split-string-with-quotes cols)))
   (setq cols
@@ -704,7 +716,7 @@ The
       (end-of-line)
       (insert "\n" tblfm)
       (forward-line -1)
-      (let ((org-table-formula-create-columns t)) 
+      (let ((org-table-formula-create-columns t))
 	(condition-case nil
 	    (org-table-recalculate 'iterate)
 	  (args-out-of-range nil))))))
@@ -714,10 +726,11 @@ The
 
 ;;;###autoload
 (defun orgtbl-join-setup-keybindings ()
-  "Setup key-binding and menu entry.
-This function can be called in your .emacs. It will add the `C-c
-C-x j' key-binding for calling the orgtbl-join wizard, and a menu
-entry under Tbl > Column > Join with another table."
+  "Setup key binding and menu entry.
+This function can be called in your .emacs.  It will add the
+\\<org-tbl-menu> & \\[orgtbl-join] key binding for calling the
+`orgtbl-join' wizard,
+and a menu entry under Tbl > Column > Join with another table."
   (eval-after-load 'org
     '(progn
        (org-defkey org-mode-map "\C-c\C-xj" 'orgtbl-join)
