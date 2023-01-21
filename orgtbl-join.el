@@ -6,7 +6,7 @@
 ;; Contributors:
 ;; Version: 0.1
 ;; Keywords: data, extensions
-;; Package-Requires: ((cl-lib "0.5") (emacs "24.1"))
+;; Package-Requires: ((emacs "24.3"))
 ;; URL: https://github.com/tbanel/orgtbljoin/blob/master/README.org
 
 ;; orgtbl-join is free software; you can redistribute it and/or modify
@@ -177,8 +177,7 @@ and also single quotes protect double quotes
 and the other way around."
   (let ((l (length string))
 	(start 0)
-	(result (orgtbl-join--list-create))
-	)
+	(result (orgtbl-join--list-create)))
     (save-match-data
       (while (and (< start l)
 		  (string-match
@@ -191,8 +190,7 @@ and the other way around."
 			 (not (any " '\""))))))
 		   string start))
 	(orgtbl-join--list-append result (match-string 1 string))
-	(setq start (match-end 1))
-	))
+	(setq start (match-end 1))))
     (orgtbl-join--list-get result)))
 
 (defun orgtbl-join--colname-to-int (colname table &optional err)
