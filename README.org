@@ -463,7 +463,7 @@ Contributors
 - added the =:cols= parameter
 
 * GPL 3 License
-Copyright (C) 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022  Thierry Banel
+Copyright (C) 2014-2023  Thierry Banel
 
 orgtbl-join is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
