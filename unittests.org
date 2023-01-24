@@ -602,3 +602,38 @@ Missing cells are handled as though they were empty
 |     ? |    300 | eggplant  |       ? | eggplant  |
 |   1.8 |    250 | corn      |     2.8 | corn      |
 #+END:
+
+* Japanese characters
+Japanese characters are wider than ASCII ones.
+In mono-spaced fonts, they are often 2 times wider.
+
+Not all fonts are equal. The Ubuntu one is not too bad, although not perfect:
+: (set-face-font 'default "Ubuntu Mono")
+
+#+name: 日本のテーブル
+| 如何         | 量 |
+|--------------+----|
+| 急行電車     | 23 |
+| 山に雪が降る | 21 |
+| 鳥と花       | 34 |
+| 急行電車     | 61 |
+| 鳥と花       | 93 |
+| 山に雪が降る | 48 |
+
+#+name: 参照表
+| 如何         | 色   |
+|--------------+------|
+| 急行電車     | 黄   |
+| 山に雪が降る | 赤   |
+| 鳥と花       | 青い |
+
+#+BEGIN: join :mas-table "日本のテーブル" :mas-column "如何" :ref-table "参照表" :ref-column "如何" :full "mas" :cols "量 色 如何"
+| 量 | 色   | 如何         |
+|----+------+--------------|
+| 23 | 黄   | 急行電車     |
+| 21 | 赤   | 山に雪が降る |
+| 34 | 青い | 鳥と花       |
+| 61 | 黄   | 急行電車     |
+| 93 | 青い | 鳥と花       |
+| 48 | 赤   | 山に雪が降る |
+#+END:

@@ -448,6 +448,8 @@ Author
 Contributors
 - Dirk Schmitt, surviving =#.NAME:= line
 - wuqui, =:cols= parameter
+- Misohena (https://misohena.jp/blog/author/misohena),
+  double width Japanese characters (string-width vs. length)
 
 * Changes
 - remove duplicate reference column
