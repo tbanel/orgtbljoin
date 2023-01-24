@@ -2,7 +2,7 @@
 #+TITLE: Join Two Org Mode Tables
 #+OPTIONS: ^:{} author:Thierry Banel toc:nil
 
-One table (the master table) is grown by selectively appending rows of
+One table (the master table) is grown by selectively appending columns of
 another table (the reference table).
 
 * Example
