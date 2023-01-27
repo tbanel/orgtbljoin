@@ -637,3 +637,52 @@ Not all fonts are equal. The Ubuntu one is not too bad, although not perfect:
 | 93 | 青い | 鳥と花       |
 | 48 | 赤   | 山に雪が降る |
 #+END:
+
+* Post process
+
+A Babel post-process block which adds a last row to ~*this*~
+#+name: add-ginger
+#+begin_src elisp
+(nconc *this* '((ginger 33 na na na na)))
+#+end_src
+
+Pull mode with a post-process babel block
+
+#+BEGIN: join :mas-table meal_with_header :mas-column $1 :ref-table nut_with_header :ref-column $2 :post "add-ginger"
+| product   |   quty | Carb | Fiber | Sugar | Protein |
+| common    |     in | ohyd |       |       |         |
+| name      | gramms | rate |       |       |         |
+| (english) |        |
+|-----------+--------+------+-------+-------+---------|
+| onion     |     70 |  9.0 |   1.3 |   4.4 |     1.3 |
+| unknown   |    999 |
+| tomatoe   |    120 |  3.4 |   0.6 |   2.1 |     0.8 |
+| eggplant  |    300 |  8.6 |   2.5 |   3.2 |     0.8 |
+| eggplant  |    300 |  8.7 |   2.6 |   3.3 |     0.9 |
+| eggplant  |    300 |  8.5 |     ? |     ? |       ? |
+| corn      |    250 | 21.3 |   4.7 |   1.8 |     2.8 |
+| ginger    |     33 |   na |    na |    na |      na |
+#+END:
+
+Push mode with a post-process Lisp expression
+
+#+ORGTBL: SEND with-post orgtbl-to-joined-table :ref-table nut_with_header :mas-column product :ref-column type :post (nconc *this* '((grape 123 "?")))
+| product       | quty |
+|---------------+------|
+| not specified |  999 |
+| onion         |   70 |
+| eggplant      |  300 |
+| tomatoe       |  120 |
+
+#+BEGIN RECEIVE ORGTBL with-post
+| product       | quty | Carb | Fiber | Sugar | Protein |
+|---------------+------+------+-------+-------+---------|
+| not specified |  999 |
+| onion         |   70 |  9.0 |   1.3 |   4.4 |     1.3 |
+| eggplant      |  300 |  8.6 |   2.5 |   3.2 |     0.8 |
+| eggplant      |  300 |  8.7 |   2.6 |   3.3 |     0.9 |
+| eggplant      |  300 |  8.5 |     ? |     ? |       ? |
+| tomatoe       |  120 |  3.4 |   0.6 |   2.1 |     0.8 |
+| grape         |  123 |    ? |
+#+END RECEIVE ORGTBL with-post
+

@@ -355,6 +355,45 @@ special symbol 'hline to mean an horizontal line."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; The Org Table Join package really begins here
 
+;; The *this* variable is accessible to the user.
+;; It refers to the joined table before it is "printed"
+;; into the buffer, so that it can be post-processed.
+(defvar *this*)
+
+(defun orgtbl-join--post-process (table post)
+  "Post-process the joined TABLE according to the :post header.
+POST might be:
+- a reference to a babel-block, for example:
+  :post \"myprocessor(inputtable=*this*)\"
+  and somewhere else:
+  #+name: myprocessor
+  #+begin_src language :var inputtable=""
+  ...
+  #+end_src
+- a Lisp lambda with one parameter, for example:
+  :post (lambda (table) (append table '(hline (\"total\" 123))))
+- a Lisp function with one parameter, for example:
+  :post my-lisp-function
+- a Lisp expression which will be evaluated
+  the *this* variable will contain the TABLE
+In all those cases, the result must be a Lisp value compliant
+with an Org Mode table."
+  (cond
+   ((null post) table)
+   ((functionp post)
+    (apply post table ()))
+   ((stringp post)
+    (let ((*this* table))
+      (condition-case err
+	  (org-babel-ref-resolve post)
+	(error
+	 (message "error: %S" err)
+	 (orgtbl-join--post-process table (read post))))))
+   ((listp post)
+    (let ((*this* table))
+      (eval post)))
+   (t (user-error ":post %S header could not be understood" post))))
+
 (defun orgtbl-join--join-query-column (prompt table default)
   "Interactively query a column.
 PROMPT is displayed to the user to explain what answer is expected.
@@ -640,13 +679,15 @@ Note:
  with functions like `orgtbl-to-csv', `orgtbl-to-html'..."
   (interactive)
   (let ((joined-table
-	 (orgtbl-join--create-table-joined
-	  table
-	  (plist-get params :mas-column)
-	  (orgtbl-join--get-distant-table (plist-get params :ref-table))
-	  (plist-get params :ref-column)
-	  (plist-get params :full)
-	  (plist-get params :cols))))
+         (orgtbl-join--post-process
+	  (orgtbl-join--create-table-joined
+	   table
+	   (plist-get params :mas-column)
+	   (orgtbl-join--get-distant-table (plist-get params :ref-table))
+	   (plist-get params :ref-column)
+	   (plist-get params :full)
+	   (plist-get params :cols))
+          (plist-get params :post))))
     (with-temp-buffer
       (orgtbl-join--insert-elisp-table joined-table)
       (buffer-substring-no-properties (point-min) (1- (point-max))))))
@@ -725,13 +766,15 @@ The
 		  content)))
       (insert (match-string 1 content) "\n"))
     (orgtbl-join--insert-elisp-table
-     (orgtbl-join--create-table-joined
-      (orgtbl-join--get-distant-table (plist-get params :mas-table))
-      (plist-get params :mas-column)
-      (orgtbl-join--get-distant-table (plist-get params :ref-table))
-      (plist-get params :ref-column)
-      (plist-get params :full)
-      (plist-get params :cols)))
+     (orgtbl-join--post-process
+      (orgtbl-join--create-table-joined
+       (orgtbl-join--get-distant-table (plist-get params :mas-table))
+       (plist-get params :mas-column)
+       (orgtbl-join--get-distant-table (plist-get params :ref-table))
+       (plist-get params :ref-column)
+       (plist-get params :full)
+       (plist-get params :cols))
+      (plist-get params :post)))
     (delete-char -1) ;; remove trailing \n which Org Mode will add again
     (when (and content
 	       (let ((case-fold-search t))
