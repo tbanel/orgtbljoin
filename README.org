@@ -504,6 +504,7 @@ Contributors
 - wuqui, =:cols= parameter
 - Misohena (https://misohena.jp/blog/author/misohena),
   double width Japanese characters (string-width vs. length)
+- Shankar Rao, =:post= post-processing
 
 * Changes
 - remove duplicate reference column
@@ -517,6 +518,7 @@ Contributors
 - add =:full= parameter
 - remove =C-c C-x i=, use standard =C-c C-x x= instead
 - added the =:cols= parameter
+- =:post= post-processing
 
 * GPL 3 License
 Copyright (C) 2014-2023  Thierry Banel
