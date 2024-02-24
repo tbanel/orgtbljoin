@@ -686,3 +686,77 @@ Push mode with a post-process Lisp expression
 | grape         |  123 |    ? |
 #+END RECEIVE ORGTBL with-post
 
+* Alignment cookies
+What to do with cookies?
+<> <l> <c> <r> <12> <l12> <c12> <r12>
+They are not real data, rather metadata.
+
+Cookies format a column. As columns appear mostly unchaged in the
+joined table (except that some cells are filtered out and others are
+duplicated), they probably benefit from the same formats as original
+columns. Therefore:
+- Cookies are handled as regular data
+- Cookies in the headers are merged in the joined header
+
+#+name: mas-with-cookies
+| object   |   color |
+| <l>      |         |
+|          |     <r> |
+|----------+---------|
+| tree     |   green |
+|          |    <12> |
+| wall     |    grey |
+| <r>      |     <c> |
+| roof     |     red |
+| orange   |  orange |
+| banana   |  yellow |
+| <15>     |         |
+| panther  |    pink |
+| Sun      |  yellow |
+| <cookie> | <false> |
+| cloud    |    grey |
+| sky      |    blue |
+|          |     <l> |
+
+#+name: ref-with-cookies
+|   color | code   |
+|     <7> | <6>    |
+|---------+--------|
+|  yellow | #FF0   |
+|     <r> |        |
+|   white | #FFF   |
+|     red | #F00   |
+|     red | <l>    |
+|    blue | #00F   |
+|   green | #0F0   |
+|   black | #000   |
+|   <r12> |        |
+|  orange | #F80   |
+|    cyan | #0FF   |
+| <color> | <#123> |
+|  purple | #F0F   |
+|    grey | #888   |
+|  marine | #008   |
+|    pink | #F88   |
+
+#+BEGIN: join :mas-table "mas-with-cookies" :mas-column "color" :ref-table "ref-with-cookies" :ref-column "color" :full "mas"
+| object   | color   | code |
+| <l>      |         | <6>  |
+|          | <r>     |
+|----------+---------+------|
+| tree     | green   | #0F0 |
+|          | <12>    |
+| wall     | grey    | #888 |
+| <r>      | <c>     |
+| roof     | red     | #F00 |
+| roof     | red     | <l>  |
+| orange   | orange  | #F80 |
+| banana   | yellow  | #FF0 |
+| <15>     |         |
+| panther  | pink    | #F88 |
+| Sun      | yellow  | #FF0 |
+| <cookie> | <false> |
+| cloud    | grey    | #888 |
+| sky      | blue    | #00F |
+|          | <l>     |
+#+END:
