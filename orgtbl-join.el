@@ -290,7 +290,7 @@ again and again the same string."
 (defun orgtbl-join--insert-elisp-table (table)
   "Insert TABLE in current buffer at point.
 TABLE is a list of lists of cells.  The list may contain the
-special symbol 'hline to mean an horizontal line."
+special symbol `hline' to mean an horizontal line."
   (let* ((nbcols (cl-loop
 		  for row in table
 		  maximize (if (listp row) (length row) 0)))
@@ -377,11 +377,11 @@ POST might be:
   :post \"myprocessor(inputtable=*this*)\"
   and somewhere else:
   #+name: myprocessor
-  #+begin_src language :var inputtable=""
+  #+begin_src language :var inputtable=
   ...
   #+end_src
 - a Lisp lambda with one parameter, for example:
-  :post (lambda (table) (append table '(hline (\"total\" 123))))
+  :post (lambda (table) (append table \\'(hline (\"total\" 123))))
 - a Lisp function with one parameter, for example:
   :post my-lisp-function
 - a Lisp expression which will be evaluated
@@ -462,7 +462,7 @@ current row is kept, with empty cells appended to it."
   (let ((col (org-table-current-column))
 	(tbl (orgtbl-join--table-to-lisp))
 	(pt (line-number-at-pos))
-	(cn (- (point) (point-at-bol))))
+	(cn (- (point) (line-beginning-position))))
     (unless ref-table
       (setq ref-table
 	    (completing-read
@@ -815,6 +815,11 @@ This function can be called in your .emacs.  It will add the
 `orgtbl-join' wizard,
 and a menu entry under Tbl > Column > Join with another table."
 
+  (declare (obsolete "Look at
+https://github.com/tbanel/orgtbljoin/blob/master/README.org
+for how to make the key binding and menu binding in .emacs"
+                     "[2023-01-21 Sat]"))
+
   (message "Function orgtbl-join-setup-keybindings is obsolete
 as of [2023-01-21 Sat]. See:
 https://github.com/tbanel/orgtbljoin/blob/master/README.org
@@ -826,11 +831,6 @@ or put this in your .emacs:
   (easy-menu-add-item
    org-tbl-menu '(\"Column\")
    [\"Join with another table\" orgtbl-join (org-at-table-p)]))")
-
-  (declare (obsolete "Look at
-https://github.com/tbanel/orgtbljoin/blob/master/README.org
-for how to make the key binding and menu binding in .emacs"
-                     "[2023-01-21 Sat]"))
 
   (eval-after-load 'org
     '(progn
