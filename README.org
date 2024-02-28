@@ -517,7 +517,7 @@ Contributors
 - 3x speedup =org-table-to-lisp= and avoid Emacs 27 to 30 incompatibilities
 
 * GPL 3 License
-Copyright (C) 2014-2023  Thierry Banel
+Copyright (C) 2014-2024  Thierry Banel
 
 orgtbl-join is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
