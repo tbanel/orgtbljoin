@@ -769,12 +769,14 @@ The
   (let ((formula (plist-get params :formula))
 	(content (plist-get params :content))
 	(tblfm nil))
-    (when (and content
-	       (let ((case-fold-search t))
-		 (string-match
-		  (rx bos (* (any " \t")) (group "#+" (? "tbl") "name:" (* not-newline)))
-		  content)))
-      (insert (match-string 1 content) "\n"))
+    (if (and content
+	     (let ((case-fold-search t))
+	       (string-match
+		(rx bos
+                    (+
+                     (* (any " \t")) "#+" (* not-newline) "\n"))
+		content)))
+	(insert (match-string 0 content)))
     (orgtbl-join--insert-elisp-table
      (orgtbl-join--post-process
       (orgtbl-join--create-table-joined

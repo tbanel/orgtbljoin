@@ -247,6 +247,8 @@ Without header.
 
 #+BEGIN: join :mas-table meal_with_header :mas-column $1 :ref-table nut_with_header :ref-column $2 :formula "@1$7=totcarb"
 #+name: enriched
+#+caption: the enriched table
+#+attr_center: yes
 | product   |   quty | Carb | Fiber | Sugar | Protein | totcarb |
 | common    |     in | ohyd |       |       |         |         |
 | name      | gramms | rate |       |       |         |         |

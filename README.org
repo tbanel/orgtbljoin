@@ -500,6 +500,7 @@ Contributors
 - Misohena (https://misohena.jp/blog/author/misohena),
   double width Japanese characters (string-width vs. length)
 - Shankar Rao, =:post= post-processing
+- Piotr Panasiuk, =#+CAPTION:= and any tags survive
 
 * Changes
 - remove duplicate reference column
@@ -515,6 +516,7 @@ Contributors
 - added the =:cols= parameter
 - =:post= post-processing
 - 3x speedup =org-table-to-lisp= and avoid Emacs 27 to 30 incompatibilities
+- =#+CAPTION:= and any other tag survive inside =#+BEGIN:=
 
 * GPL 3 License
 Copyright (C) 2014-2024  Thierry Banel
