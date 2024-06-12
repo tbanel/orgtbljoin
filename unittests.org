@@ -15,36 +15,42 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 * How to run?
-** Running tests should leave the file unchanged
-Running all the tests should not change anything to this
-page. Therefore the suggested workflow is:
-- make a temporary copy of this file, then on this copy:
-- optionaly clean the computed tables
-- run all pull-mode tests
-- run all push-mode test
-- compare the copy and the original, there should be no difference
-  (=M-x compare-windows= is handy)
+Running all tests should not change anything to this page.
 
-** Old resulting tables can be cleaned prior to running tests
-this is optional
+Run this script to complete all the unit tests in a disposable
+buffer. When done, the buffer and the original, untouched
+~unittests.org~, are compared, stopping at the first difference.
+
 #+begin_src elisp :results none
+(delete-other-windows)
+(goto-char (point-min))
+(org-cycle '(64))
+(split-window-right)
+
+;; Make a new buffer and fill it with the content of unittests.org
+
+(let ((f (buffer-file-name)))
+  (switch-to-buffer "disposable-unittest.org")
+  (erase-buffer)
+  (insert-file f))
+
+(org-mode)
+(org-cycle '(64))
+
+;; Clean results from prior tests
 (save-excursion
   (goto-char (point-min))
   (replace-regexp
    (rx (group bol "#+BEGIN" (* not-newline) "\n")
        (* "|" (* not-newline) "\n"))
    "\\1"))
-#+end_src
 
-** All pull-mode tests can be re-computed at once by executing:
-#+begin_src elisp :results none
+;; Compute all pull-mode tests
 (let ((org-calc-default-modes
        (cons 'calc-float-format (cons '(float 12) org-calc-default-modes))))
   (org-update-all-dblocks))
-#+end_src
 
-** All push-mode tests can be re-computed at once by executing:
-#+begin_src elisp :results none
+;; Compute all push-mode tests
 (let ((org-calc-default-modes
        (cons 'calc-float-format (cons '(float 12) org-calc-default-modes))))
   (org-table-map-tables
@@ -53,7 +59,11 @@ this is optional
 	      (forward-line -1)
 	      (looking-at-p (rx (or "#+begin" "#+orgtbl"))))
 	(orgtbl-send-table 'maybe)))))
-#+end_src
+
+;; Compare the disposable buffer with the reference unittests.org
+(goto-char (point-min))
+(compare-windows nil)
+  #+end_src
 
 * In-place mode
 
