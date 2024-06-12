@@ -454,8 +454,13 @@ blocks.
 Emacs package on Melpa: add the following lines to your =.emacs= file, and reload it.
 
 #+BEGIN_EXAMPLE
-(add-to-list 'package-archives '("melpa" . "http://melpa.milkbox.net/packages/") t)
+(add-to-list 'package-archives '("melpa" . "http://melpa.org/packages/") t)
 (package-initialize)
+#+END_EXAMPLE
+
+You may also customize this variable:
+#+BEGIN_EXAMPLE
+M-x customize-variable package-archives
 #+END_EXAMPLE
 
 Then browse the list of available packages and install =orgtbl-join=
