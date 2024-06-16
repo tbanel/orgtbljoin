@@ -772,3 +772,38 @@ columns. Therefore:
 | sky      | blue    | #00F |
 |          | <l>     |
 #+END:
+
+* 1st data row is not the header
+#+name: missing-header
+| a | 12 | 33 |
+| c | 13 | 12 |
+| x | 14 | 12 |
+| y | 15 | 45 |
+| z |  7 |  7 |
+
+#+name: ref-missing-header
+| z | 15    |
+| z | yes   |
+| y | 13    |
+| y | maybe |
+| y | no    |
+| x | yes   |
+| c | no    |
+| c | 71    |
+| a | yes   |
+| a | 32    |
+
+this is a mistake ---------v
+                           v
+#+BEGIN: join :ref-column "15" :mas-table "missing-header" :mas-column "$1" :ref-table "ref-missing-header" :full "mas"
+
+#+END:
+
+If first data row is mistaken as a header, here is the result:
+| a | 12 | 33 |
+| c | 13 | 12 |
+| x | 14 | 12 |
+| y | 15 | 45 |
+| z |  7 |  7 |
+
+The correct result is a user error.
