@@ -81,11 +81,11 @@ Three modes are available: /in-place/, /push/, /pull/.
 
 ** In /in-place/ mode
 
-The master table is changed (in-place) by appending columns from the
-reference table.
+The master table is changed (in-place) by appending columns from
+reference tables.
 
-Invoke it with the =M-x orgtbl-join= command, also bound to =C-c C-x j=.  The
-cursor must be positioned on the column used to perform the join.
+Invoke it with the =M-x orgtbl-join= command.  The cursor must be
+positioned on the column used to perform the join.
 
 ** In /push/ mode
 
@@ -188,15 +188,15 @@ If you are familiar with SQL, this behavior is reminiscent of the
 /left outer join/.
 
 Duplicate entries may happen both in the master and the reference
-table. The joined table will have all combinations. So for instance
-if there are 2 =eggplant= rows in the master table, and 3 =eggplant=
-rows in the reference table, then the joined table will get 6
-=eggplant= rows.
+tables. The joined table will have all combinations. So for instance
+if there are 2 =eggplant= rows in the master table, and 3 =eggplant= rows
+in the reference table, then the joined table will get 6 =eggplant=
+rows.
 
 * Selecting the output columns
 
-By default, all columns from both the master table and the reference
-table are output (except the joining column, which is output only
+By default, all columns from the master table and all the reference
+tables are output (except the joining column, which is output only
 once).
 
 This can be customized with the =:cols= parameter. Give it the list of
@@ -269,27 +269,27 @@ nutritional facts.
 This behavior is controlled by the =:full= parameter:
 - =:full mas= the joined result contains the full master table (the
   default)
-- =:full ref= the joined result contains the full reference table
+- =:full ref= the joined result contains the full reference tables
 - =:full mas+ref= the joined result contains all rows from both mater
-  and reference tables
+  and all reference tables
 - =:full none= or =:full nil= the joined result contains
   only rows that appear in both tables
 
 The use cases may be as follow:
 
 - =:full mas= is useful when the reference table is large, as a
-  dictionary or a nutritional facts. We just pick the needed row from
-  the reference.
+  dictionary or a nutritional facts table. We just pick the needed rows
+  from the reference.
 
 - =:full mas+ref= is useful when both tables are similar. For
   instance, one table has been grown by a team, and the other
   independently by another team. The joined table will contain
   additional rows from both teams.
 
-- =:full none= is useful to create the intersection of both
-  tables. For instance we have a list of items in the main warehouse,
-  and another list of damaged items. We are interested only in damaged
-  items in the main warehouse.
+- =:full none= is useful to create the intersection of tables. For
+  instance we have a list of items in the main warehouse, and another
+  list of damaged items. We are interested only in damaged items in
+  the main warehouse.
 
 * Malformed input tables
 
@@ -327,10 +327,10 @@ The orgtbl-join system tries to preserve as much of the master table
 as possible.  Therefore, if the master table has a header, the
 joined table will have it verbatim, over as many lines as needed.
 
-The reference table header (if any), will fill-in the header (if any)
-of the resulting table.  But if there is no room in the resulting
-table header, the reference table header lines will be ignored, partly
-of fully.
+The reference tables headers (if any), will fill-in the header (if
+any) of the resulting table.  But if there is no room in the resulting
+table header, the reference tables headers lines will be ignored,
+partly of fully.
 
 Header are useful to refer to columns. If there is no header, then
 columns must be referred with =$= names: =$1= is the name of the first
@@ -345,7 +345,7 @@ following line to your =.emacs= file:
 
 This will give the following bindings:
 - =C-c C-x j= bound to =orgtbl-join=
-- menu =Tbl > Column > Join with another table= bound to =orgtbl-join=
+- menu =Tbl > Column > Join with other tables= bound to =orgtbl-join=
 
 * Wizard
 
@@ -363,6 +363,10 @@ For all questions, completion is available.  In the later case, you should
 answer =join= when asked for the kind of block.
 
 Note: there many kinds of dynamic blocks can be inserted besides =join=.
+
+As there might be as many reference tables as wanted, the wizards
+continue asking for reference tables. When done, just give an empty
+answer when the wizards asked for the name of a reference table.
 
 * Post-joining spreadsheet formulas
 
@@ -390,8 +394,8 @@ into a usual =#+TBLFM:= spreadsheet line.
 
 * Post processing
 
-The joined table can be post-processed with the =:post=
-parameter. It accepts a Lisp =lambda=, a Lisp function, or a Babel
+The joined table can be post-processed with the =:post= parameter. It
+accepts a Lisp =lambda=, a Lisp function, a Lisp expression, or a Babel
 block.
 
 The processing receives the joined table as parameter in the form
@@ -448,6 +452,27 @@ The name will survive re-computations. This happens only in /pull mode/.
 Note that the =#+name: richer= line could appear above the =#+BEGIN:=
 line.  But sometimes this is not taken into account by further babels
 blocks.
+
+* Multiple reference tables
+orgtbl-join used to handle just one reference table. Now, as many as
+wanted are handled.
+
+To specify the reference tables, just use several times the =:ref-table=
+and =:ref-column= parameters. They must match: for instance, the third
+=:ref-table= must match the third =:ref-column=.
+
+For now, the =:full= and =:mas-column= parameters should be mentionned
+just once. This could change in the future with as many such
+parameters as reference tables.
+
+One side effect of going multiple, is that zero reference table is now
+accepted. In this case, the result of the join is just the master
+table. But it can be change in several ways:
+
+- Selection and re-ordering of columns through the =:cols= parameter.
+- Additional computed columns through the =:formula= parameter and
+  survival of =#+TBLFM:= lines.
+- Lisp and Babel post-processing through the =:post= parameter.
 
 * Installation
 
@@ -506,6 +531,7 @@ Contributors
   double width Japanese characters (string-width vs. length)
 - Shankar Rao, =:post= post-processing
 - Piotr Panasiuk, =#+CAPTION:= and any tags survive
+- Luis Miguel Hernanz, multiple reference tables suggestion
 
 * Changes
 - remove duplicate reference column
@@ -522,6 +548,7 @@ Contributors
 - =:post= post-processing
 - 3x speedup =org-table-to-lisp= and avoid Emacs 27 to 30 incompatibilities
 - =#+CAPTION:= and any other tag survive inside =#+BEGIN:=
+- now there can be several reference tables in a join, instead of just one.
 
 * GPL 3 License
 Copyright (C) 2014-2024  Thierry Banel

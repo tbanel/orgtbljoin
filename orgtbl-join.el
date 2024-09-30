@@ -99,6 +99,13 @@
   `(while (not (listp (car ,table)))
      (orgtbl-join--pop-simple ,table)))
 
+(defun orgtbl-join--plist-get-remove (params prop)
+  "Like `plist-get', but also remove PROP from PARAMS."
+  (let ((v (plist-get params prop)))
+    (if v
+        (setcar (memq prop params) nil))
+    v))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; The function (org-table-to-lisp) have been greatly enhanced
 ;; in Org Mode version 9.4
@@ -173,41 +180,44 @@ The table is taken from the parameter TXT, or from the buffer at point."
 (defun orgtbl-join--get-distant-table (name-or-id)
   "Find a table in the current buffer named NAME-OR-ID.
 Return it as a Lisp list of lists.
-An horizontal line is translated as the special symbol `hline'."
-  (unless (stringp name-or-id)
-    (setq name-or-id (format "%s" name-or-id)))
-  (let (buffer loc)
-    (save-excursion
-      (goto-char (point-min))
-      (if (let ((case-fold-search t))
-	    (re-search-forward
-	     ;; This concat is automatically done by new versions of rx
-	     ;; using "literal". This appeared on june 26, 2019
-	     ;; For older versions of Emacs, we fallback to concat
-	     (concat
-	      (rx bol
-		  (* (any " \t")) "#+" (? "tbl") "name:"
-		  (* (any " \t")))
-	      (regexp-quote name-or-id)
-	      (rx (* (any " \t"))
-		  eol))
-	     nil t))
-	  (setq buffer (current-buffer)
-		loc (match-beginning 0))
-	(let ((id-loc (org-id-find name-or-id 'marker)))
-	  (unless (and id-loc (markerp id-loc))
-	    (error "Can't find remote table \"%s\"" name-or-id))
-	  (setq buffer (marker-buffer id-loc)
-		loc (marker-position id-loc))
-	  (move-marker id-loc nil))))
-    (with-current-buffer buffer
+An horizontal line is translated as the special symbol `hline'.
+If NAME-OR-ID is already a table, just return it as-is."
+  (if (listp name-or-id)
+      name-or-id
+    (unless (stringp name-or-id)
+      (setq name-or-id (format "%s" name-or-id)))
+    (let (buffer loc)
       (save-excursion
-	(goto-char loc)
-	(forward-char 1)
-	(unless (and (re-search-forward "^\\(\\*+ \\)\\|[ \t]*|" nil t)
-		     (not (match-beginning 1)))
-	  (user-error "Cannot find a table at NAME or ID %s" name-or-id))
-	(orgtbl-join--table-to-lisp)))))
+        (goto-char (point-min))
+        (if (let ((case-fold-search t))
+	      (re-search-forward
+	       ;; This concat is automatically done by new versions of rx
+	       ;; using "literal". This appeared on june 26, 2019
+	       ;; For older versions of Emacs, we fallback to concat
+	       (concat
+	        (rx bol
+		    (* (any " \t")) "#+" (? "tbl") "name:"
+		    (* (any " \t")))
+	        (regexp-quote name-or-id)
+	        (rx (* (any " \t"))
+		    eol))
+	       nil t))
+	    (setq buffer (current-buffer)
+		  loc (match-beginning 0))
+	  (let ((id-loc (org-id-find name-or-id 'marker)))
+	    (unless (and id-loc (markerp id-loc))
+	      (error "Can't find remote table \"%s\"" name-or-id))
+	    (setq buffer (marker-buffer id-loc)
+		  loc (marker-position id-loc))
+	    (move-marker id-loc nil))))
+      (with-current-buffer buffer
+        (save-excursion
+	  (goto-char loc)
+	  (forward-char 1)
+	  (unless (and (re-search-forward "^\\(\\*+ \\)\\|[ \t]*|" nil t)
+		       (not (match-beginning 1)))
+	    (user-error "Cannot find a table at NAME or ID %s" name-or-id))
+	  (orgtbl-join--table-to-lisp))))))
 
 (defun orgtbl-join--split-string-with-quotes (string)
   "Like (split-string STRING), but with quote protection.
@@ -425,80 +435,54 @@ DEFAULT is a proposed column name."
      nil 'confirm
      (and (member default completions) default))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; In-place mode
-
-;;;###autoload
-(defun orgtbl-join (&optional ref-table ref-column full)
-  "Add material from a reference table to the current table.
-
-Optional REF-TABLE is the name of a reference table, in the
-current buffer, as given by a #+NAME: name-of-reference
-tag above the table.  If not given, it is prompted interactively.
-
-Optional REF-COLUMN is the name of a column in the reference
-table, to be compared with the column the point in on.  If not
-given, it is prompted interactively.
-
-FULL if given is any of \"mas\" \"ref\" \"mas+ref\" \"none\"
-which controls how to deal with rows that are on only one
-of the master or reference tables.
-
-Rows from the reference table are appended to rows of the current
-table.  For each row of the current table, matching rows from the
-reference table are searched and appended.  The matching is
-performed by testing for equality of cells in the current column,
-and a joining column in the reference table.
-
-If a row in the current table matches several rows in the
-reference table, then the current row is duplicated and each copy
-is appended with a different reference row.
-
-If no matching row is found in the reference table, then the
-current row is kept, with empty cells appended to it."
-  (interactive)
-  (org-table-check-inside-data-field)
-  (let ((col (org-table-current-column))
-	(tbl (orgtbl-join--table-to-lisp))
-	(pt (line-number-at-pos))
-	(cn (- (point) (line-beginning-position))))
-    (unless ref-table
-      (setq ref-table
-	    (completing-read
-	     "Reference table: "
-	     (orgtbl-join--list-local-tables))))
-    (setq ref-table (orgtbl-join--get-distant-table ref-table))
-    (unless ref-column
-      (setq ref-column
-	    (orgtbl-join--join-query-column
-	     "Reference column: "
-	     ref-table
-	     (if (memq 'hline tbl) (nth (1- col) (car tbl)) ""))))
-    (unless full
-      (setq full
-	    (completing-read
-	     "Which table should appear entirely? "
-	     '("mas" "ref" "mas+ref" "none")
-	     nil nil "mas")))
-    (let ((b (org-table-begin))
-	  (e (org-table-end)))
-      (save-excursion
-	(goto-char e)
-	(orgtbl-join--insert-elisp-table
-	 (orgtbl-join--create-table-joined
-	  tbl
-	  (format "$%s" col)
-	  ref-table
-	  ref-column
-	  full
-	  nil)))
-      (delete-region b e))
-    (goto-char (point-min))
-    (forward-line (1- pt))
-    (forward-char cn)))
+(defun orgtbl-join--query-tables (params)
+  "Interactively query tables and joining columns.
+PARAMS is a plist (possibly empty) where user answers accumulate.
+The updated PARAMS is returned."
+  (let ((localtables (orgtbl-join--list-local-tables))
+        (mastable (plist-get params :mas-table))
+        (mascol   (orgtbl-join--plist-get-remove params :mas-column))
+        (reftable)
+        (refcol)
+        (full))
+    (unless mastable
+      (setq mastable (completing-read "Master table: " localtables))
+      (setq params `(,@params ,:mas-table ,mastable)))
+    (setq mastable (orgtbl-join--get-distant-table mastable))
+    (cl-loop
+     until
+     (equal
+      (setq reftable
+            (completing-read
+	     "Reference table (type ENTER when finished): "
+	     localtables))
+      "")
+     do
+     (setq refcol
+	   (orgtbl-join--join-query-column
+	    "Reference joining column: "
+	    (orgtbl-join--get-distant-table reftable)
+	    mascol))
+     (setq mascol
+	   (orgtbl-join--join-query-column
+	    "Master joining column: "
+	    mastable
+	    mascol))
+     (setq full
+	   (completing-read
+	    "Which table should appear entirely? "
+	    '("mas" "ref" "mas+ref" "none")
+	    nil nil (or full "mas")))
+     (setq params
+           `(,@params
+             ,:ref-table ,reftable
+             ,:mas-column ,mascol
+             ,:ref-column ,refcol
+             ,:full ,full)))
+    params))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; PULL & PUSH engine
+;; Backend engine
 
 (defun orgtbl-join--join-append-mas-ref-row (masrow refrow refcol)
   "Concatenate master and reference rows, skiping the reference column.
@@ -515,7 +499,7 @@ appended in the result, because it is already present in MASROW."
 	     do (orgtbl-join--list-append result cell))
     (orgtbl-join--list-get result)))
 
-(defun orgtbl-join--create-table-joined (mastable mascol reftable refcol full cols)
+(defun orgtbl-join--create-table-joined (mastable mascol reftable refcol full)
   "Join a master table with a reference table.
 MASTABLE is the master table, as a list of lists of cells.
 MASCOL is the name of the joining column in the master table.
@@ -630,8 +614,6 @@ Returns MASTABLE enriched with material from REFTABLE."
 	 else do
 	 (orgtbl-join--list-append result 'hline)))
     (setq result (orgtbl-join--list-get result))
-    (if cols
-	(orgtbl-join--join-rearrange-columns result cols))
     result))
 
 (defun orgtbl-join--join-rearrange-columns (table cols)
@@ -655,6 +637,92 @@ TABLE so that it contains only COLS, in the same order."
 	for c in cols
 	collect (nth c row))))
   table)
+
+(defun orgtbl-join--join-all-ref-tables (mas-table params)
+  "Repeatedly join reference tables found in PARAMS to MAS-TABLE.
+Destructively modify PARAMS."
+  (let (ref-table ref-column mas-column full)
+    (while (setq ref-table (orgtbl-join--plist-get-remove params :ref-table))
+      (unless (setq
+               ref-column
+               (orgtbl-join--plist-get-remove params :ref-column))
+        (user-error "Missing :ref-column for :ref-table %s" ref-table))
+      (unless (setq
+               mas-column
+               (or
+                (orgtbl-join--plist-get-remove params :mas-column)
+                mas-column))
+        (user-error "Missing :mas-column for :ref-table %s" ref-table))
+      (setq
+       full
+       (or (orgtbl-join--plist-get-remove params :full)
+           full))
+      (setq
+       mas-table
+       (orgtbl-join--create-table-joined
+        mas-table
+        mas-column
+        (orgtbl-join--get-distant-table ref-table)
+        ref-column
+        full)))
+    (if (setq ref-column (plist-get params :ref-column))
+        (user-error "Missing :ref-table for :ref-column %s" ref-column))
+    (if (setq mas-column (plist-get params :mas-column))
+        (user-error "Missing :ref-table for :mas-column %s" mas-column))
+    (if (setq full (plist-get params :full))
+        (user-error "Missing :ref-table for :full %s" full)))
+  (let ((cols (plist-get params :cols)))
+    (if cols (orgtbl-join--join-rearrange-columns mas-table cols)))
+  (orgtbl-join--post-process mas-table (plist-get params :post)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; IN-PLACE mode
+
+;;;###autoload
+(defun orgtbl-join (&optional params)
+  "Add material from a reference table to the current table.
+
+Optional PARAMS gives reference tables information.
+If it is nil, then this information is queried interactively.
+
+Rows from the reference table are appended to rows of the current
+table.  For each row of the current table, matching rows from the
+reference table are searched and appended.  The matching is
+performed by testing for equality of cells in the current column,
+and a joining column in the reference table.
+
+If a row in the current table matches several rows in the
+reference table, then the current row is duplicated and each copy
+is appended with a different reference row.
+
+If no matching row is found in the reference table, then the
+current row is kept, with empty cells appended to it."
+  (interactive)
+  (org-table-check-inside-data-field)
+  (let ((col (org-table-current-column))
+	(tbl (orgtbl-join--table-to-lisp))
+	(pt (line-number-at-pos))
+	(cn (- (point) (line-beginning-position))) )
+    (unless params
+      (setq params
+            (list
+             :mas-column
+             (if (memq 'hline tbl)
+                 (nth (1- col) (car tbl))
+               (format "$%s" col))
+             :mas-table
+             tbl))
+      (setq params (orgtbl-join--query-tables params)))
+    (let ((b (org-table-begin))
+	  (e (org-table-end)))
+      (save-excursion
+	(goto-char e)
+	(orgtbl-join--insert-elisp-table
+         (orgtbl-join--join-all-ref-tables tbl params))
+        (delete-region b e)))
+    (goto-char (point-min))
+    (forward-line (1- pt))
+    (forward-char cn)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; PUSH mode
@@ -687,16 +755,7 @@ Note:
  The name `orgtbl-to-joined-table' follows the Org Mode standard
  with functions like `orgtbl-to-csv', `orgtbl-to-html'..."
   (interactive)
-  (let ((joined-table
-         (orgtbl-join--post-process
-	  (orgtbl-join--create-table-joined
-	   table
-	   (plist-get params :mas-column)
-	   (orgtbl-join--get-distant-table (plist-get params :ref-table))
-	   (plist-get params :ref-column)
-	   (plist-get params :full)
-	   (plist-get params :cols))
-          (plist-get params :post))))
+  (let ((joined-table (orgtbl-join--join-all-ref-tables table params)))
     (with-temp-buffer
       (orgtbl-join--insert-elisp-table joined-table)
       (buffer-substring-no-properties (point-min) (1- (point-max))))))
@@ -708,35 +767,8 @@ Note:
 (defun orgtbl-join-insert-dblock-join ()
   "Wizard to interactively insert a joined table as a dynamic block."
   (interactive)
-  (let* ((localtables (orgtbl-join--list-local-tables))
-	 (mastable
-	  (completing-read
-	   "Master table: "
-	   localtables))
-	 (mascol
-	  (orgtbl-join--join-query-column
-	   "Master joining column: "
-	   (orgtbl-join--get-distant-table mastable)
-	   ""))
-	 (reftable
-	  (completing-read
-	   "Reference table: "
-	   localtables))
-	 (refcol
-	  (orgtbl-join--join-query-column
-	   "Reference joining column: "
-	   (orgtbl-join--get-distant-table reftable)
-	   mascol))
-	 (full (completing-read
-		"Which table should appear entirely? "
-		'("mas" "ref" "mas+ref" "none")
-		nil nil "mas")))
-    (org-create-dblock
-     (list :name "join"
-	   :mas-table mastable :mas-column mascol
-	   :ref-table reftable :ref-column refcol
-	   :full full))
-    (org-update-dblock)))
+  (org-create-dblock (orgtbl-join--query-tables (list :name "join")))
+  (org-update-dblock))
 
 ;;;###autoload
 (defun org-dblock-write:join (params)
@@ -777,15 +809,9 @@ The
 		content)))
 	(insert (match-string 0 content)))
     (orgtbl-join--insert-elisp-table
-     (orgtbl-join--post-process
-      (orgtbl-join--create-table-joined
-       (orgtbl-join--get-distant-table (plist-get params :mas-table))
-       (plist-get params :mas-column)
-       (orgtbl-join--get-distant-table (plist-get params :ref-table))
-       (plist-get params :ref-column)
-       (plist-get params :full)
-       (plist-get params :cols))
-      (plist-get params :post)))
+     (orgtbl-join--join-all-ref-tables
+      (orgtbl-join--get-distant-table (plist-get params :mas-table))
+      params))
     (delete-char -1) ;; remove trailing \n which Org Mode will add again
     (when (and content
 	       (let ((case-fold-search t))
@@ -814,7 +840,7 @@ The
 This function can be called in your .emacs.  It will add the
 \\<org-tbl-menu> & \\[orgtbl-join] key binding for calling the
 `orgtbl-join' wizard,
-and a menu entry under Tbl > Column > Join with another table."
+and a menu entry under Tbl > Column > Join with other tables."
 
   (declare (obsolete "Look at
 https://github.com/tbanel/orgtbljoin/blob/master/README.org
@@ -831,14 +857,14 @@ or put this in your .emacs:
   :init
   (easy-menu-add-item
    org-tbl-menu '(\"Column\")
-   [\"Join with another table\" orgtbl-join (org-at-table-p)]))")
+   [\"Join with other tables\" orgtbl-join (org-at-table-p)]))")
 
   (eval-after-load 'org
     '(progn
        (org-defkey org-mode-map "\C-c\C-xj" 'orgtbl-join)
        (easy-menu-add-item
 	org-tbl-menu '("Column")
-	["Join with another table" orgtbl-join t]))))
+	["Join with other tables" orgtbl-join t]))))
 
 ;; Insert a dynamic bloc with the C-c C-x x dispatcher
 ;;;###autoload

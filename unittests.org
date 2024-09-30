@@ -807,3 +807,98 @@ If first data row is mistaken as a header, here is the result:
 | z |  7 |  7 |
 
 The correct result is a user error.
+
+* several reference tables in pull mode
+It is possible to join as many reference tables as wanted.
+
+a small Spanish dictionary
+#+name: spanish_colors
+| color  | español  |
+|--------+----------|
+| yellow | amarillo |
+| blue   | azul     |
+| white  | blanco   |
+| brown  | marrón   |
+| orange | naranja  |
+| black  | negro    |
+| red    | rojo     |
+| pink   | rosado   |
+| green  | verde    |
+| purple | violeta  |
+
+a 12 bits color description
+#+name: 12bits_colors
+| color  | 12bits |
+|--------+--------|
+| black  | #000   |
+| blue   | #00F   |
+| green  | #0F0   |
+| brown  | #880   |
+| grey   | #888   |
+| red    | #F00   |
+| purple | #F0F   |
+| orange | #F80   |
+| pink   | #F8F   |
+| yellow | #FF0   |
+| white  | #FFF   |
+
+a small Esperanto dictionary
+#+name: esperanto_colors
+| color  | esperanto |
+|--------+-----------|
+| white  | blanka    |
+| blue   | blua      |
+| brown  | bruna     |
+| yellow | flava     |
+| black  | nigra     |
+| orange | oranĝa    |
+| purple | purpura   |
+| pink   | rozkolora |
+| red    | ruĝa      |
+| green  | verda     |
+
+#+name: colors
+| name   |
+|--------|
+| white  |
+| red    |
+| green  |
+| yellow |
+| blue   |
+| pink   |
+
+#+BEGIN: join :mas-table "colors" :mas-column "name" :full "mas" :ref-table "esperanto_colors" :ref-column "color" :ref-table "spanish_colors" :ref-column "color" :ref-table "12bits_colors" :ref-column "color"
+| name   | esperanto | español  | 12bits |
+|--------+-----------+----------+--------|
+| white  | blanka    | blanco   | #FFF   |
+| red    | ruĝa      | rojo     | #F00   |
+| green  | verda     | verde    | #0F0   |
+| yellow | flava     | amarillo | #FF0   |
+| blue   | blua      | azul     | #00F   |
+| pink   | rozkolora | rosado   | #F8F   |
+#+END:
+
+* several reference tables in push mode
+
+#+orgtbl: send multi_color orgtbl-to-joined-table :mas-column name :ref-table "esperanto_colors" :ref-column "color" :ref-table "spanish_colors" :ref-column "color" :ref-table "12bits_colors" :ref-column "color"
+| name   |
+|--------|
+| yellow |
+| blue   |
+| black  |
+| orange |
+| purple |
+| brown  |
+| pink   |
+
+#+BEGIN RECEIVE ORGTBL multi_color
+| name   | esperanto | español  | 12bits |
+|--------+-----------+----------+--------|
+| yellow | flava     | amarillo | #FF0   |
+| blue   | blua      | azul     | #00F   |
+| black  | nigra     | negro    | #000   |
+| orange | oranĝa    | naranja  | #F80   |
+| purple | purpura   | violeta  | #F0F   |
+| brown  | bruna     | marrón   | #880   |
+| pink   | rozkolora | rosado   | #F8F   |
+#+END RECEIVE ORGTBL multi_color
