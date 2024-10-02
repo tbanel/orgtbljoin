@@ -531,7 +531,8 @@ Contributors
   double width Japanese characters (string-width vs. length)
 - Shankar Rao, =:post= post-processing
 - Piotr Panasiuk, =#+CAPTION:= and any tags survive
-- Luis Miguel Hernanz, multiple reference tables suggestion
+- Luis Miguel Hernanz, multiple reference tables suggestion, fix regex
+  bug
 
 * Changes
 - remove duplicate reference column
