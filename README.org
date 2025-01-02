@@ -552,7 +552,12 @@ Contributors
 - now there can be several reference tables in a join, instead of just one.
 
 * GPL 3 License
-Copyright (C) 2014-2024  Thierry Banel
+Copyright (C) 2014-2025  Thierry Banel
+
+orgtbl-join is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 orgtbl-join is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of

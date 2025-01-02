@@ -1,6 +1,6 @@
-;;; orgtbl-join.el --- Join columns from another Org Mode table -*- lexical-binding: t;-*-
+;;; orgtbl-join.el --- Join columns from other Org Mode tables -*- lexical-binding: t;-*-
 
-;; Copyright (C) 2014-2024  Thierry Banel
+;; Copyright (C) 2014-2025  Thierry Banel
 
 ;; Author: Thierry Banel tbanelwebmin at free dot fr
 ;; Contributors:
