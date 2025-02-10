@@ -1,0 +1,702 @@
+This is orgtbl-join.info, produced by makeinfo version 6.8 from
+orgtbl-join.texi.
+
+
+INFO-DIR-SECTION Emacs
+START-INFO-DIR-ENTRY
+* Orgtbl Join: (orgtbl-join).     Join columns from other Org Mode tables
+END-INFO-DIR-ENTRY
+
+
+File: orgtbl-join.info,  Node: Top,  Next: Example,  Up: (dir)
+
+Join Two Org Mode Tables
+************************
+
+One table (the master table) is grown by selectively appending columns
+of other tables (the reference tables).
+
+* Menu:
+
+* Example::
+* SQL equivalent::
+* In-place, Push, Pull: In-place Push Pull.
+* Duplicates::
+* Selecting the output columns::
+* How to handle missing rows?::
+* Malformed input tables::
+* Headers::
+* Key-bindings, menu: Key-bindings menu.
+* Wizard::
+* Post-joining spreadsheet formulas::
+* Post processing::
+* Chaining::
+* Multiple reference tables::
+* Installation::
+* Author, contributors: Author contributors.
+* Changes::
+* GPL 3 License::
+
+— The Detailed Node Listing —
+
+In-place, Push, Pull
+
+* In _in-place_ mode::
+* In _push_ mode::
+* In _pull_ mode::
+* As a rule of thumb::
+
+
+
+File: orgtbl-join.info,  Node: Example,  Next: SQL equivalent,  Prev: Top,  Up: Top
+
+1 Example
+*********
+
+Here is a list of products for a cooking recipe.
+
+     | type     | quty |
+     |----------+------|
+     | onion    |   70 |
+     | tomato   |  120 |
+     | eggplant |  300 |
+     | tofu     |  100 |
+
+   We want to complete it with nutritional facts: quantities of fiber,
+sugar, proteins, and carbohydrates.  For this purpose, we have a long
+reference table of standard products.  (This table has been freely
+borrowed from Nut-Nutrition, <http://nut.sourceforge.net/>, by Jim
+Jozwiak).
+
+     #+tblname: nut
+     | type     | Fiber | Sugar | Protein | Carb |
+     |----------+-------+-------+---------+------|
+     | eggplant |   2.5 |   3.2 |     0.8 |  8.6 |
+     | tomato   |   0.6 |   2.1 |     0.8 |  3.4 |
+     | onion    |   1.3 |   4.4 |     1.3 |  9.0 |
+     | egg      |     0 |  18.3 |    31.9 | 18.3 |
+     | rice     |   0.2 |     0 |     1.5 | 16.0 |
+     | bread    |   0.7 |   0.7 |     3.3 | 16.0 |
+     | orange   |   3.1 |  11.9 |     1.3 | 17.6 |
+     | banana   |   2.1 |   9.9 |     0.9 | 18.5 |
+     | tofu     |   0.7 |   0.5 |     6.6 |  1.4 |
+     | nut      |   2.6 |   1.3 |     4.9 |  7.2 |
+     | corn     |   4.7 |   1.8 |     2.8 | 21.3 |
+
+   Let us put the cursor on the ‘type’ column of the recipe table, and
+type ‘C-c C-x j’ or ‘M-x orgtbl-join’.
+
+   A few questions are asked.  Then the recipe gets new columns appended
+with the needed nutrition facts:
+
+     | type     | quty | Fiber | Sugar | Protein | Carb |
+     |----------+------+-------+-------+---------+------|
+     | onion    |   70 |   1.3 |   4.4 |     1.3 |  9.0 |
+     | tomato   |  120 |   0.6 |   2.1 |     0.8 |  3.4 |
+     | eggplant |  300 |   2.5 |   3.2 |     0.8 |  8.6 |
+     | tofu     |  100 |   0.7 |   0.5 |     6.6 |  1.4 |
+
+
+File: orgtbl-join.info,  Node: SQL equivalent,  Next: In-place Push Pull,  Prev: Example,  Up: Top
+
+2 SQL equivalent
+****************
+
+If you are familiar with SQL, you would get a similar result with the a
+_join_ (actually a _left outer join_ by default, but that can be
+configured with the ‘:full’ parameter).
+
+     select *
+     from recipe, nut
+     where recipe.type = nut.type;
+
+     select *
+     from recipe, nut
+     left outer join nut on recipe.type = nut.type;
+
+
+File: orgtbl-join.info,  Node: In-place Push Pull,  Next: Duplicates,  Prev: SQL equivalent,  Up: Top
+
+3 In-place, Push, Pull
+**********************
+
+Three modes are available: _in-place_, _push_, _pull_.
+
+* Menu:
+
+* In _in-place_ mode::
+* In _push_ mode::
+* In _pull_ mode::
+* As a rule of thumb::
+
+
+File: orgtbl-join.info,  Node: In _in-place_ mode,  Next: In _push_ mode,  Up: In-place Push Pull
+
+3.1 In _in-place_ mode
+======================
+
+The master table is changed (in-place) by appending columns from
+reference tables.
+
+   Invoke it with the ‘M-x orgtbl-join’ command.  The cursor must be
+positioned on the column used to perform the join.
+
+
+File: orgtbl-join.info,  Node: In _push_ mode,  Next: In _pull_ mode,  Prev: In _in-place_ mode,  Up: In-place Push Pull
+
+3.2 In _push_ mode
+==================
+
+The master table drives the creation of derived tables.  Specify the
+wanted result in ‘#+ORGTBL: SEND’ directives (as many as desired):
+
+     #+ORGTBL: SEND enriched orgtbl-to-joined-table :ref-table nut :mas-column type :ref-column type
+     | type     | quty |
+     |----------+------|
+     | onion    |   70 |
+     | tomato   |  120 |
+     | eggplant |  300 |
+     | tofu     |  100 |
+
+   The receiving blocks must be created somewhere else in the same file:
+
+     #+BEGIN RECEIVE ORGTBL enriched
+     #+END RECEIVE ORGTBL enriched
+
+   Typing ‘C-c C-c’ with the cursor on the first pipe of the master
+table refreshes all derived tables.
+
+
+File: orgtbl-join.info,  Node: In _pull_ mode,  Next: As a rule of thumb,  Prev: In _push_ mode,  Up: In-place Push Pull
+
+3.3 In _pull_ mode
+==================
+
+So-called "dynamic blocks" may also be used.  The resulting table knows
+how to build itself.  Example:
+
+   A master table is unaware that it will be enriched in a joined table:
+
+     #+TBLNAME: recipe
+     | type     | quty |
+     |----------+------|
+     | onion    |   70 |
+     | tomato   |  120 |
+     | eggplant |  300 |
+     | tofu     |  100 |
+
+   Create somewhere else a _dynamic block_ which carries the
+specification of the join:
+
+     #+BEGIN: join :mas-table recipe :mas-column type :ref-table nut :ref-column type
+     | type     | quty | Fiber | Sugar | Protein | Carb |
+     |----------+------+-------+-------+---------+------|
+     | onion    |   70 |   1.3 |   4.4 |     1.3 |  9.0 |
+     | tomato   |  120 |   0.6 |   2.1 |     0.8 |  3.4 |
+     | eggplant |  300 |   2.5 |   3.2 |     0.8 |  8.6 |
+     | tofu     |  100 |   0.7 |   0.5 |     6.6 |  1.4 |
+     #+END:
+
+   Typing ‘C-c C-c’ with the cursor on the ‘#+BEGIN:’ line refreshes the
+table.
+
+
+File: orgtbl-join.info,  Node: As a rule of thumb,  Prev: In _pull_ mode,  Up: In-place Push Pull
+
+3.4 As a rule of thumb
+======================
+
+For quick and once-only processing, use _in-place_ mode.
+
+   Use _pull_ or _push_ modes for reproducible work.  The _pull_ mode
+might be easier to use than the _push_, because there is a wizard bound
+to ‘C-c C-x x’ (see below).  Other than that, the two modes use the same
+underlying engine, so using one or the other is just a matter or
+convenience.
+
+
+File: orgtbl-join.info,  Node: Duplicates,  Next: Selecting the output columns,  Prev: In-place Push Pull,  Up: Top
+
+4 Duplicates
+************
+
+The reference table may contain several matching rows for the same value
+in the master table.  In this case, as many rows are created in the
+joined table.  Therefore, the resulting table may be longer than the
+master table.  Example, if the reference table contains three rows for
+"eggplants":
+
+     #+tblname: nut
+     | type     | Cooking | Fiber | Sugar | Protein | Carb |
+     |----------+---------+-------+-------+---------+------|
+     | ...      | ...     |   ... |   ... |     ... |  ... |
+     | eggplant | boiled  |   2.5 |   3.2 |     0.8 |  8.6 |
+     | eggplant | pickled |   3.4 |   6.5 |     1.2 | 13.3 |
+     | eggplant | raw     |   2.8 |   1.9 |     0.8 |  4.7 |
+     | ...      | ...     |   ... |   ... |     ... |  ... |
+
+   Then the resulting table will have those three rows appended:
+
+     | type     | quty | type     | Cooking | Fiber | Sugar | Protein | Carb |
+     |----------+------+----------+---------+-------+-------+---------+------|
+     | eggplant |  300 | eggplant | boiled  |   2.5 |   3.2 |     0.8 |  8.6 |
+     | eggplant |  300 | eggplant | pickled |   3.4 |   6.5 |     1.2 | 13.3 |
+     | eggplant |  300 | eggplant | raw     |   2.8 |   1.9 |     0.8 |  4.7 |
+
+   If you are familiar with SQL, this behavior is reminiscent of the
+_left outer join_.
+
+   Duplicate entries may happen both in the master and the reference
+tables.  The joined table will have all combinations.  So for instance
+if there are 2 ‘eggplant’ rows in the master table, and 3 ‘eggplant’
+rows in the reference table, then the joined table will get 6 ‘eggplant’
+rows.
+
+
+File: orgtbl-join.info,  Node: Selecting the output columns,  Next: How to handle missing rows?,  Prev: Duplicates,  Up: Top
+
+5 Selecting the output columns
+******************************
+
+By default, all columns from the master table and all the reference
+tables are output (except the joining column, which is output only
+once).
+
+   This can be customized with the ‘:cols’ parameter.  Give it the list
+of desired columns, in the order they should be output.
+
+   Columns may be specified by their name (if they have one) or by a
+dollar form.  Thus, ‘$3’ means the third column (numbering begins with
+1).
+
+   By default, the first example give all columns (except ‘type’ which
+appears only once):
+
+     #+BEGIN: join :mas-table recipe :mas-column type :ref-table nut :ref-column type
+     | type     | quty | Fiber | Sugar | Protein | Carb |
+     |----------+------+-------+-------+---------+------|
+     | onion    |   70 |   1.3 |   4.4 |     1.3 |  9.0 |
+     | tomato   |  120 |   0.6 |   2.1 |     0.8 |  3.4 |
+     | eggplant |  300 |   2.5 |   3.2 |     0.8 |  8.6 |
+     | tofu     |  100 |   0.7 |   0.5 |     6.6 |  1.4 |
+     #+END:
+
+   If we want only ‘quty’ and ‘Protein’, we specify it like that:
+
+     #+BEGIN: join :cols (quty Protein) :mas-table recipe :mas-column type :ref-table nut :ref-column type
+     | quty | Protein |
+     |------+---------|
+     |   70 |     1.3 |
+     |  120 |     0.8 |
+     |  300 |     0.8 |
+     |  100 |     6.6 |
+     #+END:
+
+   Or like that:
+
+     #+BEGIN: join :cols "quty Protein" :mas-table recipe :mas-column type :ref-table nut :ref-column type
+     | quty | Protein |
+     |------+---------|
+     |   70 |     1.3 |
+     |  120 |     0.8 |
+     |  300 |     0.8 |
+     |  100 |     6.6 |
+     #+END:
+
+
+File: orgtbl-join.info,  Node: How to handle missing rows?,  Next: Malformed input tables,  Prev: Selecting the output columns,  Up: Top
+
+6 How to handle missing rows?
+*****************************
+
+It may happen that no row in the reference table matches a value in the
+master table.  By default, in this case, the master row is kept, with
+empty cells added to it.  Information from the master table is not lost.
+If, for example, a line in the recipe refers to an unknown "amaranth"
+product (a cereal known by the ancient Incas), then the resulting table
+will still contain the ‘amaranth’ row, with empty nutritional facts.
+
+     | type     | quty | type     | Fiber | Sugar | Protein | Carb |
+     |----------+------+----------+-------+-------+---------+------|
+     | onion    |   70 | onion    |   1.3 |   4.4 |     1.3 |  9.0 |
+     | tomato   |  120 | tomato   |   0.6 |   2.1 |     0.8 |  3.4 |
+     | eggplant |  300 | eggplant |   2.5 |   3.2 |     0.8 |  8.6 |
+     | tofu     |  100 | tofu     |   0.7 |   0.5 |     6.6 |  1.4 |
+     | amaranth |  120 |          |       |       |         |      |
+
+   This behavior is controlled by the ‘:full’ parameter:
+   • ‘:full mas’ the joined result contains the full master table (the
+     default)
+   • ‘:full ref’ the joined result contains the full reference tables
+   • ‘:full mas+ref’ the joined result contains all rows from both mater
+     and all reference tables
+   • ‘:full none’ or ‘:full nil’ the joined result contains only rows
+     that appear in both tables
+
+   The use cases may be as follow:
+
+   • ‘:full mas’ is useful when the reference table is large, as a
+     dictionary or a nutritional facts table.  We just pick the needed
+     rows from the reference.
+
+   • ‘:full mas+ref’ is useful when both tables are similar.  For
+     instance, one table has been grown by a team, and the other
+     independently by another team.  The joined table will contain
+     additional rows from both teams.
+
+   • ‘:full none’ is useful to create the intersection of tables.  For
+     instance we have a list of items in the main warehouse, and another
+     list of damaged items.  We are interested only in damaged items in
+     the main warehouse.
+
+
+File: orgtbl-join.info,  Node: Malformed input tables,  Next: Headers,  Prev: How to handle missing rows?,  Up: Top
+
+7 Malformed input tables
+************************
+
+Sometimes an input table may be unaligned or malformed, with incomplete
+rows, like those ones:
+
+     | type     | Fiber | Sugar |      | Carb |
+     |----------+-------+-------+------+------|
+     | eggplant |   2.5 |   3.2 |  0.8 |  8.6 |
+     | tomato   |   0.6 |   2.1 |  0.8 |  3.4 |
+     | onion    |   1.3 |   4.4 |  1.3 |  9.0 |
+         | egg      |     0 |  18.3 | 31.9 | 18.3 |
+     | rice     |   0.2 |     0 |  1.5 | 16.0 |
+     | tofu     |  0.7
+     | nut      |   2.6 |   1.3 |  4.9 |  7.2 |
+
+     | type     | quty |
+     |----------+------|
+     | onion    |   70 |
+     | tomato   |
+     | eggplant |  300 |
+       | tofu     |  100 |
+
+   Missing cells are handled as though they were empty.
+
+
+File: orgtbl-join.info,  Node: Headers,  Next: Key-bindings menu,  Prev: Malformed input tables,  Up: Top
+
+8 Headers
+*********
+
+The master and the reference tables may or may not have a header.  When
+there is a header, it may extend over several lines.  A header ends with
+an horizontal line.
+
+   The orgtbl-join system tries to preserve as much of the master table
+as possible.  Therefore, if the master table has a header, the joined
+table will have it verbatim, over as many lines as needed.
+
+   The reference tables headers (if any), will fill-in the header (if
+any) of the resulting table.  But if there is no room in the resulting
+table header, the reference tables headers lines will be ignored, partly
+of fully.
+
+   Header are useful to refer to columns.  If there is no header, then
+columns must be referred with ‘$’ names: ‘$1’ is the name of the first
+column, ‘$2’ is the name of the second column, and so on.  This is
+pretty much the same as in the Org Mode spreadsheet.
+
+
+File: orgtbl-join.info,  Node: Key-bindings menu,  Next: Wizard,  Prev: Headers,  Up: Top
+
+9 Key-bindings, menu
+********************
+
+You may install key-bindings and menu entries by adding the following
+line to your ‘.emacs’ file:
+     (orgtbl-join-setup-keybindings)
+
+   This will give the following bindings:
+   • ‘C-c C-x j’ bound to ‘orgtbl-join’
+   • menu ‘Tbl > Column > Join with other tables’ bound to ‘orgtbl-join’
+
+
+File: orgtbl-join.info,  Node: Wizard,  Next: Post-joining spreadsheet formulas,  Prev: Key-bindings menu,  Up: Top
+
+10 Wizard
+*********
+
+The _in-place mode_ is run through a small wizard which asks questions,
+with completion available.
+   • Invoke it with: ‘M-x orgtbl-join’
+   • or ‘C-c C-x j’
+   • or menu entry ‘Tbl > Column > Join with another table’
+
+   A wizard is available for the _pull_ mode.
+   • It is invoked with either: ‘M-x org-insert-dblock:join’
+   • or ‘C-c C-x x’ .
+
+   For all questions, completion is available.  In the later case, you
+should answer ‘join’ when asked for the kind of block.
+
+   Note: there many kinds of dynamic blocks can be inserted besides
+‘join’.
+
+   As there might be as many reference tables as wanted, the wizards
+continue asking for reference tables.  When done, just give an empty
+answer when the wizards asked for the name of a reference table.
+
+
+File: orgtbl-join.info,  Node: Post-joining spreadsheet formulas,  Next: Post processing,  Prev: Wizard,  Up: Top
+
+11 Post-joining spreadsheet formulas
+************************************
+
+Additional columns can be specified for the resulting table.  With the
+previous example, we added a 7th column multiplying columns 2 and 3.
+This results in a line beginning with ‘#+TBLFM:’ below the table, as
+usual in Org spreadsheet.  This line will survive re-computations.
+
+   Moreover, we added a spreadsheet formula with a ‘:formula’ parameter.
+This will fill-in the 7th column header.  It is translated into a usual
+‘#+TBLFM:’ spreadsheet line.
+
+     #+BEGIN: join :mas-table recipe :mas-column type :ref-table nut :ref-column type :formula "@1$7=totfiber"
+     #+name: richer
+     | type     | quty | Fiber | Sugar | Protein | Carb | totfiber |
+     |----------+------+-------+-------+---------+------+----------|
+     | onion    |   70 |   1.3 |   4.4 |     1.3 |  9.0 |      91. |
+     | tomato   |  120 |   0.6 |   2.1 |     0.8 |  3.4 |      72. |
+     | eggplant |  300 |   2.5 |   3.2 |     0.8 |  8.6 |     750. |
+     | tofu     |  100 |   0.7 |   0.5 |     6.6 |  1.4 |      70. |
+     #+TBLFM: $7=$2*$3::@1$7=totfiber
+     #+END:
+
+
+File: orgtbl-join.info,  Node: Post processing,  Next: Chaining,  Prev: Post-joining spreadsheet formulas,  Up: Top
+
+12 Post processing
+******************
+
+The joined table can be post-processed with the ‘:post’ parameter.  It
+accepts a Lisp ‘lambda’, a Lisp function, a Lisp expression, or a Babel
+block.
+
+   The processing receives the joined table as parameter in the form of
+a Lisp expression.  It can process it in any way it wants, provided it
+returns a valid Lisp table.
+
+   A Lisp table is a list of rows.  Each row is either a list of cells,
+or the special symbol ‘hline’.
+
+   In this example, a ‘lambda’ expression adds a ‘hline’ and a row for
+_ginger_.
+
+     #+BEGIN: join ... :post (lambda (table) (append table '(hline (ginger na na na na))))
+     | product   |   quty | Carb | Fiber | Sugar | Protein |
+     |-----------+--------+------+-------+-------+---------|
+     | onion     |     70 |  9.0 |   1.3 |   4.4 |     1.3 |
+     | unknown   |    999 |
+     | tomatoe   |    120 |  3.4 |   0.6 |   2.1 |     0.8 |
+     |-----------+--------+------+-------+-------+---------|
+     | ginger    |     33 |   na |    na |    na |      na |
+     #+END:
+
+   The ‘lambda’ can be moved to a ‘defun’.  The function is then passed
+to the ‘:post’ parameter:
+
+     #+begin_src elisp
+     (defun my-function (table)
+       (append table
+               '(hline (ginger na na na na))))
+     #+end_src
+
+     ... :post my-function
+
+   The ‘:post’ parameter can also refer to a Babel Block.  Example:
+
+     #+BEGIN: join ... :post "my-babel-block(tbl=*this*)"
+     ...
+     #+END:
+
+     #+name: my-babel-block
+     #+begin_src elisp :var tbl=""
+     (append tbl
+             '(hline (ginger na na na na)))
+     #+end_src
+
+
+File: orgtbl-join.info,  Node: Chaining,  Next: Multiple reference tables,  Prev: Post processing,  Up: Top
+
+13 Chaining
+***********
+
+In the above example we gave a name to the resulting joined table:
+‘#+name: richer’.  Doing so the joined table may become an input for a
+further computation, for example in a babel block.
+
+   The name will survive re-computations.  This happens only in _pull
+mode_.
+
+   Note that the ‘#+name: richer’ line could appear above the ‘#+BEGIN:’
+line.  But sometimes this is not taken into account by further babels
+blocks.
+
+
+File: orgtbl-join.info,  Node: Multiple reference tables,  Next: Installation,  Prev: Chaining,  Up: Top
+
+14 Multiple reference tables
+****************************
+
+orgtbl-join used to handle just one reference table.  Now, as many as
+wanted are handled.
+
+   To specify the reference tables, just use several times the
+‘:ref-table’ and ‘:ref-column’ parameters.  They must match: for
+instance, the third ‘:ref-table’ must match the third ‘:ref-column’.
+
+   For now, the ‘:full’ and ‘:mas-column’ parameters should be
+mentionned just once.  This could change in the future with as many such
+parameters as reference tables.
+
+   One side effect of going multiple, is that zero reference table is
+now accepted.  In this case, the result of the join is just the master
+table.  But it can be change in several ways:
+
+   • Selection and re-ordering of columns through the ‘:cols’ parameter.
+   • Additional computed columns through the ‘:formula’ parameter and
+     survival of ‘#+TBLFM:’ lines.
+   • Lisp and Babel post-processing through the ‘:post’ parameter.
+
+
+File: orgtbl-join.info,  Node: Installation,  Next: Author contributors,  Prev: Multiple reference tables,  Up: Top
+
+15 Installation
+***************
+
+Emacs package on Melpa: add the following lines to your ‘.emacs’ file,
+and reload it.
+
+     (add-to-list 'package-archives '("melpa" . "http://melpa.org/packages/") t)
+     (package-initialize)
+
+   You may also customize this variable:
+     M-x customize-variable package-archives
+
+   Then browse the list of available packages and install ‘orgtbl-join’
+     M-x package-list-packages
+
+   Alternatively, you can download the lisp files, and load them:
+
+     (load-file "orgtbl-join.el")
+
+   You may want to add an entry in the ‘Table’ menu, ‘Column’ sub-menu.
+You may also want to call ‘orgtbl-join’ with ‘C-c j’.  One way to do so
+is to use ‘use-package’ in your ‘.emacs’ init file:
+
+     (use-package orgtbl-join
+       :after (org)
+       :bind ("C-c j" . orgtbl-join)
+       :init
+       (easy-menu-add-item
+        org-tbl-menu '("Column")
+        ["Join with another table" orgtbl-join (org-at-table-p)]))
+
+   Note: there used to be a ‘orgtbl-join-setup-keybindings’ function to
+do just what the above ‘use-package’ does.  In this way, key binding and
+menu binding are no longer hard-coded in the package.
+
+
+File: orgtbl-join.info,  Node: Author contributors,  Next: Changes,  Prev: Installation,  Up: Top
+
+16 Author, contributors
+***********************
+
+Comments, enhancements, etc.  welcome.
+
+   Author
+   • Thierry Banel, tbanelwebmin at free dot fr
+
+   Contributors
+   • Dirk Schmitt, surviving ‘#.NAME:’ line
+   • wuqui, ‘:cols’ parameter
+   • Misohena (<https://misohena.jp/blog/author/misohena>), double width
+     Japanese characters (string-width vs.  length)
+   • Shankar Rao, ‘:post’ post-processing
+   • Piotr Panasiuk, ‘#+CAPTION:’ and any tags survive
+   • Luis Miguel Hernanz, multiple reference tables suggestion, fix
+     regex bug
+
+
+File: orgtbl-join.info,  Node: Changes,  Next: GPL 3 License,  Prev: Author contributors,  Up: Top
+
+17 Changes
+**********
+
+   • remove duplicate reference column
+   • fix keybindings
+   • ‘#.NAME:’ inside ‘#.BEGIN:’ survives
+   • missing input cells handled as empty ones
+   • back-port Org Mode ‘9.4’ speed up
+   • increase performance when inserting result into the buffer
+   • aligned output in push mode
+   • 2 as column name no longer supported, write $2
+   • add ‘:full’ parameter
+   • remove ‘C-c C-x i’, use standard ‘C-c C-x x’ instead
+   • added the ‘:cols’ parameter
+   • ‘:post’ post-processing
+   • 3x speedup ‘org-table-to-lisp’ and avoid Emacs 27 to 30
+     incompatibilities
+   • ‘#+CAPTION:’ and any other tag survive inside ‘#+BEGIN:’
+   • now there can be several reference tables in a join, instead of
+     just one.
+
+
+File: orgtbl-join.info,  Node: GPL 3 License,  Prev: Changes,  Up: Top
+
+18 GPL 3 License
+****************
+
+Copyright (C) 2014-2025 Thierry Banel
+
+   orgtbl-join is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by the
+Free Software Foundation, either version 3 of the License, or (at your
+option) any later version.
+
+   orgtbl-join is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+
+Tag Table:
+Node: Top83
+Node: Example904
+Node: SQL equivalent2762
+Node: In-place Push Pull3242
+Node: In _in-place_ mode3544
+Node: In _push_ mode3901
+Node: In _pull_ mode4713
+Node: As a rule of thumb5853
+Node: Duplicates6357
+Node: Selecting the output columns8098
+Node: How to handle missing rows?9878
+Node: Malformed input tables12146
+Node: Headers13027
+Node: Key-bindings menu14025
+Node: Wizard14477
+Node: Post-joining spreadsheet formulas15412
+Node: Post processing16664
+Node: Chaining18420
+Node: Multiple reference tables18988
+Node: Installation20093
+Node: Author contributors21398
+Node: Changes22073
+Node: GPL 3 License22987
+
+End Tag Table
+
+
+Local Variables:
+coding: utf-8
+End:

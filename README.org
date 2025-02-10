@@ -3,7 +3,7 @@
 #+OPTIONS: ^:{} author:Thierry Banel toc:nil
 
 One table (the master table) is grown by selectively appending columns of
-another table (the reference table).
+other tables (the reference tables).
 
 * Example
 
