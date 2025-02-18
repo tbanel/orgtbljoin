@@ -10,8 +10,8 @@ END-INFO-DIR-ENTRY
 
 File: orgtbl-join.info,  Node: Top,  Next: Example,  Up: (dir)
 
-Join Two Org Mode Tables
-************************
+Join several Org Mode Tables
+****************************
 
 One table (the master table) is grown by selectively appending columns
 of other tables (the reference tables).
@@ -645,6 +645,8 @@ File: orgtbl-join.info,  Node: Changes,  Next: GPL 3 License,  Prev: Author cont
    • ‘#+CAPTION:’ and any other tag survive inside ‘#+BEGIN:’
    • now there can be several reference tables in a join, instead of
      just one.
+   • Documentation is now integrated right into Emacs in the ‘info’
+     format.  Type ‘M-: (info "orgtbl-join")’
 
 
 File: orgtbl-join.info,  Node: GPL 3 License,  Prev: Changes,  Up: Top
@@ -671,28 +673,28 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Tag Table:
 Node: Top83
-Node: Example904
-Node: SQL equivalent2762
-Node: In-place Push Pull3242
-Node: In _in-place_ mode3544
-Node: In _push_ mode3901
-Node: In _pull_ mode4713
-Node: As a rule of thumb5853
-Node: Duplicates6357
-Node: Selecting the output columns8098
-Node: How to handle missing rows?9878
-Node: Malformed input tables12146
-Node: Headers13027
-Node: Key-bindings menu14025
-Node: Wizard14477
-Node: Post-joining spreadsheet formulas15412
-Node: Post processing16664
-Node: Chaining18420
-Node: Multiple reference tables18988
-Node: Installation20093
-Node: Author contributors21398
-Node: Changes22073
-Node: GPL 3 License22987
+Node: Example912
+Node: SQL equivalent2770
+Node: In-place Push Pull3250
+Node: In _in-place_ mode3552
+Node: In _push_ mode3909
+Node: In _pull_ mode4721
+Node: As a rule of thumb5861
+Node: Duplicates6365
+Node: Selecting the output columns8106
+Node: How to handle missing rows?9886
+Node: Malformed input tables12154
+Node: Headers13035
+Node: Key-bindings menu14033
+Node: Wizard14485
+Node: Post-joining spreadsheet formulas15420
+Node: Post processing16672
+Node: Chaining18428
+Node: Multiple reference tables18996
+Node: Installation20101
+Node: Author contributors21406
+Node: Changes22081
+Node: GPL 3 License23119
 
 End Tag Table
 

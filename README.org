@@ -1,5 +1,5 @@
 # -*- mode: org; -*-
-#+TITLE: Join Two Org Mode Tables
+#+TITLE: Join several Org Mode Tables
 #+OPTIONS: ^:{} author:Thierry Banel toc:nil
 
 One table (the master table) is grown by selectively appending columns of
@@ -550,6 +550,8 @@ Contributors
 - 3x speedup =org-table-to-lisp= and avoid Emacs 27 to 30 incompatibilities
 - =#+CAPTION:= and any other tag survive inside =#+BEGIN:=
 - now there can be several reference tables in a join, instead of just one.
+- Documentation is now integrated right into Emacs in the =info= format.
+  Type =M-: (info "orgtbl-join")=
 
 * GPL 3 License
 Copyright (C) 2014-2025  Thierry Banel
