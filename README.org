@@ -5,7 +5,37 @@
 One table (the master table) is grown by selectively appending columns of
 other tables (the reference tables).
 
+* Table of Contents
+:PROPERTIES:
+:TOC:      :include siblings :depth 1 :force () :ignore (this) :local (nothing)
+:CUSTOM_ID: table-of-contents
+:END:
+
+:CONTENTS:
+- [[#example][Example]]
+- [[#sql-equivalent][SQL equivalent]]
+- [[#in-place-push-pull][In-place, Push, Pull]]
+- [[#duplicates][Duplicates]]
+- [[#selecting-the-output-columns][Selecting the output columns]]
+- [[#how-to-handle-missing-rows][How to handle missing rows?]]
+- [[#malformed-input-tables][Malformed input tables]]
+- [[#headers][Headers]]
+- [[#key-bindings-menu][Key-bindings, menu]]
+- [[#wizard][Wizard]]
+- [[#post-joining-spreadsheet-formulas][Post-joining spreadsheet formulas]]
+- [[#post-processing][Post processing]]
+- [[#chaining][Chaining]]
+- [[#multiple-reference-tables][Multiple reference tables]]
+- [[#installation][Installation]]
+- [[#author-contributors][Author, contributors]]
+- [[#changes][Changes]]
+- [[#gpl-3-license][GPL 3 License]]
+:END:
+
 * Example
+:PROPERTIES:
+:CUSTOM_ID: example
+:END:
 
 Here is a list of products for a cooking recipe.
 
@@ -58,6 +88,9 @@ the needed nutrition facts:
 #+END_EXAMPLE
 
 * SQL equivalent
+:PROPERTIES:
+:CUSTOM_ID: sql-equivalent
+:END:
 
 If you are familiar with SQL, you would get a similar result with the
 a /join/ (actually a /left outer join/ by default, but that can be
@@ -76,6 +109,9 @@ configured with the =:full= parameter).
 #+end_src
 
 * In-place, Push, Pull
+:PROPERTIES:
+:CUSTOM_ID: in-place-push-pull
+:END:
 
 Three modes are available: /in-place/, /push/, /pull/.
 
@@ -156,6 +192,9 @@ easier to use than the /push/, because there is a wizard bound to =C-c C-x x=
 so using one or the other is just a matter or convenience.
 
 * Duplicates
+:PROPERTIES:
+:CUSTOM_ID: duplicates
+:END:
 
 The reference table may contain several matching rows for the same
 value in the master table.  In this case, as many rows are created in
@@ -194,6 +233,9 @@ in the reference table, then the joined table will get 6 =eggplant=
 rows.
 
 * Selecting the output columns
+:PROPERTIES:
+:CUSTOM_ID: selecting-the-output-columns
+:END:
 
 By default, all columns from the master table and all the reference
 tables are output (except the joining column, which is output only
@@ -247,6 +289,9 @@ Or like that:
 #+END_EXAMPLE
 
 * How to handle missing rows?
+:PROPERTIES:
+:CUSTOM_ID: how-to-handle-missing-rows
+:END:
 
 It may happen that no row in the reference table matches a value in
 the master table.  By default, in this case, the master row is kept,
@@ -292,6 +337,9 @@ The use cases may be as follow:
   the main warehouse.
 
 * Malformed input tables
+:PROPERTIES:
+:CUSTOM_ID: malformed-input-tables
+:END:
 
 Sometimes an input table may be unaligned or malformed, with
 incomplete rows, like those ones:
@@ -318,6 +366,9 @@ incomplete rows, like those ones:
 Missing cells are handled as though they were empty.
 
 * Headers
+:PROPERTIES:
+:CUSTOM_ID: headers
+:END:
 
 The master and the reference tables may or may not have a header.  When
 there is a header, it may extend over several lines.  A header ends
@@ -338,6 +389,9 @@ column, =$2= is the name of the second column, and so on. This is
 pretty much the same as in the Org Mode spreadsheet.
 
 * Key-bindings, menu
+:PROPERTIES:
+:CUSTOM_ID: key-bindings-menu
+:END:
 
 You may install key-bindings and menu entries by adding the
 following line to your =.emacs= file:
@@ -348,6 +402,9 @@ This will give the following bindings:
 - menu =Tbl > Column > Join with other tables= bound to =orgtbl-join=
 
 * Wizard
+:PROPERTIES:
+:CUSTOM_ID: wizard
+:END:
 
 The /in-place mode/ is run through a small wizard which asks questions, with
 completion available.
@@ -369,6 +426,9 @@ continue asking for reference tables. When done, just give an empty
 answer when the wizards asked for the name of a reference table.
 
 * Post-joining spreadsheet formulas
+:PROPERTIES:
+:CUSTOM_ID: post-joining-spreadsheet-formulas
+:END:
 
 Additional columns can be specified for the resulting table.  With the
 previous example, we added a 7th column multiplying columns 2 and 3.
@@ -393,6 +453,9 @@ into a usual =#+TBLFM:= spreadsheet line.
 #+END_EXAMPLE
 
 * Post processing
+:PROPERTIES:
+:CUSTOM_ID: post-processing
+:END:
 
 The joined table can be post-processed with the =:post= parameter. It
 accepts a Lisp =lambda=, a Lisp function, a Lisp expression, or a Babel
@@ -442,6 +505,9 @@ The =:post= parameter can also refer to a Babel Block. Example:
 : #+end_src
 
 * Chaining
+:PROPERTIES:
+:CUSTOM_ID: chaining
+:END:
 
 In the above example we gave a name to the resulting joined table:
 =#+name: richer=. Doing so the joined table may become an input for a
@@ -454,6 +520,9 @@ line.  But sometimes this is not taken into account by further babels
 blocks.
 
 * Multiple reference tables
+:PROPERTIES:
+:CUSTOM_ID: multiple-reference-tables
+:END:
 orgtbl-join used to handle just one reference table. Now, as many as
 wanted are handled.
 
@@ -475,6 +544,9 @@ table. But it can be change in several ways:
 - Lisp and Babel post-processing through the =:post= parameter.
 
 * Installation
+:PROPERTIES:
+:CUSTOM_ID: installation
+:END:
 
 Emacs package on Melpa: add the following lines to your =.emacs= file, and reload it.
 
@@ -518,6 +590,9 @@ just what the above ~use-package~ does. In this way, key binding and
 menu binding are no longer hard-coded in the package.
 
 * Author, contributors
+:PROPERTIES:
+:CUSTOM_ID: author-contributors
+:END:
 
 Comments, enhancements, etc. welcome.
 
@@ -535,6 +610,9 @@ Contributors
   bug
 
 * Changes
+:PROPERTIES:
+:CUSTOM_ID: changes
+:END:
 - remove duplicate reference column
 - fix keybindings
 - =#.NAME:= inside =#.BEGIN:= survives
@@ -552,8 +630,12 @@ Contributors
 - now there can be several reference tables in a join, instead of just one.
 - Documentation is now integrated right into Emacs in the =info= format.
   Type =M-: (info "orgtbl-join")=
+- TOC in README.org (thanks org-make-toc)
 
 * GPL 3 License
+:PROPERTIES:
+:CUSTOM_ID: gpl-3-license
+:END:
 Copyright (C) 2014-2025  Thierry Banel
 
 orgtbl-join is free software: you can redistribute it and/or modify
