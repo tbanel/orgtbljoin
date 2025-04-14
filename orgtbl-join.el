@@ -296,8 +296,42 @@ again and again the same string."
 	  (aset spaces-cache n (make-string n ? )))
     (make-string n ? )))
 
-(defun orgtbl-join--insert-elisp-table (table)
-  "Insert TABLE in current buffer at point.
+;; Time optimization: surprisingly,
+;; (insert (concat a b c)) is faster than
+;; (insert a b c)
+;; Therefore, we build a the Org Mode representation of a table
+;; as list of strings which get concatenated into a huge string.
+;; This is faster and less garbage-collector intensive than
+;; inserting bits one at a time in a buffer.
+;;
+;; benches:
+;; insert a large 3822 rows × 16 columns table
+;; - one row at a time or as a whole
+;; - with or without undo active
+;; repeat 10 times
+;;
+;; with undo, one row at a time
+;;  (3.587732240 40 2.437140552)
+;;  (3.474445440 39 2.341087725)
+;;
+;; without undo, one row at a time
+;;  (3.127574093 33 2.001691096)
+;;  (3.238456106 33 2.089536034)
+;;
+;; with undo, single huge string
+;;  (3.030763545 30 1.842303196)
+;;  (3.012367879 30 1.841319998)
+;;
+;; without undo, single huge string
+;;  (2.499138596 21 1.419285666)
+;;  (2.403039955 21 1.338347655)
+;;       ▲       ▲      ▲
+;;       │       │      ╰──╴CPU time for GC
+;;       │       ╰─────────╴number of GC
+;;       ╰─────────────────╴overall CPU time
+
+(defun orgtbl-join--elisp-table-to-string (table)
+  "Convert TABLE to a string formatted as an Org Mode table.
 TABLE is a list of lists of cells.  The list may contain the
 special symbol `hline' to mean an horizontal line."
   (let* ((nbcols (cl-loop
@@ -334,42 +368,54 @@ special symbol `hline' to mean an horizontal line."
 	     do
 	     (setcar nu (< (car nu) (* org-table-number-fraction ne))))
 
-    ;; inactivating jit-lock-after-change boosts performance a lot
-    (cl-letf (((symbol-function 'jit-lock-after-change) (lambda (_a _b _c)) ))
-      ;; insert well padded and aligned cells at current buffer position
+    ;; creage well padded and aligned cells
+    (let ((bits (orgtbl-join--list-create)))
       (cl-loop for row in table
 	       do
-	       ;; time optimization: surprisingly,
-	       ;; (insert (concat a b c)) is faster than
-	       ;; (insert a b c)
-	       (insert
-		(mapconcat
-		 #'identity
-		 (nconc
-		  (if (listp row)
-		      (cl-loop for cell in row
-			       for mx in maxwidths
-			       for nu in numbers
-			       for pad = (- mx (string-width cell))
-			       collect "| "
-			       ;; no alignment
-			       if (<= pad 0)
-			       collect cell
-			       ;; left alignment
-			       else if nu
-			       collect cell and
-			       collect (orgtbl-join--insert-make-spaces pad spaces-cache)
-			       ;; right alignment
-			       else
-			       collect (orgtbl-join--insert-make-spaces pad spaces-cache) and
-			       collect cell
-			       collect " ")
-		    (cl-loop for bar = "|" then "+"
-			     for mx in maxwidths
-			     collect bar
-			     collect (make-string (+ mx 2) ?-)))
-		  (list "|\n"))
-		 ""))))))
+	       (if (listp row)
+		   (cl-loop for cell in row
+			    for mx in maxwidths
+			    for nu in numbers
+			    for pad = (- mx (string-width cell))
+                            do
+			    (orgtbl-join--list-append bits "| ")
+			    (cond
+			     ;; no alignment
+                             ((<= pad 0)
+			      (orgtbl-join--list-append bits cell))
+			     ;; left alignment
+			     (nu
+			      (orgtbl-join--list-append bits cell)
+                              (orgtbl-join--list-append
+                               bits
+                               (orgtbl-join--insert-make-spaces pad spaces-cache)))
+			     ;; right alignment
+                             (t
+			      (orgtbl-join--list-append
+                               bits
+                               (orgtbl-join--insert-make-spaces pad spaces-cache))
+			      (orgtbl-join--list-append bits cell)))
+			    (orgtbl-join--list-append bits " "))
+		 (cl-loop for bar = "|" then "+"
+			  for mx in maxwidths
+                          do
+			  (orgtbl-join--list-append bits bar)
+			  (orgtbl-join--list-append bits (make-string (+ mx 2) ?-))))
+	       (orgtbl-join--list-append bits "|\n"))
+      ;; remove the last \n because Org Mode re-adds it
+      (setcar (car bits) "|")
+      (mapconcat
+       #'identity
+       (orgtbl-join--list-get bits)
+       ""))))
+
+(defun orgtbl-join--insert-elisp-table (table)
+  "Insert TABLE in current buffer at point.
+TABLE is a list of lists of cells.  The list may contain the
+special symbol `hline' to mean an horizontal line."
+  ;; inactivating jit-lock-after-change boosts performance a lot
+  (cl-letf (((symbol-function 'jit-lock-after-change) (lambda (_a _b _c)) ))
+    (insert (orgtbl-join--elisp-table-to-string table))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; The Org Table Join package really begins here
@@ -755,10 +801,8 @@ Note:
  The name `orgtbl-to-joined-table' follows the Org Mode standard
  with functions like `orgtbl-to-csv', `orgtbl-to-html'..."
   (interactive)
-  (let ((joined-table (orgtbl-join--join-all-ref-tables table params)))
-    (with-temp-buffer
-      (orgtbl-join--insert-elisp-table joined-table)
-      (buffer-substring-no-properties (point-min) (1- (point-max))))))
+  (orgtbl-join--elisp-table-to-string
+   (orgtbl-join--join-all-ref-tables table params)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; PULL mode
@@ -812,7 +856,6 @@ The
      (orgtbl-join--join-all-ref-tables
       (orgtbl-join--get-distant-table (plist-get params :mas-table))
       params))
-    (delete-char -1) ;; remove trailing \n which Org Mode will add again
     (when (and content
 	       (let ((case-fold-search t))
 		 (string-match "^[ \t]*\\(#\\+tblfm:.*\\)" content)))
