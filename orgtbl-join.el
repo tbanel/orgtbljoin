@@ -220,7 +220,6 @@ An horizontal line is translated as the special symbol `hline'."
 	    (setq buffer (marker-buffer id-loc)
 		  loc (marker-position id-loc))
 	    (move-marker id-loc nil)))))
-    (message "loc = %S" loc)
     (or
      (and buffer
           (with-current-buffer buffer
