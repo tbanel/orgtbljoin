@@ -26,10 +26,10 @@ of other tables (the reference tables).
 * How to handle missing rows?::
 * Malformed input tables::
 * Headers::
-* Key-bindings, menu: Key-bindings menu.
 * Wizard::
 * Post-joining spreadsheet formulas::
 * Post processing::
+* Virtual input table from Babel::
 * Chaining::
 * Multiple reference tables::
 * Installation::
@@ -84,7 +84,7 @@ Jozwiak).
      | corn     |   4.7 |   1.8 |     2.8 | 21.3 |
 
    Let us put the cursor on the ‘type’ column of the recipe table, and
-type ‘C-c C-x j’ or ‘M-x orgtbl-join’.
+type ‘M-x orgtbl-join’.
 
    A few questions are asked.  Then the recipe gets new columns appended
 with the needed nutrition facts:
@@ -102,7 +102,7 @@ File: orgtbl-join.info,  Node: SQL equivalent,  Next: In-place Push Pull,  Prev:
 2 SQL equivalent
 ****************
 
-If you are familiar with SQL, you would get a similar result with the a
+If you are familiar with SQL, you would get a similar result with a
 _join_ (actually a _left outer join_ by default, but that can be
 configured with the ‘:full’ parameter).
 
@@ -220,10 +220,10 @@ File: orgtbl-join.info,  Node: Duplicates,  Next: Selecting the output columns, 
 4 Duplicates
 ************
 
-The reference table may contain several matching rows for the same value
-in the master table.  In this case, as many rows are created in the
-joined table.  Therefore, the resulting table may be longer than the
-master table.  Example, if the reference table contains three rows for
+The reference tables may contain several matching rows for the same
+value in the master table.  In this case, as many rows are created in
+the joined table.  Therefore, the resulting table may be longer than the
+master table.  Example, if a reference table contains three rows for
 "eggplants":
 
      #+tblname: nut
@@ -239,6 +239,7 @@ master table.  Example, if the reference table contains three rows for
 
      | type     | quty | type     | Cooking | Fiber | Sugar | Protein | Carb |
      |----------+------+----------+---------+-------+-------+---------+------|
+     | ...      |  ... | ...      | ...     | ...   | ...   | ...     | ...  |
      | eggplant |  300 | eggplant | boiled  |   2.5 |   3.2 |     0.8 |  8.6 |
      | eggplant |  300 | eggplant | pickled |   3.4 |   6.5 |     1.2 | 13.3 |
      | eggplant |  300 | eggplant | raw     |   2.8 |   1.9 |     0.8 |  4.7 |
@@ -378,7 +379,7 @@ rows, like those ones:
    Missing cells are handled as though they were empty.
 
 
-File: orgtbl-join.info,  Node: Headers,  Next: Key-bindings menu,  Prev: Malformed input tables,  Up: Top
+File: orgtbl-join.info,  Node: Headers,  Next: Wizard,  Prev: Malformed input tables,  Up: Top
 
 8 Headers
 *********
@@ -387,9 +388,9 @@ The master and the reference tables may or may not have a header.  When
 there is a header, it may extend over several lines.  A header ends with
 an horizontal line.
 
-   The orgtbl-join system tries to preserve as much of the master table
-as possible.  Therefore, if the master table has a header, the joined
-table will have it verbatim, over as many lines as needed.
+   OrgtblJoin tries to preserve as much of the master table as possible.
+Therefore, if the master table has a header, the joined table will have
+it verbatim, over as many lines as needed.
 
    The reference tables headers (if any), will fill-in the header (if
 any) of the resulting table.  But if there is no room in the resulting
@@ -402,49 +403,34 @@ column, ‘$2’ is the name of the second column, and so on.  This is
 pretty much the same as in the Org Mode spreadsheet.
 
 
-File: orgtbl-join.info,  Node: Key-bindings menu,  Next: Wizard,  Prev: Headers,  Up: Top
+File: orgtbl-join.info,  Node: Wizard,  Next: Post-joining spreadsheet formulas,  Prev: Headers,  Up: Top
 
-9 Key-bindings, menu
-********************
-
-You may install key-bindings and menu entries by adding the following
-line to your ‘.emacs’ file:
-     (orgtbl-join-setup-keybindings)
-
-   This will give the following bindings:
-   • ‘C-c C-x j’ bound to ‘orgtbl-join’
-   • menu ‘Tbl > Column > Join with other tables’ bound to ‘orgtbl-join’
-
-
-File: orgtbl-join.info,  Node: Wizard,  Next: Post-joining spreadsheet formulas,  Prev: Key-bindings menu,  Up: Top
-
-10 Wizard
-*********
+9 Wizard
+********
 
 The _in-place mode_ is run through a small wizard which asks questions,
 with completion available.
    • Invoke it with: ‘M-x orgtbl-join’
-   • or ‘C-c C-x j’
-   • or menu entry ‘Tbl > Column > Join with another table’
+   • or menu entry ‘Tbl > Column > Join with another table’ if you have
+     configured it (see "Installation" paragraph).
 
    A wizard is available for the _pull_ mode.
-   • It is invoked with either: ‘M-x org-insert-dblock:join’
-   • or ‘C-c C-x x’ .
+   • It is invoked with either: ‘M-x orgtbl-join-insert-dblock-join’
+   • or ‘C-c C-x x’, then answer ‘join’ for the kind of block to insert.
 
-   For all questions, completion is available.  In the later case, you
-should answer ‘join’ when asked for the kind of block.
+   For all questions, completion is available.
 
    Note: there many kinds of dynamic blocks can be inserted besides
 ‘join’.
 
-   As there might be as many reference tables as wanted, the wizards
-continue asking for reference tables.  When done, just give an empty
-answer when the wizards asked for the name of a reference table.
+   As there might be as many reference tables as wanted, the wizard
+continues asking for reference tables.  When done, just give an empty
+answer when the wizard asks for the name of a reference table.
 
 
 File: orgtbl-join.info,  Node: Post-joining spreadsheet formulas,  Next: Post processing,  Prev: Wizard,  Up: Top
 
-11 Post-joining spreadsheet formulas
+10 Post-joining spreadsheet formulas
 ************************************
 
 Additional columns can be specified for the resulting table.  With the
@@ -468,9 +454,9 @@ This will fill-in the 7th column header.  It is translated into a usual
      #+END:
 
 
-File: orgtbl-join.info,  Node: Post processing,  Next: Chaining,  Prev: Post-joining spreadsheet formulas,  Up: Top
+File: orgtbl-join.info,  Node: Post processing,  Next: Virtual input table from Babel,  Prev: Post-joining spreadsheet formulas,  Up: Top
 
-12 Post processing
+11 Post processing
 ******************
 
 The joined table can be post-processed with the ‘:post’ parameter.  It
@@ -508,7 +494,7 @@ to the ‘:post’ parameter:
 
      ... :post my-function
 
-   The ‘:post’ parameter can also refer to a Babel Block.  Example:
+   The ‘:post’ parameter can also refer to a Babel block.  Example:
 
      #+BEGIN: join ... :post "my-babel-block(tbl=*this*)"
      ...
@@ -520,21 +506,71 @@ to the ‘:post’ parameter:
              '(hline (ginger na na na na)))
      #+end_src
 
+   The block is passed the table to process in a Lisp variable called
+‘*this*’.
+
 
-File: orgtbl-join.info,  Node: Chaining,  Next: Multiple reference tables,  Prev: Post processing,  Up: Top
+File: orgtbl-join.info,  Node: Virtual input table from Babel,  Next: Chaining,  Prev: Post processing,  Up: Top
+
+12 Virtual input table from Babel
+*********************************
+
+Any of the input tables may be the result of executing a Babel script.
+In this case, the table is virtual in the sense that it appears nowhere.
+
+   (Babel is the Org Mode infrastructure to run scripts in any language,
+like Python, R, C++, Java, D, shell, whatever, with inputs and outputs
+connected to Org Mode).
+
+   Example:
+
+   Here is a script in Emacs Lisp which creates an Org Mode table.
+
+     #+name: ascript
+     #+begin_src elisp :colnames yes
+     (list
+      '(type quty)
+      'hline
+      (list "tomato" (* 53.1 12))
+      (list "tofu" (* 12.5 7)))
+     #+end_src
+
+   If executed, the script would output this table:
+
+     #+RESULTS: ascript
+     | type   |  quty |
+     |--------+-------|
+     | tomato | 637.2 |
+     | tofu   |  87.5 |
+
+   But instead, OrgtblJoin will execute the script and consume its
+output:
+
+     #+BEGIN: join :mas-table "ascript" :ref-table "nut" :mas-column "type" :ref-column "type" :full "mas"
+     | type   |  quty | Fiber | Sugar | Protein | Carb |
+     |--------+-------+-------+-------+---------+------|
+     | tomato | 637.2 |   0.6 |   2.1 |     0.8 |  3.4 |
+     | tofu   |  87.5 |   0.7 |   0.5 |     6.6 |  1.4 |
+     #+END:
+
+   Here the parameter ‘:mas-table’ specifies the name of the script to
+be executed.
+
+
+File: orgtbl-join.info,  Node: Chaining,  Next: Multiple reference tables,  Prev: Virtual input table from Babel,  Up: Top
 
 13 Chaining
 ***********
 
-In the above example we gave a name to the resulting joined table:
+In an above example we gave a name to the resulting joined table:
 ‘#+name: richer’.  Doing so the joined table may become an input for a
-further computation, for example in a babel block.
+further computation, for example in a Babel block.
 
    The name will survive re-computations.  This happens only in _pull
 mode_.
 
    Note that the ‘#+name: richer’ line could appear above the ‘#+BEGIN:’
-line.  But sometimes this is not taken into account by further babels
+line.  But sometimes this is not taken into account by further Babel
 blocks.
 
 
@@ -543,7 +579,7 @@ File: orgtbl-join.info,  Node: Multiple reference tables,  Next: Installation,  
 14 Multiple reference tables
 ****************************
 
-orgtbl-join used to handle just one reference table.  Now, as many as
+OrgtblJoin used to handle just one reference table.  Now, as many as
 wanted are handled.
 
    To specify the reference tables, just use several times the
@@ -581,7 +617,7 @@ and reload it.
    Then browse the list of available packages and install ‘orgtbl-join’
      M-x package-list-packages
 
-   Alternatively, you can download the lisp files, and load them:
+   Alternatively, you can download the Lisp files, and load them:
 
      (load-file "orgtbl-join.el")
 
@@ -598,8 +634,8 @@ is to use ‘use-package’ in your ‘.emacs’ init file:
         ["Join with another table" orgtbl-join (org-at-table-p)]))
 
    Note: there used to be a ‘orgtbl-join-setup-keybindings’ function to
-do just what the above ‘use-package’ does.  In this way, key binding and
-menu binding are no longer hard-coded in the package.
+do just what the above ‘use-package’ does.  In this new way, key and
+menu bindings are no longer hard-coded in the package.
 
 
 File: orgtbl-join.info,  Node: Author contributors,  Next: Changes,  Prev: Installation,  Up: Top
@@ -648,6 +684,7 @@ File: orgtbl-join.info,  Node: Changes,  Next: GPL 3 License,  Prev: Author cont
    • Documentation is now integrated right into Emacs in the ‘info’
      format.  Type ‘M-: (info "orgtbl-join")’
    • TOC in README.org (thanks org-make-toc)
+   • Virtual input table produced by Babel blocks
 
 
 File: orgtbl-join.info,  Node: GPL 3 License,  Prev: Changes,  Up: Top
@@ -674,28 +711,28 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Tag Table:
 Node: Top83
-Node: Example912
-Node: SQL equivalent2770
-Node: In-place Push Pull3250
-Node: In _in-place_ mode3552
-Node: In _push_ mode3909
-Node: In _pull_ mode4721
-Node: As a rule of thumb5861
-Node: Duplicates6365
-Node: Selecting the output columns8106
-Node: How to handle missing rows?9886
-Node: Malformed input tables12154
-Node: Headers13035
-Node: Key-bindings menu14033
-Node: Wizard14485
-Node: Post-joining spreadsheet formulas15420
-Node: Post processing16672
-Node: Chaining18428
-Node: Multiple reference tables18996
-Node: Installation20101
-Node: Author contributors21406
-Node: Changes22081
-Node: GPL 3 License23166
+Node: Example906
+Node: SQL equivalent2745
+Node: In-place Push Pull3221
+Node: In _in-place_ mode3523
+Node: In _push_ mode3880
+Node: In _pull_ mode4692
+Node: As a rule of thumb5832
+Node: Duplicates6336
+Node: Selecting the output columns8155
+Node: How to handle missing rows?9935
+Node: Malformed input tables12203
+Node: Headers13084
+Node: Wizard14058
+Node: Post-joining spreadsheet formulas14996
+Node: Post processing16248
+Node: Virtual input table from Babel18111
+Node: Chaining19561
+Node: Multiple reference tables20142
+Node: Installation21246
+Node: Author contributors22548
+Node: Changes23223
+Node: GPL 3 License24360
 
 End Tag Table
 

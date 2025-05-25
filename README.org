@@ -20,10 +20,10 @@ other tables (the reference tables).
 - [[#how-to-handle-missing-rows][How to handle missing rows?]]
 - [[#malformed-input-tables][Malformed input tables]]
 - [[#headers][Headers]]
-- [[#key-bindings-menu][Key-bindings, menu]]
 - [[#wizard][Wizard]]
 - [[#post-joining-spreadsheet-formulas][Post-joining spreadsheet formulas]]
 - [[#post-processing][Post processing]]
+- [[#virtual-input-table-from-babel][Virtual input table from Babel]]
 - [[#chaining][Chaining]]
 - [[#multiple-reference-tables][Multiple reference tables]]
 - [[#installation][Installation]]
@@ -72,8 +72,7 @@ Jozwiak).
 #+END_EXAMPLE
 
 Let us put the cursor on the =type= column of the recipe table, and
-type
-   =C-c C-x j= or =M-x orgtbl-join=.
+type =M-x orgtbl-join=.
 
 A few questions are asked.  Then the recipe gets new columns appended with
 the needed nutrition facts:
@@ -92,8 +91,8 @@ the needed nutrition facts:
 :CUSTOM_ID: sql-equivalent
 :END:
 
-If you are familiar with SQL, you would get a similar result with the
-a /join/ (actually a /left outer join/ by default, but that can be
+If you are familiar with SQL, you would get a similar result with a
+/join/ (actually a /left outer join/ by default, but that can be
 configured with the =:full= parameter).
 
 #+begin_src sql
@@ -196,10 +195,10 @@ so using one or the other is just a matter or convenience.
 :CUSTOM_ID: duplicates
 :END:
 
-The reference table may contain several matching rows for the same
+The reference tables may contain several matching rows for the same
 value in the master table.  In this case, as many rows are created in
 the joined table.  Therefore, the resulting table may be longer than
-the master table.  Example, if the reference table contains three rows
+the master table.  Example, if a reference table contains three rows
 for "eggplants":
 
 #+BEGIN_EXAMPLE
@@ -218,6 +217,7 @@ Then the resulting table will have those three rows appended:
 #+BEGIN_EXAMPLE
 | type     | quty | type     | Cooking | Fiber | Sugar | Protein | Carb |
 |----------+------+----------+---------+-------+-------+---------+------|
+| ...      |  ... | ...      | ...     | ...   | ...   | ...     | ...  |
 | eggplant |  300 | eggplant | boiled  |   2.5 |   3.2 |     0.8 |  8.6 |
 | eggplant |  300 | eggplant | pickled |   3.4 |   6.5 |     1.2 | 13.3 |
 | eggplant |  300 | eggplant | raw     |   2.8 |   1.9 |     0.8 |  4.7 |
@@ -374,9 +374,9 @@ The master and the reference tables may or may not have a header.  When
 there is a header, it may extend over several lines.  A header ends
 with an horizontal line.
 
-The orgtbl-join system tries to preserve as much of the master table
-as possible.  Therefore, if the master table has a header, the
-joined table will have it verbatim, over as many lines as needed.
+OrgtblJoin tries to preserve as much of the master table as possible.
+Therefore, if the master table has a header, the joined table will
+have it verbatim, over as many lines as needed.
 
 The reference tables headers (if any), will fill-in the header (if
 any) of the resulting table.  But if there is no room in the resulting
@@ -388,19 +388,6 @@ columns must be referred with =$= names: =$1= is the name of the first
 column, =$2= is the name of the second column, and so on. This is
 pretty much the same as in the Org Mode spreadsheet.
 
-* Key-bindings, menu
-:PROPERTIES:
-:CUSTOM_ID: key-bindings-menu
-:END:
-
-You may install key-bindings and menu entries by adding the
-following line to your =.emacs= file:
-: (orgtbl-join-setup-keybindings)
-
-This will give the following bindings:
-- =C-c C-x j= bound to =orgtbl-join=
-- menu =Tbl > Column > Join with other tables= bound to =orgtbl-join=
-
 * Wizard
 :PROPERTIES:
 :CUSTOM_ID: wizard
@@ -409,21 +396,20 @@ This will give the following bindings:
 The /in-place mode/ is run through a small wizard which asks questions, with
 completion available.
 - Invoke it with: =M-x orgtbl-join=
-- or =C-c C-x j=
-- or menu entry =Tbl > Column > Join with another table=
+- or menu entry =Tbl > Column > Join with another table= if you have
+  configured it (see "Installation" paragraph).
 
 A wizard is available for the /pull/ mode.
-- It is invoked with either: =M-x org-insert-dblock:join=
-- or =C-c C-x x= .
+- It is invoked with either: =M-x orgtbl-join-insert-dblock-join=
+- or =C-c C-x x=, then answer =join= for the kind of block to insert.
 
-For all questions, completion is available.  In the later case, you should
-answer =join= when asked for the kind of block.
+For all questions, completion is available.
 
 Note: there many kinds of dynamic blocks can be inserted besides =join=.
 
-As there might be as many reference tables as wanted, the wizards
-continue asking for reference tables. When done, just give an empty
-answer when the wizards asked for the name of a reference table.
+As there might be as many reference tables as wanted, the wizard
+continues asking for reference tables. When done, just give an empty
+answer when the wizard asks for the name of a reference table.
 
 * Post-joining spreadsheet formulas
 :PROPERTIES:
@@ -482,7 +468,8 @@ In this example, a =lambda= expression adds a =hline= and a row for /ginger/.
 #+END:
 #+end_example
 
-The =lambda= can be moved to a =defun=. The function is then passed to the =:post= parameter:
+The =lambda= can be moved to a =defun=. The function is then passed to the
+=:post= parameter:
 
 : #+begin_src elisp
 : (defun my-function (table)
@@ -492,7 +479,7 @@ The =lambda= can be moved to a =defun=. The function is then passed to the =:pos
 
 : ... :post my-function
 
-The =:post= parameter can also refer to a Babel Block. Example:
+The =:post= parameter can also refer to a Babel block. Example:
 
 : #+BEGIN: join ... :post "my-babel-block(tbl=*this*)"
 : ...
@@ -504,26 +491,83 @@ The =:post= parameter can also refer to a Babel Block. Example:
 :         '(hline (ginger na na na na)))
 : #+end_src
 
+The block is passed the table to process in a Lisp variable called
+=*this*=.
+
+* Virtual input table from Babel
+:PROPERTIES:
+:CUSTOM_ID: virtual-input-table-from-babel
+:END:
+
+Any of the input tables may be the result of executing a Babel
+script. In this case, the table is virtual in the sense that it
+appears nowhere.
+
+(Babel is the Org Mode infrastructure to run scripts in any language,
+like Python, R, C++, Java, D, shell, whatever, with inputs and outputs
+connected to Org Mode).
+
+Example:
+
+Here is a script in Emacs Lisp which creates an Org Mode table.
+
+#+begin_example
+#+name: ascript
+#+begin_src elisp :colnames yes
+(list
+ '(type quty)
+ 'hline
+ (list "tomato" (* 53.1 12))
+ (list "tofu" (* 12.5 7)))
+#+end_src
+#+end_example
+
+If executed, the script would output this table:
+
+#+begin_example
+,#+RESULTS: ascript
+| type   |  quty |
+|--------+-------|
+| tomato | 637.2 |
+| tofu   |  87.5 |
+#+end_example
+
+But instead, OrgtblJoin will execute the script and consume its
+output:
+
+#+begin_example
+,#+BEGIN: join :mas-table "ascript" :ref-table "nut" :mas-column "type" :ref-column "type" :full "mas"
+| type   |  quty | Fiber | Sugar | Protein | Carb |
+|--------+-------+-------+-------+---------+------|
+| tomato | 637.2 |   0.6 |   2.1 |     0.8 |  3.4 |
+| tofu   |  87.5 |   0.7 |   0.5 |     6.6 |  1.4 |
+,#+END:
+#+end_example
+
+Here the parameter =:mas-table= specifies the name of the script to be
+executed.
+
 * Chaining
 :PROPERTIES:
 :CUSTOM_ID: chaining
 :END:
 
-In the above example we gave a name to the resulting joined table:
+In an above example we gave a name to the resulting joined table:
 =#+name: richer=. Doing so the joined table may become an input for a
-further computation, for example in a babel block.
+further computation, for example in a Babel block.
 
 The name will survive re-computations. This happens only in /pull mode/.
 
 Note that the =#+name: richer= line could appear above the =#+BEGIN:=
-line.  But sometimes this is not taken into account by further babels
+line.  But sometimes this is not taken into account by further Babel
 blocks.
 
 * Multiple reference tables
 :PROPERTIES:
 :CUSTOM_ID: multiple-reference-tables
 :END:
-orgtbl-join used to handle just one reference table. Now, as many as
+
+OrgtblJoin used to handle just one reference table. Now, as many as
 wanted are handled.
 
 To specify the reference tables, just use several times the =:ref-table=
@@ -548,7 +592,8 @@ table. But it can be change in several ways:
 :CUSTOM_ID: installation
 :END:
 
-Emacs package on Melpa: add the following lines to your =.emacs= file, and reload it.
+Emacs package on Melpa: add the following lines to your =.emacs= file,
+and reload it.
 
 #+BEGIN_EXAMPLE
 (add-to-list 'package-archives '("melpa" . "http://melpa.org/packages/") t)
@@ -565,7 +610,7 @@ Then browse the list of available packages and install =orgtbl-join=
 M-x package-list-packages
 #+END_EXAMPLE
 
-Alternatively, you can download the lisp files, and load them:
+Alternatively, you can download the Lisp files, and load them:
 
 #+BEGIN_EXAMPLE
 (load-file "orgtbl-join.el")
@@ -586,8 +631,8 @@ use ~use-package~ in your ~.emacs~ init file:
 #+end_src
 
 Note: there used to be a ~orgtbl-join-setup-keybindings~ function to do
-just what the above ~use-package~ does. In this way, key binding and
-menu binding are no longer hard-coded in the package.
+just what the above ~use-package~ does. In this new way, key and menu
+bindings are no longer hard-coded in the package.
 
 * Author, contributors
 :PROPERTIES:
@@ -631,6 +676,7 @@ Contributors
 - Documentation is now integrated right into Emacs in the =info= format.
   Type =M-: (info "orgtbl-join")=
 - TOC in README.org (thanks org-make-toc)
+- Virtual input table produced by Babel blocks
 
 * GPL 3 License
 :PROPERTIES:

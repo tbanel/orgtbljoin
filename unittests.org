@@ -902,3 +902,30 @@ a small Esperanto dictionary
 | brown  | bruna     | marrón   | #880   |
 | pink   | rozkolora | rosado   | #F8F   |
 #+END RECEIVE ORGTBL multi_color
+
+* Input table is a Babel script
+
+Note the =:colnames yes= parameter to output a header with label & value
+column names.
+
+The table resulting from the =ascript= script is computed on the fly, it
+appears nowhere in the buffer.
+
+#+name: ascript
+#+begin_src elisp :colnames yes
+'((type quantity)
+  hline
+  (egg 12.1)
+  (bread 19.9)
+  (eggplant 15.4))
+#+end_src
+
+#+BEGIN: join :mas-table "ascript" :ref-table "nut_with_header" :mas-column "type" :ref-column "type" :full "mas"
+| type     | quantity | Carb | Fiber | Sugar | Protein |
+|----------+----------+------+-------+-------+---------|
+| egg      |     12.1 | 18.3 |     0 |  18.3 |    31.9 |
+| bread    |     19.9 | 16.0 |   0.7 |   0.7 |     3.3 |
+| eggplant |     15.4 |  8.6 |   2.5 |   3.2 |     0.8 |
+| eggplant |     15.4 |  8.7 |   2.6 |   3.3 |     0.9 |
+| eggplant |     15.4 |  8.5 |     ? |     ? |       ? |
+#+END:

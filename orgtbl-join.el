@@ -176,47 +176,70 @@ The table is taken from the parameter TXT, or from the buffer at point."
 	(push (match-string-no-properties 1) tables)))
     tables))
 
+(defun orgtbl-join--get-table-from-babel (name-or-id)
+  "Retrieve an input table as the result of running a Babel block.
+The table cells get stringified."
+  ;; A user error is generated in case no Babel block is found
+  (let ((table (org-babel-ref-resolve name-or-id)))
+    (cl-loop
+     for row in table
+     if (listp row)
+     do
+     (cl-loop
+      for cell on row
+      unless (stringp (car cell))
+      do (setcar cell (format "%s" (car cell)))))
+    table))
+
 (defun orgtbl-join--get-distant-table (name-or-id)
   "Find a table in the current buffer named NAME-OR-ID.
 Return it as a Lisp list of lists.
-An horizontal line is translated as the special symbol `hline'.
-If NAME-OR-ID is already a table, just return it as-is."
-  (if (listp name-or-id)
-      name-or-id
-    (unless (stringp name-or-id)
-      (setq name-or-id (format "%s" name-or-id)))
-    (let (buffer loc)
-      (save-excursion
-        (goto-char (point-min))
-        (if (let ((case-fold-search t))
-	      (re-search-forward
-	       ;; This concat is automatically done by new versions of rx
-	       ;; using "literal". This appeared on june 26, 2019
-	       ;; For older versions of Emacs, we fallback to concat
-	       (concat
-	        (rx bol
-		    (* (any " \t")) "#+" (? "tbl") "name:"
-		    (* (any " \t")))
-	        (regexp-quote name-or-id)
-	        (rx (* (any " \t"))
-		    eol))
-	       nil t))
-	    (setq buffer (current-buffer)
-		  loc (match-beginning 0))
-	  (let ((id-loc (org-id-find name-or-id 'marker)))
-	    (unless (and id-loc (markerp id-loc))
-	      (error "Can't find remote table \"%s\"" name-or-id))
+An horizontal line is translated as the special symbol `hline'."
+  (unless (stringp name-or-id)
+    (setq name-or-id (format "%s" name-or-id)))
+  (let (buffer loc)
+    (save-excursion
+      (goto-char (point-min))
+      (if (let ((case-fold-search t))
+	    (re-search-forward
+	     ;; This concat is automatically done by new versions of rx
+	     ;; using "literal". This appeared on june 26, 2019
+	     ;; For older versions of Emacs, we fallback to concat
+	     (concat
+	      (rx bol
+		  (* (any " \t")) "#+" (? "tbl") "name:"
+		  (* (any " \t")))
+	      (regexp-quote name-or-id)
+	      (rx (* (any " \t"))
+		  eol))
+	     nil t))
+	  (setq buffer (current-buffer)
+		loc (match-beginning 0))
+	(let ((id-loc (org-id-find name-or-id 'marker)))
+	  (when (and id-loc (markerp id-loc))
 	    (setq buffer (marker-buffer id-loc)
 		  loc (marker-position id-loc))
-	    (move-marker id-loc nil))))
-      (with-current-buffer buffer
-        (save-excursion
-	  (goto-char loc)
-	  (forward-char 1)
-	  (unless (and (re-search-forward "^\\(\\*+ \\)\\|^[ \t]*|" nil t)
-		       (not (match-beginning 1)))
-	    (user-error "Cannot find a table at NAME or ID %s" name-or-id))
-	  (orgtbl-join--table-to-lisp))))))
+	    (move-marker id-loc nil)))))
+    (message "loc = %S" loc)
+    (or
+     (and buffer
+          (with-current-buffer buffer
+            (save-excursion
+	      (goto-char loc)
+	      (forward-line 1)
+              (beginning-of-line)
+	      (and (re-search-forward
+                    (rx
+                     point
+                     (or
+                      (group (1+ "*") " ")
+                      (seq
+                       (0+ (0+ blank) "#" (0+ any) "\n")
+                       (0+ blank) "|")))
+                    nil t)
+		   (not (match-beginning 1))
+	           (orgtbl-join--table-to-lisp)))))
+     (orgtbl-join--get-table-from-babel name-or-id))))
 
 (defun orgtbl-join--split-string-with-quotes (string)
   "Like (split-string STRING), but with quote protection.
