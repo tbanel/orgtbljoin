@@ -77,6 +77,10 @@ master table header, provided the master table header has at least 3
 lines. The excess lines will be ignored.
 
 #+tblname: nut_with_header
+
+  # ignore intermediate stuff between "name:" and actual table
+  # ignore blank lines
+
 |------+----------+-------+-------+---------|
 | Carb | type     | Fiber | Sugar | Protein |
 | ohyd |          |       |       |         |
