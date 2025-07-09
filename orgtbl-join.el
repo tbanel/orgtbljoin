@@ -280,11 +280,11 @@ otherwise nil is returned."
       (setq colname (symbol-name colname)))
   (if (string-match
        (rx
-	bol
+	bos
 	(or
 	 (seq ?'  (group-n 1 (* (not (any ?' )))) ?' )
 	 (seq ?\" (group-n 1 (* (not (any ?\")))) ?\"))
-	eol)
+	eos)
        colname)
       (setq colname (match-string 1 colname)))
   ;; skip first hlines if any
@@ -293,7 +293,7 @@ otherwise nil is returned."
 	 (and err (user-error "Empty column name")))
 	((equal colname "hline")
 	 0)
-	((string-match (rx bol "$" (group (+ (any "0-9"))) eol) colname)
+	((string-match (rx bos "$" (group (+ (any "0-9"))) eos) colname)
 	 (let ((n (string-to-number (match-string 1 colname))))
 	   (if (<= n (length (car table)))
 	       n
