@@ -657,6 +657,8 @@ Comments, enhancements, etc.  welcome.
    • Piotr Panasiuk, ‘#+CAPTION:’ and any tags survive
    • Luis Miguel Hernanz, multiple reference tables suggestion, fix
      regex bug
+   • bymoz089 (GitHub) found and tracked-down a bug in the in-place
+     joining
 
 
 File: orgtbl-join.info,  Node: Changes,  Next: GPL 3 License,  Prev: Author contributors,  Up: Top
@@ -731,8 +733,8 @@ Node: Chaining19561
 Node: Multiple reference tables20142
 Node: Installation21246
 Node: Author contributors22548
-Node: Changes23223
-Node: GPL 3 License24360
+Node: Changes23306
+Node: GPL 3 License24443
 
 End Tag Table
 

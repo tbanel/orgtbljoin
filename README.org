@@ -653,6 +653,8 @@ Contributors
 - Piotr Panasiuk, =#+CAPTION:= and any tags survive
 - Luis Miguel Hernanz, multiple reference tables suggestion, fix regex
   bug
+- bymoz089 (GitHub) found and tracked-down a bug in the in-place
+  joining
 
 * Changes
 :PROPERTIES:

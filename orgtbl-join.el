@@ -502,20 +502,21 @@ DEFAULT is a proposed column name."
      nil 'confirm
      (and (member default completions) default))))
 
-(defun orgtbl-join--query-tables (params)
+(defun orgtbl-join--query-tables (mastable params)
   "Interactively query tables and joining columns.
 PARAMS is a plist (possibly empty) where user answers accumulate.
 The updated PARAMS is returned."
   (let ((localtables (orgtbl-join--list-local-tables))
-        (mastable (plist-get params :mas-table))
-        (mascol   (orgtbl-join--plist-get-remove params :mas-column))
+        (mascol (orgtbl-join--plist-get-remove params :mas-column))
         (reftable)
         (refcol)
         (full))
     (unless mastable
-      (setq mastable (completing-read "Master table: " localtables))
-      (setq params `(,@params ,:mas-table ,mastable)))
-    (setq mastable (orgtbl-join--get-distant-table mastable))
+      (unless (plist-get params :mas-table)
+        (setq mastable (completing-read "Master table: " localtables))
+        (setq params `(,@params ,:mas-table ,mastable)))
+      (setq mastable
+            (orgtbl-join--get-distant-table (plist-get params :mas-table))))
     (cl-loop
      until
      (equal
@@ -776,16 +777,15 @@ current row is kept, with empty cells appended to it."
              :mas-column
              (if (memq 'hline tbl)
                  (nth (1- col) (car tbl))
-               (format "$%s" col))
-             :mas-table
-             tbl))
-      (setq params (orgtbl-join--query-tables params)))
+               (format "$%s" col))))
+      (setq params (orgtbl-join--query-tables tbl params)))
     (let ((b (org-table-begin))
 	  (e (org-table-end)))
       (save-excursion
 	(goto-char e)
 	(orgtbl-join--insert-elisp-table
          (orgtbl-join--join-all-ref-tables tbl params))
+        (insert "\n")
         (delete-region b e)))
     (goto-char (point-min))
     (forward-line (1- pt))
@@ -832,7 +832,7 @@ Note:
 (defun orgtbl-join-insert-dblock-join ()
   "Wizard to interactively insert a joined table as a dynamic block."
   (interactive)
-  (org-create-dblock (orgtbl-join--query-tables (list :name "join")))
+  (org-create-dblock (orgtbl-join--query-tables nil (list :name "join")))
   (org-update-dblock))
 
 ;;;###autoload
