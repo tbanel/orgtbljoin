@@ -687,6 +687,9 @@ File: orgtbl-join.info,  Node: Changes,  Next: GPL 3 License,  Prev: Author cont
      format.  Type ‘M-: (info "orgtbl-join")’
    • TOC in README.org (thanks org-make-toc)
    • Virtual input table produced by Babel blocks
+   • Speedup of resulting table recalculation when there are formulas in
+     ‘#+tblfm:’ or in ‘:formula’.  The overall join may be up to x4
+     faster and ÷4 less memory hungry.
 
 
 File: orgtbl-join.info,  Node: GPL 3 License,  Prev: Changes,  Up: Top
@@ -734,7 +737,7 @@ Node: Multiple reference tables20142
 Node: Installation21246
 Node: Author contributors22548
 Node: Changes23306
-Node: GPL 3 License24443
+Node: GPL 3 License24634
 
 End Tag Table
 

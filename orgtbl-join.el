@@ -23,7 +23,7 @@
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;; Commentary:
-;; 
+;;
 ;; A master table is enriched with columns coming from a reference
 ;; table.
 ;;
@@ -828,6 +828,81 @@ Note:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; PULL mode
 
+(defun orgtbl-join--table-recalculate (content formula)
+  "Wrapper arround `org-table-recalculate'.
+The computed table may have formulas which need to be recomputed.
+This function adds a #+TBLFM: line at the end of the table.
+It merges old formulas (if any) contained in CONTENT,
+with new formulas (if any) given in the `formula' directive.
+The standard `org-table-recalculate' function is slow because
+it must handle lots of cases. Here the table is freshely created,
+therefore a lot of special handling and cache updates can be
+safely bypassed. Moreover, the alignment of the resulting table
+is delegated to orgtbl-join, which is fast.
+The result is a speedup up to x6, and a memory consumption
+divided by up to 5. It makes a difference for large tables."
+  (let ((tblfm
+         ;; Was there already a #+tblfm: line ? Recover it.
+         (and content
+	      (let ((case-fold-search t))
+	        (string-match
+	         (rx bol
+                     (* (any " \t"))
+                     (group "#+tblfm:" (* not-newline)))
+	         content))
+              (match-string 1 content))))
+    (if (stringp formula)
+        ;; There is a :formula directive. Add it if not already there
+        (if tblfm
+	    (unless (string-match (rx-to-string formula) tblfm)
+	      (setq tblfm (format "%s::%s" tblfm formula)))
+	  (setq tblfm (format "#+TBLFM: %s" formula))))
+    
+    (when tblfm
+      ;; There are formulas. They need to be evaluated.
+      (end-of-line)
+      (insert "\n" tblfm)
+      (forward-line -1)
+
+      (let ((old (symbol-function 'org-table-goto-column)))
+        (cl-letf (((symbol-function 'org-fold-core--fix-folded-region)
+                   (lambda (_a _b _c)))
+                  ((symbol-function 'jit-lock-after-change)
+                   (lambda (_a _b _c)))
+                  ;; Warning: this org-table-goto-column trick fixes a bug
+                  ;; in org-table.el around line 3084, when computing
+                  ;; column-count. The bug prevents single-cell formulas
+                  ;; creating the cell in some rare cases.
+                  ((symbol-function 'org-table-goto-column)
+                   (lambda (n &optional on-delim _force)
+                     ;;                            △
+                     ;;╭───────────────────────────╯
+                     ;;╰╴parameter is forcibly changed to t╶─╮
+                     ;;                      ╭───────────────╯
+                     ;;                      ▽
+                     (funcall old n on-delim t))))
+          (condition-case nil
+              (org-table-recalculate t t)
+            ;;                       △ △
+            ;; for all lines╶────────╯ │
+            ;; do not re-align╶────────╯
+            (args-out-of-range nil))))
+
+      ;; Realign table after org-table-recalculate have changed or added
+      ;; some cells. It is way faster to re-read and re-write the table
+      ;; through orgtbl-join routines than letting org-mode do the job.
+      (let* ((table (orgtbl-join--table-to-lisp))
+             (width
+              (cl-loop for row in table
+                       if (consp row)
+                       maximize (length row))))
+        (cl-loop
+         for row in table
+         if (and (consp row) (< (length row) width))
+         do (nconc row (make-list (- width (length row)) nil)))
+        (delete-region (org-table-begin) (org-table-end))
+        (insert (orgtbl-join--elisp-table-to-string table) "\n")))))
+
 ;;;###autoload
 (defun orgtbl-join-insert-dblock-join ()
   "Wizard to interactively insert a joined table as a dynamic block."
@@ -863,8 +938,7 @@ The
 #+END RECEIVE ORGTBL destination_table_name"
   (interactive)
   (let ((formula (plist-get params :formula))
-	(content (plist-get params :content))
-	(tblfm nil))
+	(content (plist-get params :content)))
     (if (and content
 	     (let ((case-fold-search t))
 	       (string-match
@@ -877,23 +951,7 @@ The
      (orgtbl-join--join-all-ref-tables
       (orgtbl-join--get-distant-table (plist-get params :mas-table))
       params))
-    (when (and content
-	       (let ((case-fold-search t))
-		 (string-match "^[ \t]*\\(#\\+tblfm:.*\\)" content)))
-      (setq tblfm (match-string 1 content)))
-    (when (stringp formula)
-      (if tblfm
-	  (unless (string-match (rx-to-string formula) tblfm)
-	    (setq tblfm (format "%s::%s" tblfm formula)))
-	(setq tblfm (format "#+TBLFM: %s" formula))))
-    (when tblfm
-      (end-of-line)
-      (insert "\n" tblfm)
-      (forward-line -1)
-      (let ((org-table-formula-create-columns t))
-	(condition-case nil
-	    (org-table-recalculate 'iterate)
-	  (args-out-of-range nil))))))
+    (orgtbl-join--table-recalculate content formula)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; key bindings, menu, wizard

@@ -679,6 +679,9 @@ Contributors
   Type =M-: (info "orgtbl-join")=
 - TOC in README.org (thanks org-make-toc)
 - Virtual input table produced by Babel blocks
+- Speedup of resulting table recalculation when there are formulas in
+  =#+tblfm:= or in =:formula=. The overall join may be up to x4
+  faster and ÷4 less memory hungry.
 
 * GPL 3 License
 :PROPERTIES:
