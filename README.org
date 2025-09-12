@@ -21,6 +21,7 @@ other tables (the reference tables).
 - [[#malformed-input-tables][Malformed input tables]]
 - [[#headers][Headers]]
 - [[#wizard][Wizard]]
+- [[#joining-2-similar-tables][Joining 2 similar tables]]
 - [[#post-joining-spreadsheet-formulas][Post-joining spreadsheet formulas]]
 - [[#post-processing][Post processing]]
 - [[#virtual-input-table-from-babel][Virtual input table from Babel]]
@@ -412,6 +413,9 @@ continues asking for reference tables. When done, just give an empty
 answer when the wizard asks for the name of a reference table.
 
 * Joining 2 similar tables
+:PROPERTIES:
+:CUSTOM_ID: joining-2-similar-tables
+:END:
 
 What if we need not to append data from some table/s to a main table, but to join 2 similar or symmetric tables with different data?
 
