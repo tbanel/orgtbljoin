@@ -186,7 +186,7 @@ table.
 For quick and once-only processing, use /in-place/ mode.
 
 Use /pull/ or /push/ modes for reproducible work.  The /pull/ mode might be
-easier to use than the /push/, because there is a wizard bound to =C-c C-x x=
+easier to use than the /push/, because there is a [[#wizard][wizard]] bound to =C-c C-x x=
 (see below).  Other than that, the two modes use the same underlying engine,
 so using one or the other is just a matter or convenience.
 
@@ -411,6 +411,75 @@ As there might be as many reference tables as wanted, the wizard
 continues asking for reference tables. When done, just give an empty
 answer when the wizard asks for the name of a reference table.
 
+* Joining 2 similar tables
+
+What if we need not to append data from some table/s to a main table, but to join 2 similar or symmetric tables with different data?
+
+Let's assume we have these 2 tables:
+#+begin_example
++#TBLNAME: TagsQ1
+| tag  | Q1 |
+|------+----|
+| tagA | 25 |
+| tagB | 18 |
+| tagC | 13 |
+| tagD |  6 |
+| tagE |  2 |
+| tagF |  2 |
+| tagG |  1 |
+#+end_example
+
+and
+
+#+begin_example
++#TBLNAME: TagsQ2
+| tag    | Q2 |
+|--------+----|
+| tagA   |  2 |
+| tagD   |  3 |
+| tagE   |  3 |
+| tagF   |  5 |
+| tagG   |  7 |
+| tagH   | 11 |
+| tagI   | 15 |
+#+end_example
+
+Looking closely at both tables we can observe that some of these tags appear in both (tags A, D, E, F, G), some only on Q1 (D, C) and other only on Q2 (H, I, ...).
+
+We want to create a table that includes all the tags, with a column with their frequency for table TagsQ1 and another for TagsQ2.
+
+So we can create the orgtbl-join block with the [[#wizard][Wizard]]. Type =C-c C-x x=, then answer =join=.
+
+As our tables are somehow symmetric (no one is a primary one), you will choose arbitrarily TagsQ1 as the "master table" and TagsQ2 as the "reference table".
+
+So continue answering to the wizard:
+1. Master table: TagsQ1
+2. Reference table: TagsQ2
+3. joining column in reference table: tag
+4. joining column in master table: tag
+
+Then there is a question about which table should appear entirely.  In the result you want, there might be missing values in both Q1 and Q2 columns.  Therefore the right answer is: =mas+ref=
+
+Eventually you get:
+#+begin_example
+#+BEGIN: join :mas-table "TagsQ1" :ref-table "TagsQ2" :mas-column "tag" :ref-column "tag" :full "mas+ref"
+| tag    | Q1 | Q2 |
+|--------+----+----|
+| tagA   | 25 |  2 |
+| tagB   | 18 |
+| tagC   | 13 |
+| tagD   |  6 |  3 |
+| tagE   |  2 |  3 |
+| tagF   |  2 |  5 |
+| tagG   |  1 |  7 |
+|--------+----+----|
+| tagH   |    | 11 |
+| tagI   |    | 15 |
+| tag... |    | 19 |
+#+END:
+#+end_example
+
+The =tagB= and =tagC= rows are incomplete on purpose.  To fill in the table, just type TAB inside it.
 * Post-joining spreadsheet formulas
 :PROPERTIES:
 :CUSTOM_ID: post-joining-spreadsheet-formulas
@@ -643,6 +712,10 @@ Comments, enhancements, etc. welcome.
 
 Author
 - Thierry Banel, tbanelwebmin at free dot fr
+- bymoz089 (GitHub) found and tracked-down a bug in the in-place
+  joining
+- Eduardo Mercovich (GitHub edumerco) wrote the documentation for the
+  2 similar tables use case.
 
 Contributors
 - Dirk Schmitt, surviving =#.NAME:= line
@@ -653,8 +726,6 @@ Contributors
 - Piotr Panasiuk, =#+CAPTION:= and any tags survive
 - Luis Miguel Hernanz, multiple reference tables suggestion, fix regex
   bug
-- bymoz089 (GitHub) found and tracked-down a bug in the in-place
-  joining
 
 * Changes
 :PROPERTIES:
@@ -682,6 +753,7 @@ Contributors
 - Speedup of resulting table recalculation when there are formulas in
   =#+tblfm:= or in =:formula=. The overall join may be up to x4
   faster and ÷4 less memory hungry.
+- Add the chapter "Joining 2 similar tables" for a common use case.
 
 * GPL 3 License
 :PROPERTIES:

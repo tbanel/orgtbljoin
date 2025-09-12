@@ -27,6 +27,7 @@ of other tables (the reference tables).
 * Malformed input tables::
 * Headers::
 * Wizard::
+* Joining 2 similar tables::
 * Post-joining spreadsheet formulas::
 * Post processing::
 * Virtual input table from Babel::
@@ -209,10 +210,10 @@ File: orgtbl-join.info,  Node: As a rule of thumb,  Prev: In _pull_ mode,  Up: I
 For quick and once-only processing, use _in-place_ mode.
 
    Use _pull_ or _push_ modes for reproducible work.  The _pull_ mode
-might be easier to use than the _push_, because there is a wizard bound
-to ‘C-c C-x x’ (see below).  Other than that, the two modes use the same
-underlying engine, so using one or the other is just a matter or
-convenience.
+might be easier to use than the _push_, because there is a *note
+wizard:: bound to ‘C-c C-x x’ (see below).  Other than that, the two
+modes use the same underlying engine, so using one or the other is just
+a matter or convenience.
 
 
 File: orgtbl-join.info,  Node: Duplicates,  Next: Selecting the output columns,  Prev: In-place Push Pull,  Up: Top
@@ -403,7 +404,7 @@ column, ‘$2’ is the name of the second column, and so on.  This is
 pretty much the same as in the Org Mode spreadsheet.
 
 
-File: orgtbl-join.info,  Node: Wizard,  Next: Post-joining spreadsheet formulas,  Prev: Headers,  Up: Top
+File: orgtbl-join.info,  Node: Wizard,  Next: Joining 2 similar tables,  Prev: Headers,  Up: Top
 
 9 Wizard
 ********
@@ -428,9 +429,87 @@ continues asking for reference tables.  When done, just give an empty
 answer when the wizard asks for the name of a reference table.
 
 
-File: orgtbl-join.info,  Node: Post-joining spreadsheet formulas,  Next: Post processing,  Prev: Wizard,  Up: Top
+File: orgtbl-join.info,  Node: Joining 2 similar tables,  Next: Post-joining spreadsheet formulas,  Prev: Wizard,  Up: Top
 
-10 Post-joining spreadsheet formulas
+10 Joining 2 similar tables
+***************************
+
+What if we need not to append data from some table/s to a main table,
+but to join 2 similar or symmetric tables with different data?
+
+   Let’s assume we have these 2 tables:
+     +#TBLNAME: TagsQ1
+     | tag  | Q1 |
+     |------+----|
+     | tagA | 25 |
+     | tagB | 18 |
+     | tagC | 13 |
+     | tagD |  6 |
+     | tagE |  2 |
+     | tagF |  2 |
+     | tagG |  1 |
+
+   and
+
+     +#TBLNAME: TagsQ2
+     | tag    | Q2 |
+     |--------+----|
+     | tagA   |  2 |
+     | tagD   |  3 |
+     | tagE   |  3 |
+     | tagF   |  5 |
+     | tagG   |  7 |
+     | tagH   | 11 |
+     | tagI   | 15 |
+
+   Looking closely at both tables we can observe that some of these tags
+appear in both (tags A, D, E, F, G), some only on Q1 (D, C) and other
+only on Q2 (H, I, ...).
+
+   We want to create a table that includes all the tags, with a column
+with their frequency for table TagsQ1 and another for TagsQ2.
+
+   So we can create the orgtbl-join block with the *note Wizard::.  Type
+‘C-c C-x x’, then answer ‘join’.
+
+   As our tables are somehow symmetric (no one is a primary one), you
+will choose arbitrarily TagsQ1 as the "master table" and TagsQ2 as the
+"reference table".
+
+   So continue answering to the wizard:
+  1. Master table: TagsQ1
+  2. Reference table: TagsQ2
+  3. joining column in reference table: tag
+  4. joining column in master table: tag
+
+   Then there is a question about which table should appear entirely.
+In the result you want, there might be missing values in both Q1 and Q2
+columns.  Therefore the right answer is: ‘mas+ref’
+
+   Eventually you get:
+     #+BEGIN: join :mas-table "TagsQ1" :ref-table "TagsQ2" :mas-column "tag" :ref-column "tag" :full "mas+ref"
+     | tag    | Q1 | Q2 |
+     |--------+----+----|
+     | tagA   | 25 |  2 |
+     | tagB   | 18 |
+     | tagC   | 13 |
+     | tagD   |  6 |  3 |
+     | tagE   |  2 |  3 |
+     | tagF   |  2 |  5 |
+     | tagG   |  1 |  7 |
+     |--------+----+----|
+     | tagH   |    | 11 |
+     | tagI   |    | 15 |
+     | tag... |    | 19 |
+     #+END:
+
+   The ‘tagB’ and ‘tagC’ rows are incomplete on purpose.  To fill in the
+table, just type TAB inside it.
+
+
+File: orgtbl-join.info,  Node: Post-joining spreadsheet formulas,  Next: Post processing,  Prev: Joining 2 similar tables,  Up: Top
+
+11 Post-joining spreadsheet formulas
 ************************************
 
 Additional columns can be specified for the resulting table.  With the
@@ -456,7 +535,7 @@ This will fill-in the 7th column header.  It is translated into a usual
 
 File: orgtbl-join.info,  Node: Post processing,  Next: Virtual input table from Babel,  Prev: Post-joining spreadsheet formulas,  Up: Top
 
-11 Post processing
+12 Post processing
 ******************
 
 The joined table can be post-processed with the ‘:post’ parameter.  It
@@ -512,7 +591,7 @@ to the ‘:post’ parameter:
 
 File: orgtbl-join.info,  Node: Virtual input table from Babel,  Next: Chaining,  Prev: Post processing,  Up: Top
 
-12 Virtual input table from Babel
+13 Virtual input table from Babel
 *********************************
 
 Any of the input tables may be the result of executing a Babel script.
@@ -559,7 +638,7 @@ be executed.
 
 File: orgtbl-join.info,  Node: Chaining,  Next: Multiple reference tables,  Prev: Virtual input table from Babel,  Up: Top
 
-13 Chaining
+14 Chaining
 ***********
 
 In an above example we gave a name to the resulting joined table:
@@ -576,7 +655,7 @@ blocks.
 
 File: orgtbl-join.info,  Node: Multiple reference tables,  Next: Installation,  Prev: Chaining,  Up: Top
 
-14 Multiple reference tables
+15 Multiple reference tables
 ****************************
 
 OrgtblJoin used to handle just one reference table.  Now, as many as
@@ -602,7 +681,7 @@ table.  But it can be change in several ways:
 
 File: orgtbl-join.info,  Node: Installation,  Next: Author contributors,  Prev: Multiple reference tables,  Up: Top
 
-15 Installation
+16 Installation
 ***************
 
 Emacs package on Melpa: add the following lines to your ‘.emacs’ file,
@@ -640,13 +719,17 @@ menu bindings are no longer hard-coded in the package.
 
 File: orgtbl-join.info,  Node: Author contributors,  Next: Changes,  Prev: Installation,  Up: Top
 
-16 Author, contributors
+17 Author, contributors
 ***********************
 
 Comments, enhancements, etc.  welcome.
 
    Author
    • Thierry Banel, tbanelwebmin at free dot fr
+   • bymoz089 (GitHub) found and tracked-down a bug in the in-place
+     joining
+   • Eduardo Mercovich (GitHub edumerco) wrote the documentation for the
+     2 similar tables use case.
 
    Contributors
    • Dirk Schmitt, surviving ‘#.NAME:’ line
@@ -657,13 +740,11 @@ Comments, enhancements, etc.  welcome.
    • Piotr Panasiuk, ‘#+CAPTION:’ and any tags survive
    • Luis Miguel Hernanz, multiple reference tables suggestion, fix
      regex bug
-   • bymoz089 (GitHub) found and tracked-down a bug in the in-place
-     joining
 
 
 File: orgtbl-join.info,  Node: Changes,  Next: GPL 3 License,  Prev: Author contributors,  Up: Top
 
-17 Changes
+18 Changes
 **********
 
    • remove duplicate reference column
@@ -690,11 +771,12 @@ File: orgtbl-join.info,  Node: Changes,  Next: GPL 3 License,  Prev: Author cont
    • Speedup of resulting table recalculation when there are formulas in
      ‘#+tblfm:’ or in ‘:formula’.  The overall join may be up to x4
      faster and ÷4 less memory hungry.
+   • Add the chapter "Joining 2 similar tables" for a common use case.
 
 
 File: orgtbl-join.info,  Node: GPL 3 License,  Prev: Changes,  Up: Top
 
-18 GPL 3 License
+19 GPL 3 License
 ****************
 
 Copyright (C) 2014-2025 Thierry Banel
@@ -716,28 +798,29 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Tag Table:
 Node: Top83
-Node: Example906
-Node: SQL equivalent2745
-Node: In-place Push Pull3221
-Node: In _in-place_ mode3523
-Node: In _push_ mode3880
-Node: In _pull_ mode4692
-Node: As a rule of thumb5832
-Node: Duplicates6336
-Node: Selecting the output columns8155
-Node: How to handle missing rows?9935
-Node: Malformed input tables12203
-Node: Headers13084
-Node: Wizard14058
-Node: Post-joining spreadsheet formulas14996
-Node: Post processing16248
-Node: Virtual input table from Babel18111
-Node: Chaining19561
-Node: Multiple reference tables20142
-Node: Installation21246
-Node: Author contributors22548
-Node: Changes23306
-Node: GPL 3 License24634
+Node: Example935
+Node: SQL equivalent2774
+Node: In-place Push Pull3250
+Node: In _in-place_ mode3552
+Node: In _push_ mode3909
+Node: In _pull_ mode4721
+Node: As a rule of thumb5861
+Node: Duplicates6373
+Node: Selecting the output columns8192
+Node: How to handle missing rows?9972
+Node: Malformed input tables12240
+Node: Headers13121
+Node: Wizard14095
+Node: Joining 2 similar tables15024
+Node: Post-joining spreadsheet formulas17345
+Node: Post processing18615
+Node: Virtual input table from Babel20478
+Node: Chaining21928
+Node: Multiple reference tables22509
+Node: Installation23613
+Node: Author contributors24915
+Node: Changes25780
+Node: GPL 3 License27181
 
 End Tag Table
 
