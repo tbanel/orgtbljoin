@@ -66,6 +66,7 @@
 (require 'org-table)
 (eval-when-compile (require 'cl-lib))
 (require 'rx)
+(require 'json)
 
 ;;; Code:
 
@@ -156,6 +157,66 @@ The table is taken from the parameter TXT, or from the buffer at point."
 	  (forward-line))
 	(nreverse table)))))
 
+;; There is no CSV parser bundled with Emacs. In order to avoid a
+;; dependency on a package, here is an implementation of a parser.  It
+;; is made of the same technology as `orgtbl-aggregate--table-to-lisp'
+;; (which is now integrated into the newest versions of Emacs). It is
+;; probably as fast as can be in Emacs-Lisp byte-code.
+
+(defun orgtbl-join--csv-to-lisp (header colnames)
+  "Convert current buffer in CSV to Lisp.
+It recognize cells protected by double quotes, and cells not protected.
+When a cell is not protected, blanks are kept.
+When a cell is protected, blanks before the first double quote are ignored.
+Double double quotes are recognized within a cell double-quoted.
+The last line may or may not end in a newline.
+Separators are comma, semicolon, or TAB. They can be mixed.
+If a row is empty, it is considered as a separator, and translated
+to `hline', the Org table horizontal separator.
+HEADER non nil means that the first row must be interpreted as a header.
+COLNAMES, if not nil, is a list of column names."
+  (goto-char (point-min))
+  (let (table)
+    (while (not (eobp))
+      (let (row)
+        (while (not (eolp))
+          (let ((p (point)))
+            (skip-chars-forward " ")
+            (if (eq (following-char) ?\")
+                (let (dquote)
+                  (forward-char 1)
+                  (setq p (point))
+                  (while
+                      (progn
+                        (skip-chars-forward "^\"")
+                        (forward-char 1)
+                        (if (eq (following-char) ?\")
+                            (progn (forward-char 1)
+                                   (setq dquote t)))))
+                  (push
+                   (let ((cell
+                          (buffer-substring-no-properties p (1- (point)))))
+                     (if dquote
+                         (string-replace "\"\"" "\"" cell)
+                       cell))
+                   row)
+                  (skip-chars-forward " "))
+              (skip-chars-forward "^,;\t\n")
+              (push
+               (buffer-substring-no-properties p (point))
+               row))
+            (skip-chars-forward ",;\t" (1+ (point)))))
+        (push
+         (if row (nreverse row) 'hline)
+         table)
+        (or (eobp) (forward-char 1))))
+    (setq table (nreverse table))
+    (if header
+        (setcdr table (cons 'hline (cdr table))))
+    (if colnames
+        (setq table (cons colnames (cons 'hline table))))
+    table))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Here is a bunch of useful utilities,
 ;; generic enough to be detached from the orgtbl-join package.
@@ -176,69 +237,203 @@ The table is taken from the parameter TXT, or from the buffer at point."
 	(push (match-string-no-properties 1) tables)))
     tables))
 
-(defun orgtbl-join--get-table-from-babel (name-or-id)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Read a table from anywhere: Org, Babel, CSV, JSON,
+;; from local or distant file,
+;; with optional slicing
+
+(defun orgtbl-join--table-from-babel (name-or-id)
   "Retrieve an input table as the result of running a Babel block.
+NAME-OR-ID is the usual Org convention for pointing to a distant reference.
+Examples: babel, file:babel, file:babel[1:3,2:5], file:babel(p1=…,p2=…)
+This function could work also for a table,
+but this has already been short-circuited.
 The table cells get stringified."
   ;; A user error is generated in case no Babel block is found
   (let ((table (org-babel-ref-resolve name-or-id)))
-    (cl-loop
-     for row in table
-     if (listp row)
-     do
-     (cl-loop
-      for cell on row
-      unless (stringp (car cell))
-      do (setcar cell (format "%s" (car cell)))))
-    table))
+    (when (and table (consp table)
+               (or (eq (car table) 'hline)
+                   (consp (car table))))
+      (cl-loop
+       for row in table
+       if (listp row)
+       do
+       (cl-loop
+        for cell on row
+        unless (stringp (car cell))
+        do (setcar cell (format "%s" (car cell)))))
+      table)))
 
-(defun orgtbl-join--get-distant-table (name-or-id)
-  "Find a table in the current buffer named NAME-OR-ID.
+(defun orgtbl-join--table-from-csv (file params)
+  "Parse a CSV formatted table located in FILE.
+The cell-separator is currently guessed.
+Currently, there is no header."
+  (let ((header) (colnames))
+    (cl-loop
+     for p on (cdr (read params))
+     do
+     (cond
+      ((eq (car p) 'header)
+       (setq header t))
+      ((eq (car p) 'colnames)
+       (setq p (cdr p))
+       (setq colnames (car p)))
+      (t
+       (message "parameter %S not recognized" (car p)))))
+    (with-temp-buffer
+      (insert-file-contents file)
+      (orgtbl-join--csv-to-lisp header colnames))))
+
+(defun orgtbl-join--table-from-json (file _params)
+  "Parse a JSON formatted table located in FILE.
+FILE is a filename with possible relative or absolute path.
+Currently, the accepted format is
+[[\"COL1\",\"COL2\",…]
+ \"hline\"
+ [\"VAL11\",\"COL12\",…]
+ [\"VAL21\",\"COL22\",…]
+ [\"VAL31\",\"COL32\",…]
+Numbers do not need to be quoted.
+ …"
+  (let ((json-object-type 'alist)
+        (json-array-type 'list)
+        (json-key-type 'string))
+    (let ((json (json-read-file file)))
+      (cl-loop
+       for row in json
+       if (stringp row)
+       collect (intern row)
+       else
+       collect (append row ())))))
+
+(defun orgtbl-join--table-from-name (file name)
+  "Parse an Org table named NAME in a ditant Org file named FILE.
+FILE is a filename with possible relative or absolute path.
+If FILE is nil, look in the current buffer."
+  (with-current-buffer
+      (if file
+          (find-file-noselect file)
+        (current-buffer))
+    (save-excursion
+      (goto-char (point-min))
+      (when (let ((case-fold-search t))
+	      (re-search-forward
+	       ;; This concat is automatically done by new versions of rx
+	       ;; using "literal". This appeared on june 26, 2019
+	       ;; For older versions of Emacs, we fallback to concat
+	       (concat
+	        (rx bol
+		    (* (any " \t")) "#+" (? "tbl") "name:"
+		    (* (any " \t")))
+	        (regexp-quote name)
+	        (rx (* (any " \t"))
+		    eol))
+	       nil t))
+        (re-search-forward
+         (rx
+          point
+          (0+ (0+ blank) (? "#" (0+ any)) "\n")
+          (0+ blank)
+          "|")
+         nil t)
+        (orgtbl-join--table-to-lisp)))))
+
+(defun orgtbl-join--table-from-id (id)
+  "Parse a table following a header in a distant Org file.
+The header have an ID property equal to ID in a PROPERTY drawer."
+  (let ((id-loc (org-id-find id 'marker)))
+    (when (and id-loc (markerp id-loc))
+      (with-current-buffer (marker-buffer id-loc)
+        (save-excursion
+          (goto-char (marker-position id-loc))
+          (move-marker id-loc nil)
+          (and (re-search-forward
+                (rx
+                 point
+                 (0+ (0+ blank) (? (any "*#:") (0+ any)) "\n")
+                 (0+ blank) "|")
+                nil t)
+	       (not (match-beginning 1))
+               (orgtbl-join--table-to-lisp)))))))
+
+(defun orgtbl-join-table-from-any-ref (name-or-id)
+  "Find a table referenced by NAME-OR-ID.
+The reference is all the accepted Org references,
+and additionally pointers to CSV or JSON files.
+The pointed to object may also be a Babel block, which when executed
+returns an Org table. Parameters may be passed to the Babel block
+in parenthesis.
+A slicing may be applied to the table, to select rows or columns.
+The syntax for slicing is like [1:3] or [1:3,2:5].
 Return it as a Lisp list of lists.
 An horizontal line is translated as the special symbol `hline'."
   (unless (stringp name-or-id)
     (setq name-or-id (format "%s" name-or-id)))
-  (let (buffer loc)
-    (save-excursion
-      (goto-char (point-min))
-      (if (let ((case-fold-search t))
-	    (re-search-forward
-	     ;; This concat is automatically done by new versions of rx
-	     ;; using "literal". This appeared on june 26, 2019
-	     ;; For older versions of Emacs, we fallback to concat
-	     (concat
-	      (rx bol
-		  (* (any " \t")) "#+" (? "tbl") "name:"
-		  (* (any " \t")))
-	      (regexp-quote name-or-id)
-	      (rx (* (any " \t"))
-		  eol))
-	     nil t))
-	  (setq buffer (current-buffer)
-		loc (match-beginning 0))
-	(let ((id-loc (org-id-find name-or-id 'marker)))
-	  (when (and id-loc (markerp id-loc))
-	    (setq buffer (marker-buffer id-loc)
-		  loc (marker-position id-loc))
-	    (move-marker id-loc nil)))))
-    (or
-     (and buffer
-          (with-current-buffer buffer
-            (save-excursion
-	      (goto-char loc)
-	      (forward-line 1)
-              (beginning-of-line)
-	      (and (re-search-forward
-                    (rx
-                     point
-                     (or
-                      (group (1+ "*") " ")
-                      (seq
-                       (0+ (0+ blank) (? "#" (0+ any)) "\n")
-                       (0+ blank) "|")))
-                    nil t)
-		   (not (match-beginning 1))
-	           (orgtbl-join--table-to-lisp)))))
-     (orgtbl-join--get-table-from-babel name-or-id))))
+  (unless
+      (string-match
+       (rx
+        bos
+        (* space)
+        (opt (group-n 1 (* (not (any ":")))) ":")
+        (* space)
+        (group-n 2 (* (not (any "[]():"))))
+        (* space)
+        (opt (group-n 3 "(" (* any) ")"))
+        (* space)
+        (opt (group-n 4 "[" (* any) "]"))
+        (* space)
+        eos)
+       name-or-id)
+    (user-error "Malformed table reference %S" name-or-id))
+  (let ((file   (match-string 1 name-or-id))
+        (name   (match-string 2 name-or-id))
+        (params (match-string 3 name-or-id))
+        (slice  (match-string 4 name-or-id)))
+    (if (eq (length file) 0)
+        (setq file nil))
+    (if (eq (length name) 0)
+        (setq name nil))
+    (unless (or file name)
+      (user-error "Malformed table reference %S" name-or-id))
+    (let
+        ((table
+          (cond
+           ;; name-or-id = "file:(csv …)"
+           ((and file (not name)
+                 (string-match (rx bos "(csv") params))
+            (orgtbl-join--table-from-csv file params))
+           ;; name-or-id = "file:(json …)"
+           ((and file (not name)
+                 (string-match (rx bos "(json") params))
+            (orgtbl-join--table-from-json file params))
+           ;; name-or-id = "babel(p=…)" or "file:babel(p=…)"
+           ((and params
+                 (orgtbl-join--table-from-babel
+                  (if file
+                      (format "%s:%s%s" file name params)
+                    (format "%s%s" name params)))))
+           ;;name-or-id = "table" or "file:table"
+           ((orgtbl-join--table-from-name file name))
+           ;; name-or-id = "babel" or "file:babel"
+           ((orgtbl-join--table-from-babel
+             (if file
+                 (format "%s:%s" file name)
+               name)))
+           ;; name-or-id = "34cbc63a-c664-471e-a620-d654b26ffa31"
+           ;; pointing to a header in a distant org file, followed by a table
+           ((and (not file) name (not params)
+                 (orgtbl-join--table-from-id name)))
+           ;; everything failed
+           (t
+            (user-error
+             "Cannot find table or babel block with reference %S"
+             name-or-id)))))
+      (if slice
+          (org-babel-ref-index-list slice table)
+        table))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Utilities
 
 (defun orgtbl-join--split-string-with-quotes (string)
   "Like (split-string STRING), but with quote protection.
@@ -307,6 +502,9 @@ otherwise nil is returned."
 	   thereis (and (equal h colname) i))))
         (err
 	 (user-error "Column %s not found in table" colname))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Lisp table to string conversion
 
 (defun orgtbl-join--insert-make-spaces (n spaces-cache)
   "Make a string of N spaces.
@@ -516,7 +714,7 @@ The updated PARAMS is returned."
         (setq mastable (completing-read "Master table: " localtables))
         (setq params `(,@params ,:mas-table ,mastable)))
       (setq mastable
-            (orgtbl-join--get-distant-table (plist-get params :mas-table))))
+            (orgtbl-join-table-from-any-ref (plist-get params :mas-table))))
     (cl-loop
      until
      (equal
@@ -529,7 +727,7 @@ The updated PARAMS is returned."
      (setq refcol
 	   (orgtbl-join--join-query-column
 	    "Reference joining column: "
-	    (orgtbl-join--get-distant-table reftable)
+	    (orgtbl-join-table-from-any-ref reftable)
 	    mascol))
      (setq mascol
 	   (orgtbl-join--join-query-column
@@ -730,7 +928,7 @@ Destructively modify PARAMS."
        (orgtbl-join--create-table-joined
         mas-table
         mas-column
-        (orgtbl-join--get-distant-table ref-table)
+        (orgtbl-join-table-from-any-ref ref-table)
         ref-column
         full)))
     (if (setq ref-column (plist-get params :ref-column))
@@ -949,7 +1147,7 @@ The
 	(insert (match-string 0 content)))
     (orgtbl-join--insert-elisp-table
      (orgtbl-join--join-all-ref-tables
-      (orgtbl-join--get-distant-table (plist-get params :mas-table))
+      (orgtbl-join-table-from-any-ref (plist-get params :mas-table))
       params))
     (orgtbl-join--table-recalculate content formula)))
 
