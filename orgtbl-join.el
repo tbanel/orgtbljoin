@@ -218,6 +218,37 @@ COLNAMES, if not nil, is a list of column names."
     table))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; A few rx abbreviations
+;; each time a bit of a regexp is used twice or more,
+;; it makes sense to define an abbrev
+
+(eval-when-compile ;; not used at runtime
+
+  ;; search for table name, such as:
+  ;; #+tablename: mytable
+  (rx-define tblname
+    (seq bol (* blank) "#+" (? "tbl") "name:" (* blank)))
+
+  ;; skip lines beginning with # in order to reach the start of table
+  (rx-define skipmetatable (firstchars)
+    (seq point
+         (0+ (0+ blank) (? firstchars (0+ any)) "\n")
+         (0+ blank) "|"))
+
+  ;; just to get ride of a few parenthesis
+  (rx-define notany (&rest list)
+    (not (any list)))
+
+  ;; match quoted column names, like
+  ;; 'col a' "col b" colc
+  (rx-define quotedcolname (&rest bare)
+    (or
+     (seq ?'  (* (notany ?' )) ?' )
+     (seq ?\" (* (notany ?\")) ?\")
+     bare))
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Here is a bunch of useful utilities,
 ;; generic enough to be detached from the orgtbl-join package.
 ;; For the time being, they are here.
@@ -225,44 +256,30 @@ COLNAMES, if not nil, is a list of column names."
 (defun orgtbl-join--list-local-tables ()
   "Search for available tables in the current file."
   (interactive)
-  (let ((tables))
-    (save-excursion
-      (goto-char (point-min))
-      (while (let ((case-fold-search t))
-	       (re-search-forward
-		(rx bol
-		    (* (any " \t")) "#+" (? "tbl") "name:"
-		    (* (any " \t")) (group (* not-newline)))
-		nil t))
-	(push (match-string-no-properties 1) tables)))
-    tables))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Read a table from anywhere: Org, Babel, CSV, JSON,
-;; from local or distant file,
-;; with optional slicing
+  (save-excursion
+    (goto-char (point-min))
+    (let ((case-fold-search t))
+      (cl-loop
+       while
+       (re-search-forward
+        (rx tblname (group (*? any)) (* blank) eol)
+        nil t)
+       collect (match-string-no-properties 1)))))
 
 (defun orgtbl-join--table-from-babel (name-or-id)
   "Retrieve an input table as the result of running a Babel block.
 NAME-OR-ID is the usual Org convention for pointing to a distant reference.
 Examples: babel, file:babel, file:babel[1:3,2:5], file:babel(p1=…,p2=…)
 This function could work also for a table,
-but this has already been short-circuited.
-The table cells get stringified."
+but this has already been short-circuited."
   ;; A user error is generated in case no Babel block is found
   (let ((table (org-babel-ref-resolve name-or-id)))
-    (when (and table (consp table)
-               (or (eq (car table) 'hline)
-                   (consp (car table))))
-      (cl-loop
-       for row in table
-       if (listp row)
-       do
-       (cl-loop
-        for cell on row
-        unless (stringp (car cell))
-        do (setcar cell (format "%s" (car cell)))))
-      table)))
+    (and
+     table
+     (consp table)
+     (or (eq (car table) 'hline)
+         (consp (car table)))
+     table)))
 
 (defun orgtbl-join--table-from-csv (file params)
   "Parse a CSV formatted table located in FILE.
@@ -318,24 +335,9 @@ If FILE is nil, look in the current buffer."
       (goto-char (point-min))
       (when (let ((case-fold-search t))
 	      (re-search-forward
-	       ;; This concat is automatically done by new versions of rx
-	       ;; using "literal". This appeared on june 26, 2019
-	       ;; For older versions of Emacs, we fallback to concat
-	       (concat
-	        (rx bol
-		    (* (any " \t")) "#+" (? "tbl") "name:"
-		    (* (any " \t")))
-	        (regexp-quote name)
-	        (rx (* (any " \t"))
-		    eol))
+	       (rx tblname (literal name) (* blank) eol)
 	       nil t))
-        (re-search-forward
-         (rx
-          point
-          (0+ (0+ blank) (? "#" (0+ any)) "\n")
-          (0+ blank)
-          "|")
-         nil t)
+        (re-search-forward (rx (skipmetatable "#")) nil t)
         (orgtbl-join--table-to-lisp)))))
 
 (defun orgtbl-join--table-from-id (id)
@@ -347,14 +349,9 @@ The header have an ID property equal to ID in a PROPERTY drawer."
         (save-excursion
           (goto-char (marker-position id-loc))
           (move-marker id-loc nil)
-          (and (re-search-forward
-                (rx
-                 point
-                 (0+ (0+ blank) (? (any "*#:") (0+ any)) "\n")
-                 (0+ blank) "|")
-                nil t)
-	       (not (match-beginning 1))
-               (orgtbl-join--table-to-lisp)))))))
+          (and
+           (re-search-forward (rx (skipmetatable (any "*#:"))) nil t)
+           (orgtbl-join--table-to-lisp)))))))
 
 (defun orgtbl-join-table-from-any-ref (name-or-id)
   "Find a table referenced by NAME-OR-ID.
@@ -374,13 +371,13 @@ An horizontal line is translated as the special symbol `hline'."
        (rx
         bos
         (* space)
-        (opt (group-n 1 (* (not (any ":")))) ":")
+        (? (group-n 1 (* (notany ":"))) ":")
         (* space)
-        (group-n 2 (* (not (any "[]():"))))
+        (   group-n 2 (* (notany "[]():")))
         (* space)
-        (opt (group-n 3 "(" (* any) ")"))
+        (? (group-n 3 "(" (* any) ")"))
         (* space)
-        (opt (group-n 4 "[" (* any) "]"))
+        (? (group-n 4 "[" (* any) "]"))
         (* space)
         eos)
        name-or-id)
@@ -446,13 +443,9 @@ and the other way around."
     (save-match-data
       (while (and (< start l)
 		  (string-match
-		   (rx
-		    (* (any " \f\t\n\r\v"))
-		    (group
-		     (+ (or
-			 (seq ?'  (* (not (any ?')))  ?' )
-			 (seq ?\" (* (not (any ?\"))) ?\")
-			 (not (any " '\""))))))
+                   (rx
+                    (* blank)
+                    (group (+ (quotedcolname (notany " '\"")))))
 		   string start))
 	(orgtbl-join--list-append result (match-string 1 string))
 	(setq start (match-end 1))))
@@ -484,9 +477,9 @@ otherwise nil is returned."
       (setq colname (match-string 1 colname)))
   ;; skip first hlines if any
   (orgtbl-join--pop-leading-hline table)
-  (cond ((equal colname "")
+  (cond ((string= colname "")
 	 (and err (user-error "Empty column name")))
-	((equal colname "hline")
+	((string= colname "hline")
 	 0)
 	((string-match (rx bos "$" (group (+ (any "0-9"))) eos) colname)
 	 (let ((n (string-to-number (match-string 1 colname))))
@@ -499,7 +492,7 @@ otherwise nil is returned."
 	  (cl-loop
 	   for h in (car table)
 	   for i from 1
-	   thereis (and (equal h colname) i))))
+	   thereis (and (string= h colname) i))))
         (err
 	 (user-error "Column %s not found in table" colname))))
 
@@ -623,10 +616,7 @@ special symbol `hline' to mean an horizontal line."
 	       (orgtbl-join--list-append bits "|\n"))
       ;; remove the last \n because Org Mode re-adds it
       (setcar (car bits) "|")
-      (mapconcat
-       #'identity
-       (orgtbl-join--list-get bits)
-       ""))))
+      (mapconcat #'identity (orgtbl-join--list-get bits) ""))))
 
 (defun orgtbl-join--insert-elisp-table (table)
   "Insert TABLE in current buffer at point.
@@ -765,6 +755,15 @@ appended in the result, because it is already present in MASROW."
 	     do (orgtbl-join--list-append result cell))
     (orgtbl-join--list-get result)))
 
+(defun orgtbl-join--to-string (x)
+  "Convert X to a string,
+be it a number, a symbol, or a string (unchanged)."
+  (cond
+   ((stringp x) x)
+   ((symbolp x) (symbol-name x))
+   ((numberp x) (number-to-string x))
+   (t (format "%s" x))))
+
 (defun orgtbl-join--create-table-joined (mastable mascol reftable refcol full)
   "Join a master table with a reference table.
 MASTABLE is the master table, as a list of lists of cells.
@@ -824,7 +823,7 @@ Returns MASTABLE enriched with material from REFTABLE."
     ;; hashtable entry has been consumed
     (cl-loop for row in refbody
 	     if (listp row) do
-	     (let* ((key (nth refcol row))
+	     (let* ((key (orgtbl-join--to-string (nth refcol row)))
 		    (hashentry (gethash key refhash)))
 	       (if hashentry
 		   (nconc hashentry (list row))
@@ -848,7 +847,8 @@ Returns MASTABLE enriched with material from REFTABLE."
      do
      (if (not (listp masrow))
 	 (orgtbl-join--list-append result masrow)
-       (let ((hashentry (gethash (nth mascol masrow) refhash)))
+       (let ((hashentry
+              (gethash (orgtbl-join--to-string (nth mascol masrow)) refhash)))
 	 (if (not hashentry)
 	     ;; if no ref-line matches, add the non-matching master-line anyway
 	     (if full-mas (orgtbl-join--list-append result masrow ))
@@ -866,7 +866,8 @@ Returns MASTABLE enriched with material from REFTABLE."
 	(cl-loop
 	 for refrow in refbody
 	 if (listp refrow) do
-	 (let ((hashentry (gethash (nth refcol refrow) refhash)))
+	 (let ((hashentry
+                (gethash (orgtbl-join--to-string (nth refcol refrow)) refhash)))
 	   (if (equal (car hashentry) 0)
 	       (let ((fake-masrow (make-list width "")))
 		 (setcar (nthcdr mascol fake-masrow)
