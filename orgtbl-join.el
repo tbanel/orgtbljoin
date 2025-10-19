@@ -253,18 +253,21 @@ COLNAMES, if not nil, is a list of column names."
 ;; generic enough to be detached from the orgtbl-join package.
 ;; For the time being, they are here.
 
-(defun orgtbl-join--list-local-tables ()
-  "Search for available tables in the current file."
+(defun orgtbl-join--list-local-tables (file)
+  "Search for available tables in FILE.
+If FILE is nil, use current buffer."
   (interactive)
-  (save-excursion
-    (goto-char (point-min))
-    (let ((case-fold-search t))
-      (cl-loop
-       while
-       (re-search-forward
-        (rx tblname (group (*? any)) (* blank) eol)
-        nil t)
-       collect (match-string-no-properties 1)))))
+  (with-current-buffer
+      (if file (find-file-noselect file) (current-buffer))
+    (save-excursion
+      (goto-char (point-min))
+      (let ((case-fold-search t))
+        (cl-loop
+         while
+         (re-search-forward
+          (rx tblname (group (*? any)) (* blank) eol)
+          nil t)
+         collect (match-string-no-properties 1))))))
 
 (defun orgtbl-join--table-from-babel (name-or-id)
   "Retrieve an input table as the result of running a Babel block.
@@ -668,14 +671,32 @@ with an Org Mode table."
       (eval post)))
    (t (user-error ":post %S header could not be understood" post))))
 
-(defun orgtbl-join--join-query-column (prompt table default)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Wizard
+
+(defun orgtbl-join--display-help (explain &rest args)
+  "Display help for each field the wizard queries."
+  (with-current-buffer "*orgtbl-join-help*"
+    (erase-buffer)
+    (insert (apply #'format explain args))
+    (goto-char (point-min))))
+
+;; This variable contains the history of user entered answers,
+;; so that they can be entered again or edited.
+(defvar orgtbl-join-history-cols ())
+
+(defun orgtbl-join--join-query-column
+    (help prompt table default allcolumns &optional keepanswer)
   "Interactively query a column.
-PROMPT is displayed to the user to explain what answer is expected.
+HELP & PROMPT are displayed to the user to explain what answer is expected.
 TABLE is the Org Mode table from which a column will be choosen
 by the user.  Its header is used for column names completion.  If
 TABLE has no header, completion is done on generic column names:
 $1, $2...
-DEFAULT is a proposed column name."
+DEFAULT is a proposed column name.
+ALLCOLUMNS is an accumulation list of all columns seen through all
+invocations of this function.
+KEEPANSWER should be true to keep the user's answer into ALLCOLUMNS."
   (orgtbl-join--pop-leading-hline table)
   (let ((completions
 	 (if (memq 'hline table) ;; table has a header
@@ -684,58 +705,261 @@ DEFAULT is a proposed column name."
 	    for _row in (car table)
 	    for i from 1
 	    collect (format "$%s" i)))))
-    (completing-read
-     prompt
-     completions
-     nil 'confirm
-     (and (member default completions) default))))
+    (orgtbl-join--display-help
+     help
+     (mapconcat (lambda (x) (format " ~%s~" x)) completions))
+    (let ((answer
+           (completing-read
+            prompt
+            completions
+            nil 'confirm
+            (and (member default completions) default))))
+      (setcdr allcolumns
+              (append
+               (cdr allcolumns)
+               (if keepanswer
+                   completions
+                 (delete answer completions))))
+      answer)))
 
-(defun orgtbl-join--query-tables (mastable params)
+(defun orgtbl-join--wizard-query-table (table typeoftable)
+  "Query the 3 fields composing a generalized table: file:name:slice.
+If TABLE is not nil, it is decomposed into file:name:slice, and each
+of those 3 fields serve as default answer when prompting.
+TYPEOFTABLE is a qualifier: t for master, nil for reference."
+  (let (file slice tablenames)
+    (when (and
+           table
+           (string-match
+            (rx bos
+                (? (group (+ (not (any ":[]")))) ":")
+                (group (+ (not "[")))
+                (?  (group "[" (* any) "]"))
+                eos)
+            table))
+      (setq file  (match-string 1 table))
+      (setq slice (match-string 3 table))
+      (setq table (match-string 2 table)))
+
+    (orgtbl-join--display-help
+     (if typeoftable
+         "* In which file is the master table?
+The master table may be in another file.
+The master table is the one we want to enrich with material from other tables.
+Leave answer empty to mean that the table is in the current buffer."
+       "* In which file is the reference table?
+A reference table is a storage of knowledge where orgtbl-join will pick
+selected rows. The flow of information is from the reference tables to the
+master table to be enriched.
+Leave answer empty to mean that the table is in the current buffer."))
+    (let ((insert-default-directory nil))
+      (setq file
+            (read-file-name "File (RET for current buffer): "
+                            nil
+                            nil
+                            nil
+                            file)))
+
+    (if (equal file "") (setq file nil))
+
+    (setq tablenames (orgtbl-join--list-local-tables file))
+    (if file
+        (setq tablenames (nconc tablenames '("(csv)" "(csv header)" "(json)"))))
+
+    (and
+     file
+     (not table)
+     (cond
+      ((string-match (rx ".csv"  eos) file)
+       (setq table "(csv)"))
+      ((string-match (rx ".json" eos) file)
+       (setq table "(json)"))))
+
+    (orgtbl-join--display-help
+     "* The input %s table may be:
+- a regular Org table,
+- a Babel block whose output will be the input table,
+- a ~CSV~ or ~JSON~ formatted file.
+Org table & Babel block names are available at completion (type ~TAB~).
+Alternately, it may be an Org ID pointing to a table or Babel block
+  (no completion).
+For a Babel block, the name of the Babel may be followed by
+  parameters in parenthesis. Example: ~mybabel(p=\"a\",quty=12)~
+for a ~CSV~ table, type ~(csv params…)~
+  currently only ~(cvs header)~ is recognized: first row is a header
+for a ~JSON~ table, type ~(json params…)~
+  currently no parameters are recognized."
+     (if typeoftable "master" "reference"))
+    (setq table
+          (completing-read
+           "Table, Babel, ID, (csv…), (json…): "
+           tablenames
+           nil
+           nil ;; user is free to input anything
+           table))
+
+    (unless (string-match-p (rx bos (* space) eos) table)
+      (orgtbl-join--display-help "* Slicing
+Slicing is an Org Mode feature allowing to cut the input table.
+It applies to any input: Org table, Babel output, CSV, JSON.
+Leave empty for no slicing.
+** Examples:
+- ~mytable[0:5]~     retains only the first 6 rows of the input table
+- ~mytable[*,0:1]~   retains only the first 2 columns
+- ~mytable[0:5,0:1]~ retains 5 rows and 2 columns")
+      (setq slice
+            (read-string
+             "Input slicing (optional): "
+             slice
+             'orgtbl-join-history-cols))
+
+      (concat
+       (or file "")
+       (if file ":" "")
+       table
+       (or slice "")))))
+
+(defun orgtbl-join--wizard-create-update (mastable params)
   "Interactively query tables and joining columns.
 PARAMS is a plist (possibly empty) where user answers accumulate.
 The updated PARAMS is returned."
-  (let ((localtables (orgtbl-join--list-local-tables))
-        (mascol (orgtbl-join--plist-get-remove params :mas-column))
+  (let ((mascol (orgtbl-join--plist-get-remove params :mas-column))
         (reftable)
         (refcol)
-        (full))
-    (unless mastable
-      (unless (plist-get params :mas-table)
-        (setq mastable (completing-read "Master table: " localtables))
-        (setq params `(,@params ,:mas-table ,mastable)))
-      (setq mastable
-            (orgtbl-join-table-from-any-ref (plist-get params :mas-table))))
+        (full)
+        (allcolumns (list nil))
+        (newparams))
+    (save-window-excursion
+      (save-selected-window
+        (split-window nil 15 'above)
+        (switch-to-buffer "*orgtbl-join-help*")
+        (org-mode))
+      (unless mastable
+        (setq mastable
+              (orgtbl-join--wizard-query-table
+               (orgtbl-join--plist-get-remove params :mas-table)
+               t))
+        (setq newparams `(,@newparams ,:mas-table ,mastable))
+        (setq mastable
+              (orgtbl-join-table-from-any-ref mastable)))
+
+      (cl-loop
+       do
+       (setq reftable
+             (orgtbl-join--wizard-query-table
+              (orgtbl-join--plist-get-remove params :ref-table)
+              nil))
+       (setq mascol
+	     (orgtbl-join--join-query-column
+              "* Which master column?
+One of the columns in the master table will be used to search
+for a selection of matching rows in the reference table.
+Candidates are:
+  %s"
+	      "Master column: "
+	      mastable
+              (or
+               (orgtbl-join--plist-get-remove params :mas-column)
+	       mascol)
+              allcolumns
+              t))
+       (setq refcol
+	     (orgtbl-join--join-query-column
+              "* Which reference column?
+One of the columns in the reference table will be matched
+in order to collect some rows and add them to the master table.
+Candidates are:
+  %s"
+	      "Reference column: "
+	      (orgtbl-join-table-from-any-ref reftable)
+	      (or
+               (orgtbl-join--plist-get-remove params :ref-column)
+               mascol)
+              allcolumns))
+       (orgtbl-join--display-help "* Which table should be kept entirely?
+Possible answers are:
+- =mas=: the master table is kept entirely.
+  This is the standard case. Only matching rows are picked from
+  the reference tables.
+- =ref=: the reference table is kept entirely.
+  This option should probably never be used.
+- =mas+ref=: master & reference tables are kept entirely.
+  Useful in cases where both tables are somehow symmetric.
+  Missing rows from one or the other table will be present in the result
+  with some empty cells.
+- =none=: only matching rows will be kept.
+  the resulting enriched table may therefore be shorter than both tables.")
+       (setq full
+	     (completing-read
+	      "Which table should appear entirely? "
+	      '("mas" "ref" "mas+ref" "none")
+	      nil nil
+              (or
+               (orgtbl-join--plist-get-remove params :full)
+               full
+               "mas")))
+       (setq newparams
+             `(,@newparams
+               ,:ref-table ,reftable
+               ,:mas-column ,mascol
+               ,:ref-column ,refcol
+               ,:full ,full))
+       (orgtbl-join--display-help
+        "* Another reference table?
+Up to now, the reference tables used in the joining are:
+%s"
+        (cl-loop
+         for pair on newparams
+         if (eq (car pair) :ref-table)
+         concat (format " ~%s~" (cadr pair))
+         do (setq pair (cdr pair))))
+       while
+       (y-or-n-p "Another reference table? "))
+
+      (pop allcolumns)
+
+      (when nil ;; not active
+        ;; The :cols parameter is not yet ready for interactive query.
+        ;; This is because there are ambiguities with $1 $2 $3 names.
+        ;; Do they refer to columns in the master table or in any of
+        ;; the references tables?
+        ;; There also might be duplicate column names which create ambiguity.
+        (orgtbl-join--display-help
+         "* Columns re-arrangement
+The natural ordering of columns puts the master columns first,
+then each of the reference columns.
+This order may be changed by specifying the list of output columns.
+Columns may also be ignored by this way.
+Candidates are:
+  %s"
+         (mapconcat
+          (lambda (x) (format " ~%s~" x))
+          allcolumns))
+        (let ((cols
+               (read-string
+                "(Optional) specify output columns: "
+                (or
+                 (orgtbl-join--plist-get-remove params :cols)
+                 (mapconcat #'identity allcolumns " "))
+                'orgtbl-join-history-cols)))
+          (unless (string-match-p (rx bos (* space) eos) cols)
+            (setq newparams
+                  `(,@newparams
+                    :cols
+                    ,cols)))))
+      )
+
+    ;; recover parameters not taken into account by the wizard
     (cl-loop
-     until
-     (equal
-      (setq reftable
-            (completing-read
-	     "Reference table (type ENTER when finished): "
-	     localtables))
-      "")
-     do
-     (setq refcol
-	   (orgtbl-join--join-query-column
-	    "Reference joining column: "
-	    (orgtbl-join-table-from-any-ref reftable)
-	    mascol))
-     (setq mascol
-	   (orgtbl-join--join-query-column
-	    "Master joining column: "
-	    mastable
-	    mascol))
-     (setq full
-	   (completing-read
-	    "Which table should appear entirely? "
-	    '("mas" "ref" "mas+ref" "none")
-	    nil nil (or full "mas")))
-     (setq params
-           `(,@params
-             ,:ref-table ,reftable
-             ,:mas-column ,mascol
-             ,:ref-column ,refcol
-             ,:full ,full)))
-    params))
+     for pair on params
+     unless
+     (memq
+      (car pair)
+      '(nil :mas-table :ref-table :mas-column :ref-column :full))
+     do (nconc newparams `(,(car pair) ,(cadr pair)))
+     do (setq pair (cdr pair)))
+
+    `(:name "join" ,@newparams)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Backend engine
@@ -977,7 +1201,7 @@ current row is kept, with empty cells appended to it."
              (if (memq 'hline tbl)
                  (nth (1- col) (car tbl))
                (format "$%s" col))))
-      (setq params (orgtbl-join--query-tables tbl params)))
+      (setq params (orgtbl-join--wizard-create-update tbl params)))
     (let ((b (org-table-begin))
 	  (e (org-table-end)))
       (save-excursion
@@ -1056,7 +1280,7 @@ divided by up to 5. It makes a difference for large tables."
 	    (unless (string-match (rx-to-string formula) tblfm)
 	      (setq tblfm (format "%s::%s" tblfm formula)))
 	  (setq tblfm (format "#+TBLFM: %s" formula))))
-    
+
     (when tblfm
       ;; There are formulas. They need to be evaluated.
       (end-of-line)
@@ -1102,12 +1326,26 @@ divided by up to 5. It makes a difference for large tables."
         (delete-region (org-table-begin) (org-table-end))
         (insert (orgtbl-join--elisp-table-to-string table) "\n")))))
 
+(defun orgtbl-join--parse-header-arguments ()
+  (let ((line (buffer-substring-no-properties
+               (line-beginning-position)
+               (line-end-position))))
+    (if (string-match
+         (rx bos (* blank) "#+begin:" (* blank) "join")
+         line)
+        (cdr (org-babel-parse-header-arguments line t)))))
+
 ;;;###autoload
 (defun orgtbl-join-insert-dblock-join ()
   "Wizard to interactively insert a joined table as a dynamic block."
   (interactive)
-  (org-create-dblock (orgtbl-join--query-tables nil (list :name "join")))
-  (org-update-dblock))
+  (let* ((oldline (flatten-list (orgtbl-join--parse-header-arguments)))
+         (params (orgtbl-join--wizard-create-update nil oldline)))
+    (when oldline
+      (org-mark-element)
+      (delete-region (region-beginning) (1- (region-end))))
+    (org-create-dblock params)
+    (org-update-dblock)))
 
 ;;;###autoload
 (defun org-dblock-write:join (params)

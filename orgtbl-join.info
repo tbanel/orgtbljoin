@@ -8,7 +8,7 @@ START-INFO-DIR-ENTRY
 END-INFO-DIR-ENTRY
 
 
-File: orgtbl-join.info,  Node: Top,  Next: Example,  Up: (dir)
+File: orgtbl-join.info,  Node: Top,  Next: New,  Up: (dir)
 
 Join several Org Mode Tables
 ****************************
@@ -18,6 +18,7 @@ of other tables (the reference tables).
 
 * Menu:
 
+* New::
 * Example::
 * SQL equivalent::
 * In-place, Push, Pull: In-place Push Pull.
@@ -50,9 +51,21 @@ In-place, Push, Pull
 
 
 
-File: orgtbl-join.info,  Node: Example,  Next: SQL equivalent,  Prev: Top,  Up: Top
+File: orgtbl-join.info,  Node: New,  Next: Example,  Prev: Top,  Up: Top
 
-1 Example
+1 New
+*****
+
+The wizard (see *note Wizard::) has been extended.  It can now modify an
+existing block, as well as creating a new one.  It is more fine grained.
+It features a more extensive help for each query.
+
+   Still call it with ‘C-c C-x x join’ or ‘orgtbl-join’.
+
+
+File: orgtbl-join.info,  Node: Example,  Next: SQL equivalent,  Prev: New,  Up: Top
+
+2 Example
 *********
 
 Here is a list of products for a cooking recipe.
@@ -101,7 +114,7 @@ with the needed nutrition facts:
 
 File: orgtbl-join.info,  Node: SQL equivalent,  Next: In-place Push Pull,  Prev: Example,  Up: Top
 
-2 SQL equivalent
+3 SQL equivalent
 ****************
 
 If you are familiar with SQL, you would get a similar result with a
@@ -119,7 +132,7 @@ configured with the ‘:full’ parameter).
 
 File: orgtbl-join.info,  Node: In-place Push Pull,  Next: Duplicates,  Prev: SQL equivalent,  Up: Top
 
-3 In-place, Push, Pull
+4 In-place, Push, Pull
 **********************
 
 Three modes are available: _in-place_, _push_, _pull_.
@@ -134,7 +147,7 @@ Three modes are available: _in-place_, _push_, _pull_.
 
 File: orgtbl-join.info,  Node: In _in-place_ mode,  Next: In _push_ mode,  Up: In-place Push Pull
 
-3.1 In _in-place_ mode
+4.1 In _in-place_ mode
 ======================
 
 The master table is changed (in-place) by appending columns from
@@ -146,7 +159,7 @@ positioned on the column used to perform the join.
 
 File: orgtbl-join.info,  Node: In _push_ mode,  Next: In _pull_ mode,  Prev: In _in-place_ mode,  Up: In-place Push Pull
 
-3.2 In _push_ mode
+4.2 In _push_ mode
 ==================
 
 The master table drives the creation of derived tables.  Specify the
@@ -171,7 +184,7 @@ table refreshes all derived tables.
 
 File: orgtbl-join.info,  Node: In _pull_ mode,  Next: As a rule of thumb,  Prev: In _push_ mode,  Up: In-place Push Pull
 
-3.3 In _pull_ mode
+4.3 In _pull_ mode
 ==================
 
 So-called "dynamic blocks" may also be used.  The resulting table knows
@@ -205,7 +218,7 @@ table.
 
 File: orgtbl-join.info,  Node: As a rule of thumb,  Prev: In _pull_ mode,  Up: In-place Push Pull
 
-3.4 As a rule of thumb
+4.4 As a rule of thumb
 ======================
 
 For quick and once-only processing, use _in-place_ mode.
@@ -219,7 +232,7 @@ a matter or convenience.
 
 File: orgtbl-join.info,  Node: Duplicates,  Next: Selecting the output columns,  Prev: In-place Push Pull,  Up: Top
 
-4 Duplicates
+5 Duplicates
 ************
 
 The reference tables may contain several matching rows for the same
@@ -258,7 +271,7 @@ rows.
 
 File: orgtbl-join.info,  Node: Selecting the output columns,  Next: How to handle missing rows?,  Prev: Duplicates,  Up: Top
 
-5 Selecting the output columns
+6 Selecting the output columns
 ******************************
 
 By default, all columns from the master table and all the reference
@@ -309,7 +322,7 @@ appears only once):
 
 File: orgtbl-join.info,  Node: How to handle missing rows?,  Next: Malformed input tables,  Prev: Selecting the output columns,  Up: Top
 
-6 How to handle missing rows?
+7 How to handle missing rows?
 *****************************
 
 It may happen that no row in the reference table matches a value in the
@@ -355,7 +368,7 @@ will still contain the ‘amaranth’ row, with empty nutritional facts.
 
 File: orgtbl-join.info,  Node: Malformed input tables,  Next: Headers,  Prev: How to handle missing rows?,  Up: Top
 
-7 Malformed input tables
+8 Malformed input tables
 ************************
 
 Sometimes an input table may be unaligned or malformed, with incomplete
@@ -383,7 +396,7 @@ rows, like those ones:
 
 File: orgtbl-join.info,  Node: Headers,  Next: Wizard,  Prev: Malformed input tables,  Up: Top
 
-8 Headers
+9 Headers
 *********
 
 The master and the reference tables may or may not have a header.  When
@@ -407,32 +420,42 @@ pretty much the same as in the Org Mode spreadsheet.
 
 File: orgtbl-join.info,  Node: Wizard,  Next: Joining 2 similar tables,  Prev: Headers,  Up: Top
 
-9 Wizard
-********
+10 Wizard
+*********
 
-The _in-place mode_ is run through a small wizard which asks questions,
-with completion available.
-   • Invoke it with: ‘M-x orgtbl-join’
-   • or menu entry ‘Tbl > Column > Join with another table’ if you have
-     configured it (see "Installation" paragraph).
+The wizard may be invoked in-place or for the pull-mode.
 
-   A wizard is available for the _pull_ mode.
-   • It is invoked with either: ‘M-x orgtbl-join-insert-dblock-join’
-   • or ‘C-c C-x x’, then answer ‘join’ for the kind of block to insert.
+   Invoke the wizard in-place by typing ‘M-x orgtbl-join’ with the
+cursor inside the master table to be enriched.  The cursor should be
+anywhere in the column serving the join process.
+
+   The menu entry ‘Tbl > Column > Join with another table’ is equivalent
+to ‘M-x orgtbl-join’.
+
+   For the pull-mode, the same wizard may create a fresh new block
+‘#+BEGIN: join...’, or amend an existing one.  Invoke it with
+   • either ‘M-x orgtbl-join-insert-dblock-join’
+   • or ‘C-c C-x x =join’.
+   Put the cursor on an empty space in your Org Mode file, or on an
+existing ‘#+BEGIN: join...’ block.
 
    For all questions, completion is available.
 
-   Note: there many kinds of dynamic blocks can be inserted besides
-‘join’.
+   Note: there are many kinds of dynamic blocks that can be inserted
+besides ‘join’.
 
    As there might be as many reference tables as wanted, the wizard
-continues asking for reference tables.  When done, just give an empty
-answer when the wizard asks for the name of a reference table.
+continues asking for reference tables.  When done, answer ‘n’ when the
+wizard ask if you want an additional reference table to be joined.
+
+   The wizard does not (yet) take into account the ‘:cols’ and ‘:post’
+parameters.  If there where such parameters already specified, the
+wizard will leave them untouched.
 
 
 File: orgtbl-join.info,  Node: Joining 2 similar tables,  Next: Post-joining spreadsheet formulas,  Prev: Wizard,  Up: Top
 
-10 Joining 2 similar tables
+11 Joining 2 similar tables
 ***************************
 
 What if we need not to append data from some table/s to a main table,
@@ -510,7 +533,7 @@ table, just type TAB inside it.
 
 File: orgtbl-join.info,  Node: Post-joining spreadsheet formulas,  Next: Post processing,  Prev: Joining 2 similar tables,  Up: Top
 
-11 Post-joining spreadsheet formulas
+12 Post-joining spreadsheet formulas
 ************************************
 
 Additional columns can be specified for the resulting table.  With the
@@ -536,7 +559,7 @@ This will fill-in the 7th column header.  It is translated into a usual
 
 File: orgtbl-join.info,  Node: Post processing,  Next: Virtual input table from Babel,  Prev: Post-joining spreadsheet formulas,  Up: Top
 
-12 Post processing
+13 Post processing
 ******************
 
 The joined table can be post-processed with the ‘:post’ parameter.  It
@@ -592,7 +615,7 @@ to the ‘:post’ parameter:
 
 File: orgtbl-join.info,  Node: Virtual input table from Babel,  Next: Wide variety of input tables,  Prev: Post processing,  Up: Top
 
-13 Virtual input table from Babel
+14 Virtual input table from Babel
 *********************************
 
 Any of the input tables may be the result of executing a Babel script.
@@ -639,7 +662,7 @@ be executed.
 
 File: orgtbl-join.info,  Node: Wide variety of input tables,  Next: Chaining,  Prev: Virtual input table from Babel,  Up: Top
 
-14 Wide variety of input tables
+15 Wide variety of input tables
 *******************************
 
 As in any other Org Mode source block, the input table may come from
@@ -708,7 +731,7 @@ references may be followed by an optional slicing.  Examples:
 
 File: orgtbl-join.info,  Node: Chaining,  Next: Multiple reference tables,  Prev: Wide variety of input tables,  Up: Top
 
-15 Chaining
+16 Chaining
 ***********
 
 In an above example we gave a name to the resulting joined table:
@@ -725,7 +748,7 @@ blocks.
 
 File: orgtbl-join.info,  Node: Multiple reference tables,  Next: Installation,  Prev: Chaining,  Up: Top
 
-16 Multiple reference tables
+17 Multiple reference tables
 ****************************
 
 OrgtblJoin used to handle just one reference table.  Now, as many as
@@ -751,7 +774,7 @@ table.  But it can be change in several ways:
 
 File: orgtbl-join.info,  Node: Installation,  Next: Author contributors,  Prev: Multiple reference tables,  Up: Top
 
-17 Installation
+18 Installation
 ***************
 
 Emacs package on Melpa: add the following lines to your ‘.emacs’ file,
@@ -789,7 +812,7 @@ menu bindings are no longer hard-coded in the package.
 
 File: orgtbl-join.info,  Node: Author contributors,  Next: Changes,  Prev: Installation,  Up: Top
 
-18 Author, contributors
+19 Author, contributors
 ***********************
 
 Comments, enhancements, etc.  welcome.
@@ -814,7 +837,7 @@ Comments, enhancements, etc.  welcome.
 
 File: orgtbl-join.info,  Node: Changes,  Next: GPL 3 License,  Prev: Author contributors,  Up: Top
 
-19 Changes
+20 Changes
 **********
 
    • remove duplicate reference column
@@ -846,7 +869,7 @@ File: orgtbl-join.info,  Node: Changes,  Next: GPL 3 License,  Prev: Author cont
 
 File: orgtbl-join.info,  Node: GPL 3 License,  Prev: Changes,  Up: Top
 
-20 GPL 3 License
+21 GPL 3 License
 ****************
 
 Copyright (C) 2014-2025 Thierry Banel
@@ -868,30 +891,31 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Tag Table:
 Node: Top83
-Node: Example968
-Node: SQL equivalent2807
-Node: In-place Push Pull3283
-Node: In _in-place_ mode3585
-Node: In _push_ mode3942
-Node: In _pull_ mode4754
-Node: As a rule of thumb5894
-Node: Duplicates6406
-Node: Selecting the output columns8225
-Node: How to handle missing rows?10005
-Node: Malformed input tables12273
-Node: Headers13154
-Node: Wizard14128
-Node: Joining 2 similar tables15057
-Node: Post-joining spreadsheet formulas17378
-Node: Post processing18648
-Node: Virtual input table from Babel20511
-Node: Wide variety of input tables21981
-Node: Chaining25163
-Node: Multiple reference tables25742
-Node: Installation26846
-Node: Author contributors28148
-Node: Changes29013
-Node: GPL 3 License30414
+Node: New972
+Node: Example1324
+Node: SQL equivalent3163
+Node: In-place Push Pull3639
+Node: In _in-place_ mode3941
+Node: In _push_ mode4298
+Node: In _pull_ mode5110
+Node: As a rule of thumb6250
+Node: Duplicates6762
+Node: Selecting the output columns8581
+Node: How to handle missing rows?10361
+Node: Malformed input tables12629
+Node: Headers13510
+Node: Wizard14484
+Node: Joining 2 similar tables15816
+Node: Post-joining spreadsheet formulas18137
+Node: Post processing19407
+Node: Virtual input table from Babel21270
+Node: Wide variety of input tables22740
+Node: Chaining25922
+Node: Multiple reference tables26501
+Node: Installation27605
+Node: Author contributors28907
+Node: Changes29772
+Node: GPL 3 License31173
 
 End Tag Table
 

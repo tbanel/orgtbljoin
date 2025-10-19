@@ -5,6 +5,13 @@
 One table (the master table) is grown by selectively appending columns of
 other tables (the reference tables).
 
+* New
+The wizard (see [[#wizard][Wizard]]) has been extended. It can now
+modify an existing block, as well as creating a new one. It is more
+fine grained. It features a more extensive help for each query.
+
+Still call it with =C-c C-x x join= or =orgtbl-join=.
+
 * Table of Contents
 :PROPERTIES:
 :TOC:      :include siblings :depth 1 :force () :ignore (this) :local (nothing)
@@ -395,23 +402,34 @@ pretty much the same as in the Org Mode spreadsheet.
 :CUSTOM_ID: wizard
 :END:
 
-The /in-place mode/ is run through a small wizard which asks questions, with
-completion available.
-- Invoke it with: =M-x orgtbl-join=
-- or menu entry =Tbl > Column > Join with another table= if you have
-  configured it (see "Installation" paragraph).
+The wizard may be invoked in-place or for the pull-mode.
 
-A wizard is available for the /pull/ mode.
-- It is invoked with either: =M-x orgtbl-join-insert-dblock-join=
-- or =C-c C-x x=, then answer =join= for the kind of block to insert.
+Invoke the wizard in-place by typing =M-x orgtbl-join= with the cursor
+inside the master table to be enriched. The cursor should be anywhere
+in the column serving the join process.
+
+The menu entry =Tbl > Column > Join with another table= is equivalent to
+=M-x orgtbl-join=.
+
+For the pull-mode, the same wizard may create a fresh new block
+=#+BEGIN: join...=, or amend an existing one. Invoke it with
+- either =M-x orgtbl-join-insert-dblock-join=
+- or =C-c C-x x =join=.
+Put the cursor on an empty space in your Org Mode file, or on an
+existing =#+BEGIN: join...= block.
 
 For all questions, completion is available.
 
-Note: there many kinds of dynamic blocks can be inserted besides =join=.
+Note: there are many kinds of dynamic blocks that can be inserted
+besides =join=.
 
 As there might be as many reference tables as wanted, the wizard
-continues asking for reference tables. When done, just give an empty
-answer when the wizard asks for the name of a reference table.
+continues asking for reference tables. When done, answer =n= when the
+wizard ask if you want an additional reference table to be joined.
+
+The wizard does not (yet) take into account the =:cols= and =:post=
+parameters. If there where such parameters already specified, the
+wizard will leave them untouched.
 
 * Joining 2 similar tables
 :PROPERTIES:

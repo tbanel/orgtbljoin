@@ -1,0 +1,205 @@
+#+TITLE: Unit Tests & Examples for Orgtbl Join
+Copyright (C) 2013-2025  Thierry Banel
+
+org-join is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+org-join is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+* How to run?
+Running all tests should not change anything to this page.
+
+Run this script to complete all the unit tests in a disposable
+buffer. When done, the buffer and the original, untouched
+~wizardtest.org~, are compared, stopping at the first difference.
+
+#+begin_src elisp :results none
+(delete-other-windows)
+(goto-char (point-min))
+(org-cycle '(64))
+(split-window-right)
+
+;; Make a new buffer and fill it with the content of unittests.org
+
+(let ((f (buffer-file-name)))
+  (switch-to-buffer "disposable-wizardtests.org")
+  (erase-buffer)
+  (insert-file f))
+
+(org-mode)
+(org-cycle '(64))
+
+;; Clean results from prior tests
+(save-excursion
+  (goto-char (point-min))
+  (replace-regexp
+   (rx
+    bol "#+BEGIN: join" (* not-newline) "\n"
+    (*? (* any) "\n")
+    "#+END:" (* any) "\n")
+   ""))
+
+;; call all wizard invocations
+(goto-char (point-min))
+(while (search-forward "(execute-kbd-macro" nil t)
+  (beginning-of-line)
+  (forward-sexp)
+  (forward-line)
+  (beginning-of-line)
+  (eval-last-sexp nil))
+
+;; Compare the disposable buffer with the reference wiz1.org
+(goto-char (point-min))
+(compare-windows nil)
+  #+end_src
+
+* A country table
+
+#+name: lando
+| country   | continent     |
+|-----------+---------------|
+| Japan     | Asia          |
+| Egypt     | Africa        |
+| Spain     | Europe        |
+| Argentina | South America |
+| Malawi    | Africa        |
+| Taiwan    | Asia          |
+| Bolivia   | South America |
+| Laos      | Asia          |
+
+(execute-kbd-macro (kbd "
+C-c C-x x j o <tab> <return>
+<return>
+<tab> C-a C-k l a n d <tab> <return>
+<return> g e o g r <tab>
+j s o <tab> <return>
+<return>
+<return>
+<tab> u n <tab> <return>
+$ 2 <return>
+<return>
+n"))
+#+BEGIN: join :mas-table "lando" :ref-table "geography-a.json:(json)" :mas-column "country" :ref-column "$2" :full "mas"
+| country   | continent     |
+|-----------+---------------+--------------+----------+----------|
+| Japan     | Asia          | Tokyo        | 37131070 | 37173748 |
+| Japan     | Asia          | Osaka        | 18990205 | 19040445 |
+| Japan     | Asia          | Nagoya       |  9544065 |  9544935 |
+| Japan     | Asia          | Fukuoka      |  5452552 |  5499374 |
+| Egypt     | Africa        | Cairo        | 23095986 | 22623336 |
+| Egypt     | Africa        | Alexandria   |  5801580 |  5707049 |
+| Spain     | Europe        | Madrid       |  6826620 |  6800842 |
+| Spain     | Europe        | Barcelona    |  5751075 |  5730564 |
+| Argentina | South America | Buenos Aires | 15714124 | 15634092 |
+| Malawi    | Africa        |
+| Taiwan    | Asia          | New Taipei   |  4570576 |  4522439 |
+| Bolivia   | South America |
+| Laos      | Asia          |
+#+END:
+
+** Try modifying existing BEGIN..END
+
+do not remove this next line: it is a template for the following test!
+!+BEGIN: join :mas-table "lando" :ref-table "~/GitHub/orgtbljoin/tests/country.csv:(csv header)" :mas-column "country" :ref-column "Country" :full "mas" :cols "continent country Population 'Yearly Increase'"
+(execute-kbd-macro (kbd "
+M-C-b C-p C-a C-f C-SPC C-e M-w
+M-C-f C-n # C-y <return> # + E N D : <return>
+C-a C-p C-p
+C-c C-x x j o i <tab> <return>
+<return>
+<return>
+<return>
+<return>
+<return>
+<return>
+<return>
+<return>
+<return>
+n"))
+#+BEGIN: join :mas-table "lando" :ref-table "~/GitHub/orgtbljoin/tests/country.csv:(csv header)" :mas-column "country" :ref-column "Country" :full "mas" :cols "continent country Population 'Yearly Increase'"
+| continent     | country   | Population | Yearly Increase |
+|---------------+-----------+------------+-----------------|
+| Asia          | Japan     |  123425000 |         -655000 |
+| Africa        | Egypt     |  117949000 |         1820200 |
+| Europe        | Spain     |   48080000 |          -20700 |
+| South America | Argentina |   46069000 |          155300 |
+| Africa        | Malawi    |   22204000 |          566000 |
+| Asia          | Taiwan    |   23110000 |         -100900 |
+| South America | Bolivia   |   12604000 |          167900 |
+| Asia          | Laos      |    7911000 |          104100 |
+#+END:
+
+* Distant colors
+
+(execute-kbd-macro (kbd "
+C-c C-x x j o <tab> <return>
+u n i t t e s <tab> <return>
+c o l o <tab> <return>
+<return>
+u n i t t e <tab> <return>
+s p a n i s <tab> <return>
+<return> n a m <tab> <return>
+c o l o <tab> <return>
+<return>
+y
+u n i t t <tab> <return>
+1 2 b i <tab> <return>
+<return>
+<return>
+c o <tab> <return>
+<return>
+y u n i t t <tab> <return>
+e s p <tab> <return>
+<return>
+<return>
+c o l o <tab> <return>
+<return>
+n"))
+#+BEGIN: join :mas-table "unittests.org:colors" :ref-table "unittests.org:spanish_colors" :mas-column "name" :ref-column "color" :full "mas" :ref-table "unittests.org:12bits_colors" :mas-column "name" :ref-column "color" :full "mas" :ref-table "unittests.org:esperanto_colors" :mas-column "name" :ref-column "color" :full "mas"
+| name   | español  | 12bits | esperanto |
+|--------+----------+--------+-----------|
+| white  | blanco   | #FFF   | blanka    |
+| red    | rojo     | #F00   | ruĝa      |
+| green  | verde    | #0F0   | verda     |
+| yellow | amarillo | #FF0   | flava     |
+| blue   | azul     | #00F   | blua      |
+| pink   | rosado   | #F8F   | rozkolora |
+#+END:
+
+* :post
+
+(execute-kbd-macro (kbd "
+C-c C-x x j o i <tab> <return>
+u n i t t <tab> <return>
+m e a l _ x <backspace> w i t <tab> <return>
+<return>
+u n i t t <tab> <return>
+n u t _ w i t h _ <tab> <return>
+<return>
+p r o d u <tab> <return>
+t y p e <return>
+<return>
+n"))
+#+BEGIN: join :mas-table "unittests.org:meal_with_header" :ref-table "unittests.org:nut_with_header" :mas-column "product" :ref-column "type" :full "mas"
+| product   |   quty | Carb | Fiber | Sugar | Protein |
+| common    |     in | ohyd |       |       |         |
+| name      | gramms | rate |       |       |         |
+| (english) |        |
+|-----------+--------+------+-------+-------+---------|
+| onion     |     70 |  9.0 |   1.3 |   4.4 |     1.3 |
+| unknown   |    999 |
+| tomatoe   |    120 |  3.4 |   0.6 |   2.1 |     0.8 |
+| eggplant  |    300 |  8.6 |   2.5 |   3.2 |     0.8 |
+| eggplant  |    300 |  8.7 |   2.6 |   3.3 |     0.9 |
+| eggplant  |    300 |  8.5 |     ? |     ? |       ? |
+| corn      |    250 | 21.3 |   4.7 |   1.8 |     2.8 |
+#+END:
+
