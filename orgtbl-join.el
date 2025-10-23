@@ -952,13 +952,9 @@ Candidates are:
     ;; recover parameters not taken into account by the wizard
     (cl-loop
      for pair on params
-     unless
-     (memq
-      (car pair)
-      '(nil :mas-table :ref-table :mas-column :ref-column :full))
+     if (car pair)
      do (nconc newparams `(,(car pair) ,(cadr pair)))
      do (setq pair (cdr pair)))
-
     `(:name "join" ,@newparams)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
