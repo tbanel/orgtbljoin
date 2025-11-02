@@ -20,21 +20,13 @@ of other tables (the reference tables).
 
 * New::
 * Example::
-* SQL equivalent::
 * In-place, Push, Pull: In-place Push Pull.
-* Duplicates::
-* Selecting the output columns::
-* How to handle missing rows?::
-* Malformed input tables::
-* Headers::
-* Wizard::
-* Joining 2 similar tables::
-* Post-joining spreadsheet formulas::
-* Post processing::
-* Virtual input table from Babel::
+* Matching rows::
 * Wide variety of input tables::
-* Chaining::
-* Multiple reference tables::
+* About reference tables::
+* Selecting the output columns::
+* Post processing::
+* Wizard::
 * Installation::
 * Author, contributors: Author contributors.
 * Changes::
@@ -42,12 +34,45 @@ of other tables (the reference tables).
 
 — The Detailed Node Listing —
 
+Example
+
+* A cooking recipe::
+* SQL equivalent::
+
 In-place, Push, Pull
 
-* In _in-place_ mode::
-* In _push_ mode::
-* In _pull_ mode::
+* _In-place_ mode::
+* _Push_ mode::
+* _Pull_ mode::
 * As a rule of thumb::
+
+Matching rows
+
+* Duplicate rows::
+* How to handle missing rows?::
+
+Wide variety of input tables
+
+* Standard Org Mode input::
+* Virtual input table from Babel::
+* An Org ID::
+* CSV input::
+* JSON input::
+* Input slicing::
+* Malformed input tables::
+* Headers::
+
+About reference tables
+
+* Multiple reference tables::
+* Zero reference table::
+* Joining 2 similar tables::
+
+Post processing
+
+* Computing spreadsheet formulas afterward::
+* Algorithm post processing::
+* Chaining::
 
 
 
@@ -56,17 +81,25 @@ File: orgtbl-join.info,  Node: New,  Next: Example,  Prev: Top,  Up: Top
 1 New
 *****
 
-The wizard (see *note Wizard::) has been extended.  It can now modify an
-existing block, as well as creating a new one.  It is more fine grained.
-It features a more extensive help for each query.
-
-   Still call it with ‘C-c C-x x join’ or ‘orgtbl-join’.
+The titles of this README have been aggregated.  The result is more
+structured and easier to understand.
 
 
-File: orgtbl-join.info,  Node: Example,  Next: SQL equivalent,  Prev: New,  Up: Top
+File: orgtbl-join.info,  Node: Example,  Next: In-place Push Pull,  Prev: New,  Up: Top
 
 2 Example
 *********
+
+* Menu:
+
+* A cooking recipe::
+* SQL equivalent::
+
+
+File: orgtbl-join.info,  Node: A cooking recipe,  Next: SQL equivalent,  Up: Example
+
+2.1 A cooking recipe
+====================
 
 Here is a list of products for a cooking recipe.
 
@@ -112,10 +145,10 @@ with the needed nutrition facts:
      | tofu     |  100 |   0.7 |   0.5 |     6.6 |  1.4 |
 
 
-File: orgtbl-join.info,  Node: SQL equivalent,  Next: In-place Push Pull,  Prev: Example,  Up: Top
+File: orgtbl-join.info,  Node: SQL equivalent,  Prev: A cooking recipe,  Up: Example
 
-3 SQL equivalent
-****************
+2.2 SQL equivalent
+==================
 
 If you are familiar with SQL, you would get a similar result with a
 _join_ (actually a _left outer join_ by default, but that can be
@@ -130,25 +163,25 @@ configured with the ‘:full’ parameter).
      left outer join nut on recipe.type = nut.type;
 
 
-File: orgtbl-join.info,  Node: In-place Push Pull,  Next: Duplicates,  Prev: SQL equivalent,  Up: Top
+File: orgtbl-join.info,  Node: In-place Push Pull,  Next: Matching rows,  Prev: Example,  Up: Top
 
-4 In-place, Push, Pull
+3 In-place, Push, Pull
 **********************
 
 Three modes are available: _in-place_, _push_, _pull_.
 
 * Menu:
 
-* In _in-place_ mode::
-* In _push_ mode::
-* In _pull_ mode::
+* _In-place_ mode::
+* _Push_ mode::
+* _Pull_ mode::
 * As a rule of thumb::
 
 
-File: orgtbl-join.info,  Node: In _in-place_ mode,  Next: In _push_ mode,  Up: In-place Push Pull
+File: orgtbl-join.info,  Node: _In-place_ mode,  Next: _Push_ mode,  Up: In-place Push Pull
 
-4.1 In _in-place_ mode
-======================
+3.1 _In-place_ mode
+===================
 
 The master table is changed (in-place) by appending columns from
 reference tables.
@@ -157,10 +190,10 @@ reference tables.
 positioned on the column used to perform the join.
 
 
-File: orgtbl-join.info,  Node: In _push_ mode,  Next: In _pull_ mode,  Prev: In _in-place_ mode,  Up: In-place Push Pull
+File: orgtbl-join.info,  Node: _Push_ mode,  Next: _Pull_ mode,  Prev: _In-place_ mode,  Up: In-place Push Pull
 
-4.2 In _push_ mode
-==================
+3.2 _Push_ mode
+===============
 
 The master table drives the creation of derived tables.  Specify the
 wanted result in ‘#+ORGTBL: SEND’ directives (as many as desired):
@@ -182,10 +215,10 @@ wanted result in ‘#+ORGTBL: SEND’ directives (as many as desired):
 table refreshes all derived tables.
 
 
-File: orgtbl-join.info,  Node: In _pull_ mode,  Next: As a rule of thumb,  Prev: In _push_ mode,  Up: In-place Push Pull
+File: orgtbl-join.info,  Node: _Pull_ mode,  Next: As a rule of thumb,  Prev: _Push_ mode,  Up: In-place Push Pull
 
-4.3 In _pull_ mode
-==================
+3.3 _Pull_ mode
+===============
 
 So-called "dynamic blocks" may also be used.  The resulting table knows
 how to build itself.  Example:
@@ -216,9 +249,9 @@ specification of the join:
 table.
 
 
-File: orgtbl-join.info,  Node: As a rule of thumb,  Prev: In _pull_ mode,  Up: In-place Push Pull
+File: orgtbl-join.info,  Node: As a rule of thumb,  Prev: _Pull_ mode,  Up: In-place Push Pull
 
-4.4 As a rule of thumb
+3.4 As a rule of thumb
 ======================
 
 For quick and once-only processing, use _in-place_ mode.
@@ -230,10 +263,30 @@ modes use the same underlying engine, so using one or the other is just
 a matter or convenience.
 
 
-File: orgtbl-join.info,  Node: Duplicates,  Next: Selecting the output columns,  Prev: In-place Push Pull,  Up: Top
+File: orgtbl-join.info,  Node: Matching rows,  Next: Wide variety of input tables,  Prev: In-place Push Pull,  Up: Top
 
-5 Duplicates
-************
+4 Matching rows
+***************
+
+The purpose of OrgtblJoin is to match rows of the master table with rows
+of each of the reference tables.
+
+   What happens if the match is not exact?  There might be duplicate
+rows.  Rows may be missing.  Those cases are normal and perfectly
+handled by OrgtblJoin.
+
+   Missing rows handling may be customized with the ‘:full’ parameter.
+
+* Menu:
+
+* Duplicate rows::
+* How to handle missing rows?::
+
+
+File: orgtbl-join.info,  Node: Duplicate rows,  Next: How to handle missing rows?,  Up: Matching rows
+
+4.1 Duplicate rows
+==================
 
 The reference tables may contain several matching rows for the same
 value in the master table.  In this case, as many rows are created in
@@ -269,9 +322,412 @@ rows in the reference table, then the joined table will get 6 ‘eggplant’
 rows.
 
 
-File: orgtbl-join.info,  Node: Selecting the output columns,  Next: How to handle missing rows?,  Prev: Duplicates,  Up: Top
+File: orgtbl-join.info,  Node: How to handle missing rows?,  Prev: Duplicate rows,  Up: Matching rows
 
-6 Selecting the output columns
+4.2 How to handle missing rows?
+===============================
+
+It may happen that no row in the reference table matches a value in the
+master table.  By default, in this case, the master row is kept, with
+empty cells added to it.  Information from the master table is not lost.
+If, for example, a line in the recipe refers to an unknown "amaranth"
+product (a cereal known by the ancient Incas), then the resulting table
+will still contain the ‘amaranth’ row, with empty nutritional facts.
+
+     | type     | quty | type     | Fiber | Sugar | Protein | Carb |
+     |----------+------+----------+-------+-------+---------+------|
+     | onion    |   70 | onion    |   1.3 |   4.4 |     1.3 |  9.0 |
+     | tomato   |  120 | tomato   |   0.6 |   2.1 |     0.8 |  3.4 |
+     | eggplant |  300 | eggplant |   2.5 |   3.2 |     0.8 |  8.6 |
+     | tofu     |  100 | tofu     |   0.7 |   0.5 |     6.6 |  1.4 |
+     | amaranth |  120 |          |       |       |         |      |
+
+   This behavior is controlled by the ‘:full’ parameter:
+   • ‘:full mas’ the joined result contains the full master table (the
+     default)
+   • ‘:full ref’ the joined result contains the full reference tables
+   • ‘:full mas+ref’ the joined result contains all rows from both
+     master and all reference tables
+   • ‘:full none’ or ‘:full nil’ the joined result contains only rows
+     that appear in both tables
+
+   The use cases may be as follow:
+
+   • ‘:full mas’ is useful when the reference table is large, as a
+     dictionary or a nutritional facts table.  We just pick the needed
+     rows from the reference.
+
+   • ‘:full mas+ref’ is useful when both tables are similar.  For
+     instance, one table has been grown by a team, and the other
+     independently by another team.  The joined table will contain
+     additional rows from both teams.
+
+   • ‘:full none’ is useful to create the intersection of tables.  For
+     instance we have a list of items in the main warehouse, and another
+     list of damaged items.  We are interested only in damaged items in
+     the main warehouse.
+
+
+File: orgtbl-join.info,  Node: Wide variety of input tables,  Next: About reference tables,  Prev: Matching rows,  Up: Top
+
+5 Wide variety of input tables
+******************************
+
+As in any other Org Mode source block, the input table may come from
+several places.  OrgtblJoin adds even more kinds of input.
+
+   Here we discus the ‘:mas-table’ and ‘:ref-table’ parameters.
+
+* Menu:
+
+* Standard Org Mode input::
+* Virtual input table from Babel::
+* An Org ID::
+* CSV input::
+* JSON input::
+* Input slicing::
+* Malformed input tables::
+* Headers::
+
+
+File: orgtbl-join.info,  Node: Standard Org Mode input,  Next: Virtual input table from Babel,  Up: Wide variety of input tables
+
+5.1 Standard Org Mode input
+===========================
+
+   • ‘mytable’: an ordinary Org Mode table in the same buffer, named
+     ‘mytable’.
+
+   • ‘/some/dir/file.org:mytable’: an ordinary Org Mode table named
+     ‘mytable’, in a distant Org file named ‘/some/dir/file.org’.
+
+
+File: orgtbl-join.info,  Node: Virtual input table from Babel,  Next: An Org ID,  Prev: Standard Org Mode input,  Up: Wide variety of input tables
+
+5.2 Virtual input table from Babel
+==================================
+
+   • ‘mybabel’: an Org Mode Babel block named ‘mybabel’ in the current
+     buffer, generating a table as its output, written in any language.
+
+   • ‘mybabel(param1=123,param2=456)’: passing parameters to an Org Mode
+     Babel block named ‘mybabel’ in the current buffer, generating a
+     table as its output, written in any language.
+
+   • ‘/some/dir/file.org:mybabel(param1=123,param2=456)’: an Org Mode
+     Babel block named ‘mybabel’ in a distant org file named
+     ‘/some/dir/file.org’, called with parameters.
+
+   The input table may be the result of executing a Babel script.  In
+this case, the table is virtual in the sense that is appears nowhere.
+
+   (Babel is the Org Mode infrastructure to run scripts in any language,
+like Python, R, C++, Java, D, shell, whatever, with inputs and outputs
+connected to Org Mode).
+
+   Example:
+
+   Here is a script in Emacs Lisp which creates an Org Mode table.
+
+     #+name: ascript
+     #+begin_src elisp :colnames yes
+     (list
+      '(type quty)
+      'hline
+      (list "tomato" (* 53.1 12))
+      (list "tofu" (* 12.5 7)))
+     #+end_src
+
+   If executed, the script would output this table:
+
+     #+RESULTS: ascript
+     | type   |  quty |
+     |--------+-------|
+     | tomato | 637.2 |
+     | tofu   |  87.5 |
+
+   But instead, OrgtblJoin will execute the script and consume its
+output:
+
+     #+BEGIN: join :mas-table "ascript" :ref-table "nut" :mas-column "type" :ref-column "type" :full "mas"
+     | type   |  quty | Fiber | Sugar | Protein | Carb |
+     |--------+-------+-------+-------+---------+------|
+     | tomato | 637.2 |   0.6 |   2.1 |     0.8 |  3.4 |
+     | tofu   |  87.5 |   0.7 |   0.5 |     6.6 |  1.4 |
+     #+END:
+
+   Here the parameter ‘:mas-table’ specifies the name of the script to
+be executed.
+
+
+File: orgtbl-join.info,  Node: An Org ID,  Next: CSV input,  Prev: Virtual input table from Babel,  Up: Wide variety of input tables
+
+5.3 An Org ID
+=============
+
+   • ‘34cbc63a-c664-471e-a620-d654b26ffa31’: an identifier of an Org
+     Mode sub-tree.  The sub-tree is supposed to contain a table, which
+     is retrieved.
+
+   Those Org Mode identifiers span all known Org Mode files.  To add
+such an identifier, put the cursor on the heading of the sub-tree, and
+type ‘M-x org-id-get-create’.
+
+
+File: orgtbl-join.info,  Node: CSV input,  Next: JSON input,  Prev: An Org ID,  Up: Wide variety of input tables
+
+5.4 CSV input
+=============
+
+CVS input is specific to OrgtblJoin.  Org Mode does not offers those
+formats.
+
+   • ‘/some/dir/file.csv:(csv params…)’: a comma-separated-values file
+     in the CSV format, in the file ‘/some/dir/file.csv’.
+
+   The separators may be TAB, comma, or semicolon, they are guessed and
+different separators may be mixed.
+
+   Any empty row in the CSV file is interpreted as an horizontal
+separator (‘hline’ in Org table parlance).
+
+   Parameters may be:
+   • ‘header’: the first row in the CSV file is interpreted as a header
+     containing the column names.
+   • ‘colnames (column1 column2 column3 …)’: the column names are given
+     explicitly, in case the CSV file contains only data, no header.
+
+   In any case, the columns may be references as ‘$1, $2, $3, …’ as
+usual.
+
+
+File: orgtbl-join.info,  Node: JSON input,  Next: Input slicing,  Prev: CSV input,  Up: Wide variety of input tables
+
+5.5 JSON input
+==============
+
+   • ‘/some/dir/file.json:(json params…)’: a file containing a JSON
+     formatted table, in the file ‘/some/dir/file.csv’.
+
+   Currently, the only accepted format is an array of arrays.  There are
+currently no parameters.  In the future it may be possible to specify
+alternative sub-formats.
+
+
+File: orgtbl-join.info,  Node: Input slicing,  Next: Malformed input tables,  Prev: JSON input,  Up: Wide variety of input tables
+
+5.6 Input slicing
+=================
+
+The Org Mode also provides for table slicing.  All of the previous
+references may be followed by an optional slicing.  Examples:
+
+   • ‘mytable[0:5]’: retain only the first 6 rows of the input table; if
+     the table has a header, then it counts as 2 rows (the header and
+     the separation line); in this example, it would retain rows 0 and 1
+     for the header, and rows 2,3,4,5 for the content.
+
+   • ‘mytable[,0:1]’: retain only the first 2 columns.
+
+   • ‘mytable[0:5,0:1]’: retain only the first 6 rows and the first 2
+     columns.
+
+
+File: orgtbl-join.info,  Node: Malformed input tables,  Next: Headers,  Prev: Input slicing,  Up: Wide variety of input tables
+
+5.7 Malformed input tables
+==========================
+
+Sometimes an input table may be unaligned or malformed, with incomplete
+rows, like those ones:
+
+     | type     | Fiber | Sugar |      | Carb |
+     |----------+-------+-------+------+------|
+     | eggplant |   2.5 |   3.2 |  0.8 |  8.6 |
+     | tomato   |   0.6 |   2.1 |  0.8 |  3.4 |
+     | onion    |   1.3 |   4.4 |  1.3 |  9.0 |
+         | egg      |     0 |  18.3 | 31.9 | 18.3 |
+     | rice     |   0.2 |     0 |  1.5 | 16.0 |
+     | tofu     |  0.7
+     | nut      |   2.6 |   1.3 |  4.9 |  7.2 |
+
+     | type     | quty |
+     |----------+------|
+     | onion    |   70 |
+     | tomato   |
+     | eggplant |  300 |
+       | tofu     |  100 |
+
+   Missing cells are handled as though they were empty.
+
+
+File: orgtbl-join.info,  Node: Headers,  Prev: Malformed input tables,  Up: Wide variety of input tables
+
+5.8 Headers
+===========
+
+The master and the reference tables may or may not have a header.  When
+there is a header, it may extend over several lines.  A header ends with
+an horizontal line.
+
+   OrgtblJoin tries to preserve as much of the master table as possible.
+Therefore, if the master table has a header, the joined table will have
+it verbatim, over as many lines as needed.
+
+   The reference tables headers (if any), will fill-in the header (if
+any) of the resulting table.  But if there is no room in the resulting
+table header, the reference tables headers lines will be ignored, partly
+of fully.
+
+   A header is useful to refer to columns.  If there is no header, then
+columns must be referred with _dollar_ names: ‘$1’ is the name of the
+first column, ‘$2’ is the name of the second column, and so on.  This is
+pretty much the same as in the Org Mode spreadsheet.
+
+
+File: orgtbl-join.info,  Node: About reference tables,  Next: Selecting the output columns,  Prev: Wide variety of input tables,  Up: Top
+
+6 About reference tables
+************************
+
+Why is there a distinction between the _master table_ and the _reference
+tables_?
+
+   • The result of running OrgtblJoin will be an enriched version of the
+     *master table*.  The master table contains our data.
+   • The *reference tables* are stores of data from which OrgtblJoin
+     picks selected rows to enrich the result.  The reference tables
+     contains alien data akin to data found in a library.
+
+* Menu:
+
+* Multiple reference tables::
+* Zero reference table::
+* Joining 2 similar tables::
+
+
+File: orgtbl-join.info,  Node: Multiple reference tables,  Next: Zero reference table,  Up: About reference tables
+
+6.1 Multiple reference tables
+=============================
+
+OrgtblJoin used to handle just one reference table.  Now, as many as
+wanted are handled.
+
+   To specify the reference tables, just use several times the
+‘:ref-table’ and ‘:ref-column’ parameters.  They must match: for
+instance, the third ‘:ref-table’ must match the third ‘:ref-column’.
+
+   For now, the ‘:full’ and ‘:mas-column’ parameters should be mentioned
+just once.  This could change in the future with as many such parameters
+as reference tables.
+
+
+File: orgtbl-join.info,  Node: Zero reference table,  Next: Joining 2 similar tables,  Prev: Multiple reference tables,  Up: About reference tables
+
+6.2 Zero reference table
+========================
+
+One side effect of going multiple, is that _zero_ reference table is now
+accepted.  In this case, the result of the join is just the master
+table.  But the result can be changed in several ways:
+
+   • Selection and re-ordering of columns through the ‘:cols’ parameter.
+   • Additional computed columns through the ‘:formula’ parameter and
+     survival of ‘#+TBLFM:’ lines.
+   • Lisp and Babel post-processing through the ‘:post’ parameter.
+
+   This is a use-case where joining is not needed.  Rather, a re-process
+of the master table is wanted, and OrgtblJoin happens to be able to
+perform those changes.
+
+   For instance, the input table may be a CSV table, and the result an
+Org Mode table.  Then OrgtblJoin is able to perform just this conversion
+(and it is fast).
+
+
+File: orgtbl-join.info,  Node: Joining 2 similar tables,  Prev: Zero reference table,  Up: About reference tables
+
+6.3 Joining 2 similar tables
+============================
+
+What if we need not to append data from some table/s to a main table,
+but to join 2 similar or symmetric tables with different data?
+
+   Let’s assume we have these 2 tables:
+
+     +#TBLNAME: TagsQ1
+     | tag  | Q1 |
+     |------+----|
+     | tagA | 25 |
+     | tagB | 18 |
+     | tagC | 13 |
+     | tagD |  6 |
+     | tagE |  2 |
+     | tagF |  2 |
+     | tagG |  1 |
+
+   and
+
+     +#TBLNAME: TagsQ2
+     | tag    | Q2 |
+     |--------+----|
+     | tagA   |  2 |
+     | tagD   |  3 |
+     | tagE   |  3 |
+     | tagF   |  5 |
+     | tagG   |  7 |
+     | tagH   | 11 |
+     | tagI   | 15 |
+
+   Looking closely at both tables we can observe that some of these tags
+appear in both (‘tags A, D, E, F, G’), some only on ‘Q1’ (‘D, C’) and
+other only on ‘Q2’ (‘H, I, ...’).
+
+   We want to create a table that includes all the tags, with a column
+with their frequency for table ‘TagsQ1’ and another for ‘TagsQ2’.
+
+   So we can create the orgtbl-join block with the *note Wizard::.  Type
+‘C-c C-x x’, then answer ‘join’.
+
+   As our tables are somehow symmetric (no one is a primary one), you
+will choose arbitrarily ‘TagsQ1’ as the _"master table"_ and ‘TagsQ2’ as
+the _"reference table"_.
+
+   So continue answering to the wizard:
+  1. Master table: ‘TagsQ1’
+  2. Reference table: ‘TagsQ2’
+  3. joining column in reference table: ‘tag’
+  4. joining column in master table: ‘tag’
+
+   Then there is a question about which table should appear entirely.
+In the result you want, there might be missing values in both ‘Q1’ and
+‘Q2’ columns.  Therefore the right answer is: ‘mas+ref’
+
+   Eventually you get:
+     #+BEGIN: join :mas-table "TagsQ1" :ref-table "TagsQ2" :mas-column "tag" :ref-column "tag" :full "mas+ref"
+     | tag    | Q1 | Q2 |
+     |--------+----+----|
+     | tagA   | 25 |  2 |
+     | tagB   | 18 |
+     | tagC   | 13 |
+     | tagD   |  6 |  3 |
+     | tagE   |  2 |  3 |
+     | tagF   |  2 |  5 |
+     | tagG   |  1 |  7 |
+     |--------+----+----|
+     | tagH   |    | 11 |
+     | tagI   |    | 15 |
+     | tag... |    | 19 |
+     #+END:
+
+   The ‘tagB’ and ‘tagC’ rows are incomplete on purpose.  To fill in the
+table, just type TAB inside it.
+
+
+File: orgtbl-join.info,  Node: Selecting the output columns,  Next: Post processing,  Prev: About reference tables,  Up: Top
+
+7 Selecting the output columns
 ******************************
 
 By default, all columns from the master table and all the reference
@@ -320,221 +776,22 @@ appears only once):
      #+END:
 
 
-File: orgtbl-join.info,  Node: How to handle missing rows?,  Next: Malformed input tables,  Prev: Selecting the output columns,  Up: Top
+File: orgtbl-join.info,  Node: Post processing,  Next: Wizard,  Prev: Selecting the output columns,  Up: Top
 
-7 How to handle missing rows?
-*****************************
+8 Post processing
+*****************
 
-It may happen that no row in the reference table matches a value in the
-master table.  By default, in this case, the master row is kept, with
-empty cells added to it.  Information from the master table is not lost.
-If, for example, a line in the recipe refers to an unknown "amaranth"
-product (a cereal known by the ancient Incas), then the resulting table
-will still contain the ‘amaranth’ row, with empty nutritional facts.
+* Menu:
 
-     | type     | quty | type     | Fiber | Sugar | Protein | Carb |
-     |----------+------+----------+-------+-------+---------+------|
-     | onion    |   70 | onion    |   1.3 |   4.4 |     1.3 |  9.0 |
-     | tomato   |  120 | tomato   |   0.6 |   2.1 |     0.8 |  3.4 |
-     | eggplant |  300 | eggplant |   2.5 |   3.2 |     0.8 |  8.6 |
-     | tofu     |  100 | tofu     |   0.7 |   0.5 |     6.6 |  1.4 |
-     | amaranth |  120 |          |       |       |         |      |
-
-   This behavior is controlled by the ‘:full’ parameter:
-   • ‘:full mas’ the joined result contains the full master table (the
-     default)
-   • ‘:full ref’ the joined result contains the full reference tables
-   • ‘:full mas+ref’ the joined result contains all rows from both mater
-     and all reference tables
-   • ‘:full none’ or ‘:full nil’ the joined result contains only rows
-     that appear in both tables
-
-   The use cases may be as follow:
-
-   • ‘:full mas’ is useful when the reference table is large, as a
-     dictionary or a nutritional facts table.  We just pick the needed
-     rows from the reference.
-
-   • ‘:full mas+ref’ is useful when both tables are similar.  For
-     instance, one table has been grown by a team, and the other
-     independently by another team.  The joined table will contain
-     additional rows from both teams.
-
-   • ‘:full none’ is useful to create the intersection of tables.  For
-     instance we have a list of items in the main warehouse, and another
-     list of damaged items.  We are interested only in damaged items in
-     the main warehouse.
+* Computing spreadsheet formulas afterward::
+* Algorithm post processing::
+* Chaining::
 
 
-File: orgtbl-join.info,  Node: Malformed input tables,  Next: Headers,  Prev: How to handle missing rows?,  Up: Top
+File: orgtbl-join.info,  Node: Computing spreadsheet formulas afterward,  Next: Algorithm post processing,  Up: Post processing
 
-8 Malformed input tables
-************************
-
-Sometimes an input table may be unaligned or malformed, with incomplete
-rows, like those ones:
-
-     | type     | Fiber | Sugar |      | Carb |
-     |----------+-------+-------+------+------|
-     | eggplant |   2.5 |   3.2 |  0.8 |  8.6 |
-     | tomato   |   0.6 |   2.1 |  0.8 |  3.4 |
-     | onion    |   1.3 |   4.4 |  1.3 |  9.0 |
-         | egg      |     0 |  18.3 | 31.9 | 18.3 |
-     | rice     |   0.2 |     0 |  1.5 | 16.0 |
-     | tofu     |  0.7
-     | nut      |   2.6 |   1.3 |  4.9 |  7.2 |
-
-     | type     | quty |
-     |----------+------|
-     | onion    |   70 |
-     | tomato   |
-     | eggplant |  300 |
-       | tofu     |  100 |
-
-   Missing cells are handled as though they were empty.
-
-
-File: orgtbl-join.info,  Node: Headers,  Next: Wizard,  Prev: Malformed input tables,  Up: Top
-
-9 Headers
-*********
-
-The master and the reference tables may or may not have a header.  When
-there is a header, it may extend over several lines.  A header ends with
-an horizontal line.
-
-   OrgtblJoin tries to preserve as much of the master table as possible.
-Therefore, if the master table has a header, the joined table will have
-it verbatim, over as many lines as needed.
-
-   The reference tables headers (if any), will fill-in the header (if
-any) of the resulting table.  But if there is no room in the resulting
-table header, the reference tables headers lines will be ignored, partly
-of fully.
-
-   Header are useful to refer to columns.  If there is no header, then
-columns must be referred with ‘$’ names: ‘$1’ is the name of the first
-column, ‘$2’ is the name of the second column, and so on.  This is
-pretty much the same as in the Org Mode spreadsheet.
-
-
-File: orgtbl-join.info,  Node: Wizard,  Next: Joining 2 similar tables,  Prev: Headers,  Up: Top
-
-10 Wizard
-*********
-
-The wizard may be invoked in-place or for the pull-mode.
-
-   Invoke the wizard in-place by typing ‘M-x orgtbl-join’ with the
-cursor inside the master table to be enriched.  The cursor should be
-anywhere in the column serving the join process.
-
-   The menu entry ‘Tbl > Column > Join with another table’ is equivalent
-to ‘M-x orgtbl-join’.
-
-   For the pull-mode, the same wizard may create a fresh new block
-‘#+BEGIN: join...’, or amend an existing one.  Invoke it with
-   • either ‘M-x orgtbl-join-insert-dblock-join’
-   • or ‘C-c C-x x =join’.
-   Put the cursor on an empty space in your Org Mode file, or on an
-existing ‘#+BEGIN: join...’ block.
-
-   For all questions, completion is available.
-
-   Note: there are many kinds of dynamic blocks that can be inserted
-besides ‘join’.
-
-   As there might be as many reference tables as wanted, the wizard
-continues asking for reference tables.  When done, answer ‘n’ when the
-wizard ask if you want an additional reference table to be joined.
-
-   The wizard does not (yet) take into account the ‘:cols’ and ‘:post’
-parameters.  If there where such parameters already specified, the
-wizard will leave them untouched.
-
-
-File: orgtbl-join.info,  Node: Joining 2 similar tables,  Next: Post-joining spreadsheet formulas,  Prev: Wizard,  Up: Top
-
-11 Joining 2 similar tables
-***************************
-
-What if we need not to append data from some table/s to a main table,
-but to join 2 similar or symmetric tables with different data?
-
-   Let’s assume we have these 2 tables:
-     +#TBLNAME: TagsQ1
-     | tag  | Q1 |
-     |------+----|
-     | tagA | 25 |
-     | tagB | 18 |
-     | tagC | 13 |
-     | tagD |  6 |
-     | tagE |  2 |
-     | tagF |  2 |
-     | tagG |  1 |
-
-   and
-
-     +#TBLNAME: TagsQ2
-     | tag    | Q2 |
-     |--------+----|
-     | tagA   |  2 |
-     | tagD   |  3 |
-     | tagE   |  3 |
-     | tagF   |  5 |
-     | tagG   |  7 |
-     | tagH   | 11 |
-     | tagI   | 15 |
-
-   Looking closely at both tables we can observe that some of these tags
-appear in both (tags A, D, E, F, G), some only on Q1 (D, C) and other
-only on Q2 (H, I, ...).
-
-   We want to create a table that includes all the tags, with a column
-with their frequency for table TagsQ1 and another for TagsQ2.
-
-   So we can create the orgtbl-join block with the *note Wizard::.  Type
-‘C-c C-x x’, then answer ‘join’.
-
-   As our tables are somehow symmetric (no one is a primary one), you
-will choose arbitrarily TagsQ1 as the "master table" and TagsQ2 as the
-"reference table".
-
-   So continue answering to the wizard:
-  1. Master table: TagsQ1
-  2. Reference table: TagsQ2
-  3. joining column in reference table: tag
-  4. joining column in master table: tag
-
-   Then there is a question about which table should appear entirely.
-In the result you want, there might be missing values in both Q1 and Q2
-columns.  Therefore the right answer is: ‘mas+ref’
-
-   Eventually you get:
-     #+BEGIN: join :mas-table "TagsQ1" :ref-table "TagsQ2" :mas-column "tag" :ref-column "tag" :full "mas+ref"
-     | tag    | Q1 | Q2 |
-     |--------+----+----|
-     | tagA   | 25 |  2 |
-     | tagB   | 18 |
-     | tagC   | 13 |
-     | tagD   |  6 |  3 |
-     | tagE   |  2 |  3 |
-     | tagF   |  2 |  5 |
-     | tagG   |  1 |  7 |
-     |--------+----+----|
-     | tagH   |    | 11 |
-     | tagI   |    | 15 |
-     | tag... |    | 19 |
-     #+END:
-
-   The ‘tagB’ and ‘tagC’ rows are incomplete on purpose.  To fill in the
-table, just type TAB inside it.
-
-
-File: orgtbl-join.info,  Node: Post-joining spreadsheet formulas,  Next: Post processing,  Prev: Joining 2 similar tables,  Up: Top
-
-12 Post-joining spreadsheet formulas
-************************************
+8.1 Computing spreadsheet formulas afterward
+============================================
 
 Additional columns can be specified for the resulting table.  With the
 previous example, we added a 7th column multiplying columns 2 and 3.
@@ -557,10 +814,10 @@ This will fill-in the 7th column header.  It is translated into a usual
      #+END:
 
 
-File: orgtbl-join.info,  Node: Post processing,  Next: Virtual input table from Babel,  Prev: Post-joining spreadsheet formulas,  Up: Top
+File: orgtbl-join.info,  Node: Algorithm post processing,  Next: Chaining,  Prev: Computing spreadsheet formulas afterward,  Up: Post processing
 
-13 Post processing
-******************
+8.2 Algorithm post processing
+=============================
 
 The joined table can be post-processed with the ‘:post’ parameter.  It
 accepts a Lisp ‘lambda’, a Lisp function, a Lisp expression, or a Babel
@@ -581,7 +838,7 @@ _ginger_.
      |-----------+--------+------+-------+-------+---------|
      | onion     |     70 |  9.0 |   1.3 |   4.4 |     1.3 |
      | unknown   |    999 |
-     | tomatoe   |    120 |  3.4 |   0.6 |   2.1 |     0.8 |
+     | tomato    |    120 |  3.4 |   0.6 |   2.1 |     0.8 |
      |-----------+--------+------+-------+-------+---------|
      | ginger    |     33 |   na |    na |    na |      na |
      #+END:
@@ -613,126 +870,10 @@ to the ‘:post’ parameter:
 ‘*this*’.
 
 
-File: orgtbl-join.info,  Node: Virtual input table from Babel,  Next: Wide variety of input tables,  Prev: Post processing,  Up: Top
+File: orgtbl-join.info,  Node: Chaining,  Prev: Algorithm post processing,  Up: Post processing
 
-14 Virtual input table from Babel
-*********************************
-
-Any of the input tables may be the result of executing a Babel script.
-In this case, the table is virtual in the sense that it appears nowhere.
-
-   (Babel is the Org Mode infrastructure to run scripts in any language,
-like Python, R, C++, Java, D, shell, whatever, with inputs and outputs
-connected to Org Mode).
-
-   Example:
-
-   Here is a script in Emacs Lisp which creates an Org Mode table.
-
-     #+name: ascript
-     #+begin_src elisp :colnames yes
-     (list
-      '(type quty)
-      'hline
-      (list "tomato" (* 53.1 12))
-      (list "tofu" (* 12.5 7)))
-     #+end_src
-
-   If executed, the script would output this table:
-
-     #+RESULTS: ascript
-     | type   |  quty |
-     |--------+-------|
-     | tomato | 637.2 |
-     | tofu   |  87.5 |
-
-   But instead, OrgtblJoin will execute the script and consume its
-output:
-
-     #+BEGIN: join :mas-table "ascript" :ref-table "nut" :mas-column "type" :ref-column "type" :full "mas"
-     | type   |  quty | Fiber | Sugar | Protein | Carb |
-     |--------+-------+-------+-------+---------+------|
-     | tomato | 637.2 |   0.6 |   2.1 |     0.8 |  3.4 |
-     | tofu   |  87.5 |   0.7 |   0.5 |     6.6 |  1.4 |
-     #+END:
-
-   Here the parameter ‘:mas-table’ specifies the name of the script to
-be executed.
-
-
-File: orgtbl-join.info,  Node: Wide variety of input tables,  Next: Chaining,  Prev: Virtual input table from Babel,  Up: Top
-
-15 Wide variety of input tables
-*******************************
-
-As in any other Org Mode source block, the input table may come from
-several places.  OrgAggregate adds even more kinds of input.
-
-   The parameter after ‘:table’ may be:
-
-   • ‘mytable’: an ordinary Org Mode table in the same buffer, named
-     ‘mytable’.
-
-   • ‘/some/dir/file.org:mytable’: an ordinary Org Mode table named
-     ‘mytable’, in a distant Org file named ‘/some/dir/file.org’.
-
-   • ‘mybabel’: an Org Mode Babel block named ‘mybabel’ in the current
-     buffer, generating a table as its output, written in any language.
-
-   • ‘mybabel(param1=123,param2=456)’: passing parameters to an Org Mode
-     Babel block named ‘mybabel’ in the current buffer, generating a
-     table as its output, written in any language.
-
-   • ‘/some/dir/file.org:mybabel(param1=123,param2=456)’: an Org Mode
-     Babel block named ‘mybabel’ in a distant org file named
-     ‘/some/dir/file.org’, called with parameters.
-
-   • ‘/some/dir/file.csv:(csv params…)’: a comma-separated-values file
-     in the CSV format, in the file ‘/some/dir/file.csv’.  The
-     separators may be TAB, comma, or semicolon, they are guessed and
-     different separators may be mixed.  Any empty row in the CSV file
-     is interpreted as an horizontal separator (‘hline’ in Org table
-     parlance).
-
-     Parameters may be:
-        • ‘header’: the first row in the CSV file is interpreted as a
-          header containing the column names.
-        • ‘colnames (column1 column2 column3 …)’: the column names are
-          given explicitly, in case the CSV file contains only data, no
-          header.
-     In any case, the columns may be references as ‘$1, $2, $3, …’ as
-     usual.
-
-   • ‘/some/dir/file.json:(json params…)’: a file containing a JSON
-     formatted table, in the file ‘/some/dir/file.csv’.  Currently, the
-     only accepted format is an array of arrays.  There are currently no
-     parameters.  In the future it may be possible to specify
-     alternative sub-formats.
-
-   • ‘34cbc63a-c664-471e-a620-d654b26ffa31’: an identifier of an Org
-     Mode sub-tree.  The sub-tree is supposed to contain a table, which
-     is retrieved.  Those Org Mode identifiers span all known Org Mode
-     files.  To add such an identifier, put the cursor on the heading of
-     the sub-tree, and type ‘M-x org-id-get-create’.
-
-   The Org Mode also provides for table slicing.  All of the previous
-references may be followed by an optional slicing.  Examples:
-
-   • ‘mytable[0:5]’: retain only the first 6 rows of the input table; if
-     the table has a header, then it counts as 2 rows (the header and
-     the separation line); in this example, it would retain rows 0 and 1
-     for the header, and rows 2,3,4,5 for the content.
-
-   • ‘mytable[,0:1]’: retain only the first 2 columns.
-
-   • ‘mytable[0:5,0:1]’: retain only the first 6 rows and the first 2
-     columns.
-
-
-File: orgtbl-join.info,  Node: Chaining,  Next: Multiple reference tables,  Prev: Wide variety of input tables,  Up: Top
-
-16 Chaining
-***********
+8.3 Chaining
+============
 
 In an above example we gave a name to the resulting joined table:
 ‘#+name: richer’.  Doing so the joined table may become an input for a
@@ -743,38 +884,47 @@ mode_.
 
    Note that the ‘#+name: richer’ line could appear above the ‘#+BEGIN:’
 line.  But sometimes this is not taken into account by further Babel
-blocks.
+blocks.  In this case, put ‘#+name: richer’ bellow ‘#+BEGIN:’.
 
 
-File: orgtbl-join.info,  Node: Multiple reference tables,  Next: Installation,  Prev: Chaining,  Up: Top
+File: orgtbl-join.info,  Node: Wizard,  Next: Installation,  Prev: Post processing,  Up: Top
 
-17 Multiple reference tables
-****************************
+9 Wizard
+********
 
-OrgtblJoin used to handle just one reference table.  Now, as many as
-wanted are handled.
+The wizard may be invoked in-place or for the pull-mode.
 
-   To specify the reference tables, just use several times the
-‘:ref-table’ and ‘:ref-column’ parameters.  They must match: for
-instance, the third ‘:ref-table’ must match the third ‘:ref-column’.
+   Invoke the wizard in-place by typing ‘M-x orgtbl-join’ with the
+cursor inside the master table to be enriched.  The cursor should be
+anywhere in the column serving the join process.
 
-   For now, the ‘:full’ and ‘:mas-column’ parameters should be
-mentionned just once.  This could change in the future with as many such
-parameters as reference tables.
+   The menu entry ‘Tbl > Column > Join with another table’ is equivalent
+to ‘M-x orgtbl-join’.
 
-   One side effect of going multiple, is that zero reference table is
-now accepted.  In this case, the result of the join is just the master
-table.  But it can be change in several ways:
+   For the pull-mode, the same wizard may create a fresh new block
+‘#+BEGIN: join...’, or amend an existing one.  Invoke it with
+   • either ‘M-x orgtbl-join-insert-dblock-join’
+   • or ‘C-c C-x x =join’.
+   Put the cursor on an empty space in your Org Mode file, or on an
+existing ‘#+BEGIN: join...’ block.
 
-   • Selection and re-ordering of columns through the ‘:cols’ parameter.
-   • Additional computed columns through the ‘:formula’ parameter and
-     survival of ‘#+TBLFM:’ lines.
-   • Lisp and Babel post-processing through the ‘:post’ parameter.
+   For all questions, completion is available.
+
+   Note: there are many kinds of dynamic blocks that can be inserted
+besides ‘join’.
+
+   As there might be as many reference tables as wanted, the wizard
+continues asking for reference tables.  When done, answer ‘n’ when the
+wizard ask if you want an additional reference table to be joined.
+
+   The wizard does not (yet) take into account the ‘:cols’ and ‘:post’
+parameters.  If there where such parameters already specified, the
+wizard will leave them untouched.
 
 
-File: orgtbl-join.info,  Node: Installation,  Next: Author contributors,  Prev: Multiple reference tables,  Up: Top
+File: orgtbl-join.info,  Node: Installation,  Next: Author contributors,  Prev: Wizard,  Up: Top
 
-18 Installation
+10 Installation
 ***************
 
 Emacs package on Melpa: add the following lines to your ‘.emacs’ file,
@@ -812,7 +962,7 @@ menu bindings are no longer hard-coded in the package.
 
 File: orgtbl-join.info,  Node: Author contributors,  Next: Changes,  Prev: Installation,  Up: Top
 
-19 Author, contributors
+11 Author, contributors
 ***********************
 
 Comments, enhancements, etc.  welcome.
@@ -837,7 +987,7 @@ Comments, enhancements, etc.  welcome.
 
 File: orgtbl-join.info,  Node: Changes,  Next: GPL 3 License,  Prev: Author contributors,  Up: Top
 
-20 Changes
+12 Changes
 **********
 
    • remove duplicate reference column
@@ -865,11 +1015,12 @@ File: orgtbl-join.info,  Node: Changes,  Next: GPL 3 License,  Prev: Author cont
      ‘#+tblfm:’ or in ‘:formula’.  The overall join may be up to x4
      faster and ÷4 less memory hungry.
    • Add the chapter "Joining 2 similar tables" for a common use case.
+   • Aggregation of the titles of this README.
 
 
 File: orgtbl-join.info,  Node: GPL 3 License,  Prev: Changes,  Up: Top
 
-21 GPL 3 License
+13 GPL 3 License
 ****************
 
 Copyright (C) 2014-2025 Thierry Banel
@@ -891,31 +1042,41 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Tag Table:
 Node: Top83
-Node: New972
-Node: Example1324
-Node: SQL equivalent3163
-Node: In-place Push Pull3639
-Node: In _in-place_ mode3941
-Node: In _push_ mode4298
-Node: In _pull_ mode5110
-Node: As a rule of thumb6250
-Node: Duplicates6762
-Node: Selecting the output columns8581
-Node: How to handle missing rows?10361
-Node: Malformed input tables12629
-Node: Headers13510
-Node: Wizard14484
-Node: Joining 2 similar tables15816
-Node: Post-joining spreadsheet formulas18137
-Node: Post processing19407
-Node: Virtual input table from Babel21270
-Node: Wide variety of input tables22740
-Node: Chaining25922
-Node: Multiple reference tables26501
-Node: Installation27605
-Node: Author contributors28907
-Node: Changes29772
-Node: GPL 3 License31173
+Node: New1284
+Node: Example1479
+Node: A cooking recipe1641
+Node: SQL equivalent3503
+Node: In-place Push Pull3969
+Node: _In-place_ mode4258
+Node: _Push_ mode4603
+Node: _Pull_ mode5400
+Node: As a rule of thumb6528
+Node: Matching rows7037
+Node: Duplicate rows7595
+Node: How to handle missing rows?9412
+Node: Wide variety of input tables11650
+Node: Standard Org Mode input12214
+Node: Virtual input table from Babel12648
+Node: An Org ID14685
+Node: CSV input15192
+Node: JSON input16145
+Node: Input slicing16602
+Node: Malformed input tables17333
+Node: Headers18229
+Node: About reference tables19219
+Node: Multiple reference tables19920
+Node: Zero reference table20579
+Node: Joining 2 similar tables21573
+Node: Selecting the output columns23982
+Node: Post processing25762
+Node: Computing spreadsheet formulas afterward26009
+Node: Algorithm post processing27291
+Node: Chaining29183
+Node: Wizard29802
+Node: Installation31128
+Node: Author contributors32411
+Node: Changes33276
+Node: GPL 3 License34726
 
 End Tag Table
 

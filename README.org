@@ -6,35 +6,47 @@ One table (the master table) is grown by selectively appending columns of
 other tables (the reference tables).
 
 * New
-The wizard (see [[#wizard][Wizard]]) has been extended. It can now
-modify an existing block, as well as creating a new one. It is more
-fine grained. It features a more extensive help for each query.
 
-Still call it with =C-c C-x x join= or =orgtbl-join=.
+The titles of this README have been aggregated. The result is more
+structured and easier to understand.
 
 * Table of Contents
 :PROPERTIES:
-:TOC:      :include siblings :depth 1 :force () :ignore (this) :local (nothing)
+:TOC:      :include siblings :depth 2 :force () :ignore (this) :local (nothing)
 :CUSTOM_ID: table-of-contents
 :END:
 
 :CONTENTS:
 - [[#example][Example]]
-- [[#sql-equivalent][SQL equivalent]]
+  - [[#a-cooking-recipe][A cooking recipe]]
+  - [[#sql-equivalent][SQL equivalent]]
 - [[#in-place-push-pull][In-place, Push, Pull]]
-- [[#duplicates][Duplicates]]
-- [[#selecting-the-output-columns][Selecting the output columns]]
-- [[#how-to-handle-missing-rows][How to handle missing rows?]]
-- [[#malformed-input-tables][Malformed input tables]]
-- [[#headers][Headers]]
-- [[#wizard][Wizard]]
-- [[#joining-2-similar-tables][Joining 2 similar tables]]
-- [[#post-joining-spreadsheet-formulas][Post-joining spreadsheet formulas]]
-- [[#post-processing][Post processing]]
-- [[#virtual-input-table-from-babel][Virtual input table from Babel]]
+  - [[#in-place-mode][In-place mode]]
+  - [[#push-mode][Push mode]]
+  - [[#pull-mode][Pull mode]]
+  - [[#as-a-rule-of-thumb][As a rule of thumb]]
+- [[#matching-rows][Matching rows]]
+  - [[#duplicate-rows][Duplicate rows]]
+  - [[#how-to-handle-missing-rows][How to handle missing rows?]]
 - [[#wide-variety-of-input-tables][Wide variety of input tables]]
-- [[#chaining][Chaining]]
-- [[#multiple-reference-tables][Multiple reference tables]]
+  - [[#standard-org-mode-input][Standard Org Mode input]]
+  - [[#virtual-input-table-from-babel][Virtual input table from Babel]]
+  - [[#an-org-id][An Org ID]]
+  - [[#csv-input][CSV input]]
+  - [[#json-input][JSON input]]
+  - [[#input-slicing][Input slicing]]
+  - [[#malformed-input-tables][Malformed input tables]]
+  - [[#headers][Headers]]
+- [[#about-reference-tables][About reference tables]]
+  - [[#multiple-reference-tables][Multiple reference tables]]
+  - [[#zero-reference-table][Zero reference table]]
+  - [[#joining-2-similar-tables][Joining 2 similar tables]]
+- [[#selecting-the-output-columns][Selecting the output columns]]
+- [[#post-processing][Post processing]]
+  - [[#computing-spreadsheet-formulas-afterward][Computing spreadsheet formulas afterward]]
+  - [[#algorithm-post-processing][Algorithm post processing]]
+  - [[#chaining][Chaining]]
+- [[#wizard][Wizard]]
 - [[#installation][Installation]]
 - [[#author-contributors][Author, contributors]]
 - [[#changes][Changes]]
@@ -44,6 +56,11 @@ Still call it with =C-c C-x x join= or =orgtbl-join=.
 * Example
 :PROPERTIES:
 :CUSTOM_ID: example
+:END:
+
+** A cooking recipe
+:PROPERTIES:
+:CUSTOM_ID: a-cooking-recipe
 :END:
 
 Here is a list of products for a cooking recipe.
@@ -95,7 +112,7 @@ the needed nutrition facts:
 | tofu     |  100 |   0.7 |   0.5 |     6.6 |  1.4 |
 #+END_EXAMPLE
 
-* SQL equivalent
+** SQL equivalent
 :PROPERTIES:
 :CUSTOM_ID: sql-equivalent
 :END:
@@ -123,7 +140,10 @@ configured with the =:full= parameter).
 
 Three modes are available: /in-place/, /push/, /pull/.
 
-** In /in-place/ mode
+** /In-place/ mode
+:PROPERTIES:
+:CUSTOM_ID: in-place-mode
+:END:
 
 The master table is changed (in-place) by appending columns from
 reference tables.
@@ -131,7 +151,10 @@ reference tables.
 Invoke it with the =M-x orgtbl-join= command.  The cursor must be
 positioned on the column used to perform the join.
 
-** In /push/ mode
+** /Push/ mode
+:PROPERTIES:
+:CUSTOM_ID: push-mode
+:END:
 
 The master table drives the creation of derived tables.  Specify the wanted
 result in =#+ORGTBL: SEND= directives (as many as desired):
@@ -156,7 +179,10 @@ The receiving blocks must be created somewhere else in the same file:
 Typing =C-c C-c= with the cursor on the first pipe of the master table
 refreshes all derived tables.
 
-** In /pull/ mode
+** /Pull/ mode
+:PROPERTIES:
+:CUSTOM_ID: pull-mode
+:END:
 
 So-called "dynamic blocks" may also be used.  The resulting table knows how
 to build itself.  Example:
@@ -191,6 +217,9 @@ Typing =C-c C-c= with the cursor on the =#+BEGIN:= line refreshes the
 table.
 
 ** As a rule of thumb
+:PROPERTIES:
+:CUSTOM_ID: as-a-rule-of-thumb
+:END:
 
 For quick and once-only processing, use /in-place/ mode.
 
@@ -199,9 +228,23 @@ easier to use than the /push/, because there is a [[#wizard][wizard]] bound to =
 (see below).  Other than that, the two modes use the same underlying engine,
 so using one or the other is just a matter or convenience.
 
-* Duplicates
+* Matching rows
 :PROPERTIES:
-:CUSTOM_ID: duplicates
+:CUSTOM_ID: matching-rows
+:END:
+
+The purpose of OrgtblJoin is to match rows of the master table with
+rows of each of the reference tables.
+
+What happens if the match is not exact? There might be duplicate
+rows. Rows may be missing. Those cases are normal and perfectly
+handled by OrgtblJoin.
+
+Missing rows handling may be customized with the =:full= parameter.
+
+** Duplicate rows
+:PROPERTIES:
+:CUSTOM_ID: duplicate-rows
 :END:
 
 The reference tables may contain several matching rows for the same
@@ -240,6 +283,393 @@ tables. The joined table will have all combinations. So for instance
 if there are 2 =eggplant= rows in the master table, and 3 =eggplant= rows
 in the reference table, then the joined table will get 6 =eggplant=
 rows.
+
+** How to handle missing rows?
+:PROPERTIES:
+:CUSTOM_ID: how-to-handle-missing-rows
+:END:
+
+It may happen that no row in the reference table matches a value in
+the master table.  By default, in this case, the master row is kept,
+with empty cells added to it.  Information from the master table is
+not lost.  If, for example, a line in the recipe refers to an unknown
+"amaranth" product (a cereal known by the ancient Incas), then the
+resulting table will still contain the =amaranth= row, with empty
+nutritional facts.
+
+#+BEGIN_EXAMPLE
+| type     | quty | type     | Fiber | Sugar | Protein | Carb |
+|----------+------+----------+-------+-------+---------+------|
+| onion    |   70 | onion    |   1.3 |   4.4 |     1.3 |  9.0 |
+| tomato   |  120 | tomato   |   0.6 |   2.1 |     0.8 |  3.4 |
+| eggplant |  300 | eggplant |   2.5 |   3.2 |     0.8 |  8.6 |
+| tofu     |  100 | tofu     |   0.7 |   0.5 |     6.6 |  1.4 |
+| amaranth |  120 |          |       |       |         |      |
+#+END_EXAMPLE
+
+This behavior is controlled by the =:full= parameter:
+- =:full mas= the joined result contains the full master table (the
+  default)
+- =:full ref= the joined result contains the full reference tables
+- =:full mas+ref= the joined result contains all rows from both master
+  and all reference tables
+- =:full none= or =:full nil= the joined result contains
+  only rows that appear in both tables
+
+The use cases may be as follow:
+
+- =:full mas= is useful when the reference table is large, as a
+  dictionary or a nutritional facts table. We just pick the needed rows
+  from the reference.
+
+- =:full mas+ref= is useful when both tables are similar. For
+  instance, one table has been grown by a team, and the other
+  independently by another team. The joined table will contain
+  additional rows from both teams.
+
+- =:full none= is useful to create the intersection of tables. For
+  instance we have a list of items in the main warehouse, and another
+  list of damaged items. We are interested only in damaged items in
+  the main warehouse.
+
+* Wide variety of input tables
+:PROPERTIES:
+:CUSTOM_ID: wide-variety-of-input-tables
+:END:
+
+As in any other Org Mode source block, the input table may come from
+several places. OrgtblJoin adds even more kinds of input.
+
+Here we discus the =:mas-table= and =:ref-table= parameters.
+
+** Standard Org Mode input
+:PROPERTIES:
+:CUSTOM_ID: standard-org-mode-input
+:END:
+
+- =mytable=: an ordinary Org Mode table in the same buffer, named
+  =mytable=.
+
+- =/some/dir/file.org:mytable=: an ordinary Org Mode table named
+  =mytable=, in a distant Org file named =/some/dir/file.org=.
+
+** Virtual input table from Babel
+:PROPERTIES:
+:CUSTOM_ID: virtual-input-table-from-babel
+:END:
+
+- =mybabel=: an Org Mode Babel block named =mybabel= in the current
+  buffer, generating a table as its output, written in any language.
+
+- =mybabel(param1=123,param2=456)=: passing parameters to an Org Mode
+  Babel block named =mybabel= in the current buffer, generating a table
+  as its output, written in any language.
+
+- =/some/dir/file.org:mybabel(param1=123,param2=456)=: an Org Mode Babel
+  block named =mybabel= in a distant org file named =/some/dir/file.org=,
+  called with parameters.
+
+The input table may be the result of executing a Babel script. In this
+case, the table is virtual in the sense that is appears nowhere.
+
+(Babel is the Org Mode infrastructure to run scripts in any language,
+like Python, R, C++, Java, D, shell, whatever, with inputs and outputs
+connected to Org Mode).
+
+Example:
+
+Here is a script in Emacs Lisp which creates an Org Mode table.
+
+#+begin_example
+#+name: ascript
+#+begin_src elisp :colnames yes
+(list
+ '(type quty)
+ 'hline
+ (list "tomato" (* 53.1 12))
+ (list "tofu" (* 12.5 7)))
+#+end_src
+#+end_example
+
+If executed, the script would output this table:
+
+#+begin_example
+,#+RESULTS: ascript
+| type   |  quty |
+|--------+-------|
+| tomato | 637.2 |
+| tofu   |  87.5 |
+#+end_example
+
+But instead, OrgtblJoin will execute the script and consume its
+output:
+
+#+begin_example
+,#+BEGIN: join :mas-table "ascript" :ref-table "nut" :mas-column "type" :ref-column "type" :full "mas"
+| type   |  quty | Fiber | Sugar | Protein | Carb |
+|--------+-------+-------+-------+---------+------|
+| tomato | 637.2 |   0.6 |   2.1 |     0.8 |  3.4 |
+| tofu   |  87.5 |   0.7 |   0.5 |     6.6 |  1.4 |
+,#+END:
+#+end_example
+
+Here the parameter =:mas-table= specifies the name of the script to be
+executed.
+
+** An Org ID
+:PROPERTIES:
+:CUSTOM_ID: an-org-id
+:END:
+
+- =34cbc63a-c664-471e-a620-d654b26ffa31=: an identifier of an Org Mode
+  sub-tree. The sub-tree is supposed to contain a table, which is
+  retrieved.
+
+Those Org Mode identifiers span all known Org Mode files. To add such
+an identifier, put the cursor on the heading of the sub-tree, and type
+=M-x org-id-get-create=.
+
+** CSV input
+:PROPERTIES:
+:CUSTOM_ID: csv-input
+:END:
+
+CVS input is specific to OrgtblJoin. Org Mode does not offers those
+formats.
+
+- =/some/dir/file.csv:(csv params…)=: a comma-separated-values file in
+  the CSV format, in the file =/some/dir/file.csv=.
+
+The separators may be TAB, comma, or semicolon, they are guessed and
+different separators may be mixed.
+
+Any empty row in the CSV file is interpreted as an horizontal
+separator (=hline= in Org table parlance).
+
+  Parameters may be:
+  - =header=: the first row in the CSV file is interpreted as a header
+    containing the column names.
+  - =colnames (column1 column2 column3 …)=: the column names are given
+    explicitly, in case the CSV file contains only data, no header.
+
+In any case, the columns may be references as =$1, $2, $3, …= as usual.
+
+** JSON input
+:PROPERTIES:
+:CUSTOM_ID: json-input
+:END:
+
+- =/some/dir/file.json:(json params…)=: a file containing a JSON
+  formatted table, in the file =/some/dir/file.csv=.
+
+Currently, the only accepted format is an array of arrays. There are
+currently no parameters. In the future it may be possible to specify
+alternative sub-formats.
+
+** Input slicing
+:PROPERTIES:
+:CUSTOM_ID: input-slicing
+:END:
+
+The Org Mode also provides for table slicing. All of the previous
+references may be followed by an optional slicing. Examples:
+
+- =mytable[0:5]=: retain only the first 6 rows of the input table; if
+  the table has a header, then it counts as 2 rows (the header and the
+  separation line); in this example, it would retain rows 0 and 1 for
+  the header, and rows 2,3,4,5 for the content.
+
+- =mytable[,0:1]=: retain only the first 2 columns.
+
+- =mytable[0:5,0:1]=: retain only the first 6 rows and the first 2
+  columns.
+
+** Malformed input tables
+:PROPERTIES:
+:CUSTOM_ID: malformed-input-tables
+:END:
+
+Sometimes an input table may be unaligned or malformed, with
+incomplete rows, like those ones:
+
+#+BEGIN_EXAMPLE
+| type     | Fiber | Sugar |      | Carb |
+|----------+-------+-------+------+------|
+| eggplant |   2.5 |   3.2 |  0.8 |  8.6 |
+| tomato   |   0.6 |   2.1 |  0.8 |  3.4 |
+| onion    |   1.3 |   4.4 |  1.3 |  9.0 |
+    | egg      |     0 |  18.3 | 31.9 | 18.3 |
+| rice     |   0.2 |     0 |  1.5 | 16.0 |
+| tofu     |  0.7
+| nut      |   2.6 |   1.3 |  4.9 |  7.2 |
+
+| type     | quty |
+|----------+------|
+| onion    |   70 |
+| tomato   |
+| eggplant |  300 |
+  | tofu     |  100 |
+#+END_EXAMPLE
+
+Missing cells are handled as though they were empty.
+
+** Headers
+:PROPERTIES:
+:CUSTOM_ID: headers
+:END:
+
+The master and the reference tables may or may not have a header.  When
+there is a header, it may extend over several lines.  A header ends
+with an horizontal line.
+
+OrgtblJoin tries to preserve as much of the master table as possible.
+Therefore, if the master table has a header, the joined table will
+have it verbatim, over as many lines as needed.
+
+The reference tables headers (if any), will fill-in the header (if
+any) of the resulting table.  But if there is no room in the resulting
+table header, the reference tables headers lines will be ignored,
+partly of fully.
+
+A header is useful to refer to columns. If there is no header, then
+columns must be referred with /dollar/ names: =$1= is the name of the first
+column, =$2= is the name of the second column, and so on. This is
+pretty much the same as in the Org Mode spreadsheet.
+
+* About reference tables
+:PROPERTIES:
+:CUSTOM_ID: about-reference-tables
+:END:
+
+Why is there a distinction between the /master table/ and the /reference
+tables/?
+
+- The result of running OrgtblJoin will be an enriched version of the
+  *master table*. The master table contains our data.
+- The *reference tables* are stores of data from which OrgtblJoin picks
+  selected rows to enrich the result. The reference tables contains
+  alien data akin to data found in a library.
+
+** Multiple reference tables
+:PROPERTIES:
+:CUSTOM_ID: multiple-reference-tables
+:END:
+
+OrgtblJoin used to handle just one reference table. Now, as many as
+wanted are handled.
+
+To specify the reference tables, just use several times the =:ref-table=
+and =:ref-column= parameters. They must match: for instance, the third
+=:ref-table= must match the third =:ref-column=.
+
+For now, the =:full= and =:mas-column= parameters should be mentioned
+just once. This could change in the future with as many such
+parameters as reference tables.
+
+** Zero reference table
+:PROPERTIES:
+:CUSTOM_ID: zero-reference-table
+:END:
+
+One side effect of going multiple, is that /zero/ reference table is now
+accepted. In this case, the result of the join is just the master
+table. But the result can be changed in several ways:
+
+- Selection and re-ordering of columns through the =:cols= parameter.
+- Additional computed columns through the =:formula= parameter and
+  survival of =#+TBLFM:= lines.
+- Lisp and Babel post-processing through the =:post= parameter.
+
+This is a use-case where joining is not needed. Rather, a re-process
+of the master table is wanted, and OrgtblJoin happens to be able to
+perform those changes.
+
+For instance, the input table may be a CSV table, and the result an
+Org Mode table. Then OrgtblJoin is able to perform just this
+conversion (and it is fast).
+
+** Joining 2 similar tables
+:PROPERTIES:
+:CUSTOM_ID: joining-2-similar-tables
+:END:
+
+What if we need not to append data from some table/s to a main table,
+but to join 2 similar or symmetric tables with different data?
+
+Let's assume we have these 2 tables:
+
+#+begin_example
++#TBLNAME: TagsQ1
+| tag  | Q1 |
+|------+----|
+| tagA | 25 |
+| tagB | 18 |
+| tagC | 13 |
+| tagD |  6 |
+| tagE |  2 |
+| tagF |  2 |
+| tagG |  1 |
+#+end_example
+
+and
+
+#+begin_example
++#TBLNAME: TagsQ2
+| tag    | Q2 |
+|--------+----|
+| tagA   |  2 |
+| tagD   |  3 |
+| tagE   |  3 |
+| tagF   |  5 |
+| tagG   |  7 |
+| tagH   | 11 |
+| tagI   | 15 |
+#+end_example
+
+Looking closely at both tables we can observe that some of these tags
+appear in both (=tags A, D, E, F, G=), some only on =Q1= (=D, C=) and other
+only on =Q2= (=H, I, ...=).
+
+We want to create a table that includes all the tags, with a column
+with their frequency for table =TagsQ1= and another for =TagsQ2=.
+
+So we can create the orgtbl-join block with the [[#wizard][Wizard]]. Type =C-c C-x
+x=, then answer =join=.
+
+As our tables are somehow symmetric (no one is a primary one), you
+will choose arbitrarily =TagsQ1= as the /"master table"/ and =TagsQ2= as the
+/"reference table"/.
+
+So continue answering to the wizard:
+1. Master table: =TagsQ1=
+2. Reference table: =TagsQ2=
+3. joining column in reference table: =tag=
+4. joining column in master table: =tag=
+
+Then there is a question about which table should appear entirely.  In
+the result you want, there might be missing values in both =Q1= and =Q2=
+columns.  Therefore the right answer is: =mas+ref=
+
+Eventually you get:
+#+begin_example
+#+BEGIN: join :mas-table "TagsQ1" :ref-table "TagsQ2" :mas-column "tag" :ref-column "tag" :full "mas+ref"
+| tag    | Q1 | Q2 |
+|--------+----+----|
+| tagA   | 25 |  2 |
+| tagB   | 18 |
+| tagC   | 13 |
+| tagD   |  6 |  3 |
+| tagE   |  2 |  3 |
+| tagF   |  2 |  5 |
+| tagG   |  1 |  7 |
+|--------+----+----|
+| tagH   |    | 11 |
+| tagI   |    | 15 |
+| tag... |    | 19 |
+#+END:
+#+end_example
+
+The =tagB= and =tagC= rows are incomplete on purpose.  To fill in the table, just type TAB inside it.
 
 * Selecting the output columns
 :PROPERTIES:
@@ -297,105 +727,108 @@ Or like that:
 #+END:
 #+END_EXAMPLE
 
-* How to handle missing rows?
+* Post processing
 :PROPERTIES:
-:CUSTOM_ID: how-to-handle-missing-rows
+:CUSTOM_ID: post-processing
 :END:
 
-It may happen that no row in the reference table matches a value in
-the master table.  By default, in this case, the master row is kept,
-with empty cells added to it.  Information from the master table is
-not lost.  If, for example, a line in the recipe refers to an unknown
-"amaranth" product (a cereal known by the ancient Incas), then the
-resulting table will still contain the =amaranth= row, with empty
-nutritional facts.
+** Computing spreadsheet formulas afterward
+:PROPERTIES:
+:CUSTOM_ID: computing-spreadsheet-formulas-afterward
+:END:
+
+Additional columns can be specified for the resulting table.  With the
+previous example, we added a 7th column multiplying columns 2 and 3.
+This results in a line beginning with =#+TBLFM:= below the table, as
+usual in Org spreadsheet. This line will survive re-computations.
+
+Moreover, we added a spreadsheet formula with a =:formula=
+parameter. This will fill-in the 7th column header.  It is translated
+into a usual =#+TBLFM:= spreadsheet line.
 
 #+BEGIN_EXAMPLE
-| type     | quty | type     | Fiber | Sugar | Protein | Carb |
-|----------+------+----------+-------+-------+---------+------|
-| onion    |   70 | onion    |   1.3 |   4.4 |     1.3 |  9.0 |
-| tomato   |  120 | tomato   |   0.6 |   2.1 |     0.8 |  3.4 |
-| eggplant |  300 | eggplant |   2.5 |   3.2 |     0.8 |  8.6 |
-| tofu     |  100 | tofu     |   0.7 |   0.5 |     6.6 |  1.4 |
-| amaranth |  120 |          |       |       |         |      |
+#+BEGIN: join :mas-table recipe :mas-column type :ref-table nut :ref-column type :formula "@1$7=totfiber"
+#+name: richer
+| type     | quty | Fiber | Sugar | Protein | Carb | totfiber |
+|----------+------+-------+-------+---------+------+----------|
+| onion    |   70 |   1.3 |   4.4 |     1.3 |  9.0 |      91. |
+| tomato   |  120 |   0.6 |   2.1 |     0.8 |  3.4 |      72. |
+| eggplant |  300 |   2.5 |   3.2 |     0.8 |  8.6 |     750. |
+| tofu     |  100 |   0.7 |   0.5 |     6.6 |  1.4 |      70. |
+#+TBLFM: $7=$2*$3::@1$7=totfiber
+#+END:
 #+END_EXAMPLE
 
-This behavior is controlled by the =:full= parameter:
-- =:full mas= the joined result contains the full master table (the
-  default)
-- =:full ref= the joined result contains the full reference tables
-- =:full mas+ref= the joined result contains all rows from both mater
-  and all reference tables
-- =:full none= or =:full nil= the joined result contains
-  only rows that appear in both tables
-
-The use cases may be as follow:
-
-- =:full mas= is useful when the reference table is large, as a
-  dictionary or a nutritional facts table. We just pick the needed rows
-  from the reference.
-
-- =:full mas+ref= is useful when both tables are similar. For
-  instance, one table has been grown by a team, and the other
-  independently by another team. The joined table will contain
-  additional rows from both teams.
-
-- =:full none= is useful to create the intersection of tables. For
-  instance we have a list of items in the main warehouse, and another
-  list of damaged items. We are interested only in damaged items in
-  the main warehouse.
-
-* Malformed input tables
+** Algorithm post processing
 :PROPERTIES:
-:CUSTOM_ID: malformed-input-tables
+:CUSTOM_ID: algorithm-post-processing
 :END:
 
-Sometimes an input table may be unaligned or malformed, with
-incomplete rows, like those ones:
+The joined table can be post-processed with the =:post= parameter. It
+accepts a Lisp =lambda=, a Lisp function, a Lisp expression, or a Babel
+block.
 
-#+BEGIN_EXAMPLE
-| type     | Fiber | Sugar |      | Carb |
-|----------+-------+-------+------+------|
-| eggplant |   2.5 |   3.2 |  0.8 |  8.6 |
-| tomato   |   0.6 |   2.1 |  0.8 |  3.4 |
-| onion    |   1.3 |   4.4 |  1.3 |  9.0 |
-    | egg      |     0 |  18.3 | 31.9 | 18.3 |
-| rice     |   0.2 |     0 |  1.5 | 16.0 |
-| tofu     |  0.7
-| nut      |   2.6 |   1.3 |  4.9 |  7.2 |
+The processing receives the joined table as parameter in the form
+of a Lisp expression. It can process it in any way it wants, provided
+it returns a valid Lisp table.
 
-| type     | quty |
-|----------+------|
-| onion    |   70 |
-| tomato   |
-| eggplant |  300 |
-  | tofu     |  100 |
-#+END_EXAMPLE
+A Lisp table is a list of rows. Each row is either a list of cells, or
+the special symbol =hline=.
 
-Missing cells are handled as though they were empty.
+In this example, a =lambda= expression adds a =hline= and a row for /ginger/.
 
-* Headers
+#+begin_example
+#+BEGIN: join ... :post (lambda (table) (append table '(hline (ginger na na na na))))
+| product   |   quty | Carb | Fiber | Sugar | Protein |
+|-----------+--------+------+-------+-------+---------|
+| onion     |     70 |  9.0 |   1.3 |   4.4 |     1.3 |
+| unknown   |    999 |
+| tomato    |    120 |  3.4 |   0.6 |   2.1 |     0.8 |
+|-----------+--------+------+-------+-------+---------|
+| ginger    |     33 |   na |    na |    na |      na |
+#+END:
+#+end_example
+
+The =lambda= can be moved to a =defun=. The function is then passed to the
+=:post= parameter:
+
+: #+begin_src elisp
+: (defun my-function (table)
+:   (append table
+:           '(hline (ginger na na na na))))
+: #+end_src
+
+: ... :post my-function
+
+The =:post= parameter can also refer to a Babel block. Example:
+
+: #+BEGIN: join ... :post "my-babel-block(tbl=*this*)"
+: ...
+: #+END:
+
+: #+name: my-babel-block
+: #+begin_src elisp :var tbl=""
+: (append tbl
+:         '(hline (ginger na na na na)))
+: #+end_src
+
+The block is passed the table to process in a Lisp variable called
+=*this*=.
+
+** Chaining
 :PROPERTIES:
-:CUSTOM_ID: headers
+:CUSTOM_ID: chaining
 :END:
 
-The master and the reference tables may or may not have a header.  When
-there is a header, it may extend over several lines.  A header ends
-with an horizontal line.
+In an above example we gave a name to the resulting joined table:
+=#+name: richer=. Doing so the joined table may become an input for a
+further computation, for example in a Babel block.
 
-OrgtblJoin tries to preserve as much of the master table as possible.
-Therefore, if the master table has a header, the joined table will
-have it verbatim, over as many lines as needed.
+The name will survive re-computations. This happens only in /pull mode/.
 
-The reference tables headers (if any), will fill-in the header (if
-any) of the resulting table.  But if there is no room in the resulting
-table header, the reference tables headers lines will be ignored,
-partly of fully.
-
-Header are useful to refer to columns. If there is no header, then
-columns must be referred with =$= names: =$1= is the name of the first
-column, =$2= is the name of the second column, and so on. This is
-pretty much the same as in the Org Mode spreadsheet.
+Note that the =#+name: richer= line could appear above the =#+BEGIN:=
+line.  But sometimes this is not taken into account by further Babel
+blocks. In this case, put =#+name: richer= bellow  =#+BEGIN:=.
 
 * Wizard
 :PROPERTIES:
@@ -430,321 +863,6 @@ wizard ask if you want an additional reference table to be joined.
 The wizard does not (yet) take into account the =:cols= and =:post=
 parameters. If there where such parameters already specified, the
 wizard will leave them untouched.
-
-* Joining 2 similar tables
-:PROPERTIES:
-:CUSTOM_ID: joining-2-similar-tables
-:END:
-
-What if we need not to append data from some table/s to a main table, but to join 2 similar or symmetric tables with different data?
-
-Let's assume we have these 2 tables:
-#+begin_example
-+#TBLNAME: TagsQ1
-| tag  | Q1 |
-|------+----|
-| tagA | 25 |
-| tagB | 18 |
-| tagC | 13 |
-| tagD |  6 |
-| tagE |  2 |
-| tagF |  2 |
-| tagG |  1 |
-#+end_example
-
-and
-
-#+begin_example
-+#TBLNAME: TagsQ2
-| tag    | Q2 |
-|--------+----|
-| tagA   |  2 |
-| tagD   |  3 |
-| tagE   |  3 |
-| tagF   |  5 |
-| tagG   |  7 |
-| tagH   | 11 |
-| tagI   | 15 |
-#+end_example
-
-Looking closely at both tables we can observe that some of these tags appear in both (tags A, D, E, F, G), some only on Q1 (D, C) and other only on Q2 (H, I, ...).
-
-We want to create a table that includes all the tags, with a column with their frequency for table TagsQ1 and another for TagsQ2.
-
-So we can create the orgtbl-join block with the [[#wizard][Wizard]]. Type =C-c C-x x=, then answer =join=.
-
-As our tables are somehow symmetric (no one is a primary one), you will choose arbitrarily TagsQ1 as the "master table" and TagsQ2 as the "reference table".
-
-So continue answering to the wizard:
-1. Master table: TagsQ1
-2. Reference table: TagsQ2
-3. joining column in reference table: tag
-4. joining column in master table: tag
-
-Then there is a question about which table should appear entirely.  In the result you want, there might be missing values in both Q1 and Q2 columns.  Therefore the right answer is: =mas+ref=
-
-Eventually you get:
-#+begin_example
-#+BEGIN: join :mas-table "TagsQ1" :ref-table "TagsQ2" :mas-column "tag" :ref-column "tag" :full "mas+ref"
-| tag    | Q1 | Q2 |
-|--------+----+----|
-| tagA   | 25 |  2 |
-| tagB   | 18 |
-| tagC   | 13 |
-| tagD   |  6 |  3 |
-| tagE   |  2 |  3 |
-| tagF   |  2 |  5 |
-| tagG   |  1 |  7 |
-|--------+----+----|
-| tagH   |    | 11 |
-| tagI   |    | 15 |
-| tag... |    | 19 |
-#+END:
-#+end_example
-
-The =tagB= and =tagC= rows are incomplete on purpose.  To fill in the table, just type TAB inside it.
-* Post-joining spreadsheet formulas
-:PROPERTIES:
-:CUSTOM_ID: post-joining-spreadsheet-formulas
-:END:
-
-Additional columns can be specified for the resulting table.  With the
-previous example, we added a 7th column multiplying columns 2 and 3.
-This results in a line beginning with =#+TBLFM:= below the table, as
-usual in Org spreadsheet. This line will survive re-computations.
-
-Moreover, we added a spreadsheet formula with a =:formula=
-parameter. This will fill-in the 7th column header.  It is translated
-into a usual =#+TBLFM:= spreadsheet line.
-
-#+BEGIN_EXAMPLE
-#+BEGIN: join :mas-table recipe :mas-column type :ref-table nut :ref-column type :formula "@1$7=totfiber"
-#+name: richer
-| type     | quty | Fiber | Sugar | Protein | Carb | totfiber |
-|----------+------+-------+-------+---------+------+----------|
-| onion    |   70 |   1.3 |   4.4 |     1.3 |  9.0 |      91. |
-| tomato   |  120 |   0.6 |   2.1 |     0.8 |  3.4 |      72. |
-| eggplant |  300 |   2.5 |   3.2 |     0.8 |  8.6 |     750. |
-| tofu     |  100 |   0.7 |   0.5 |     6.6 |  1.4 |      70. |
-#+TBLFM: $7=$2*$3::@1$7=totfiber
-#+END:
-#+END_EXAMPLE
-
-* Post processing
-:PROPERTIES:
-:CUSTOM_ID: post-processing
-:END:
-
-The joined table can be post-processed with the =:post= parameter. It
-accepts a Lisp =lambda=, a Lisp function, a Lisp expression, or a Babel
-block.
-
-The processing receives the joined table as parameter in the form
-of a Lisp expression. It can process it in any way it wants, provided
-it returns a valid Lisp table.
-
-A Lisp table is a list of rows. Each row is either a list of cells, or
-the special symbol =hline=.
-
-In this example, a =lambda= expression adds a =hline= and a row for /ginger/.
-
-#+begin_example
-#+BEGIN: join ... :post (lambda (table) (append table '(hline (ginger na na na na))))
-| product   |   quty | Carb | Fiber | Sugar | Protein |
-|-----------+--------+------+-------+-------+---------|
-| onion     |     70 |  9.0 |   1.3 |   4.4 |     1.3 |
-| unknown   |    999 |
-| tomatoe   |    120 |  3.4 |   0.6 |   2.1 |     0.8 |
-|-----------+--------+------+-------+-------+---------|
-| ginger    |     33 |   na |    na |    na |      na |
-#+END:
-#+end_example
-
-The =lambda= can be moved to a =defun=. The function is then passed to the
-=:post= parameter:
-
-: #+begin_src elisp
-: (defun my-function (table)
-:   (append table
-:           '(hline (ginger na na na na))))
-: #+end_src
-
-: ... :post my-function
-
-The =:post= parameter can also refer to a Babel block. Example:
-
-: #+BEGIN: join ... :post "my-babel-block(tbl=*this*)"
-: ...
-: #+END:
-
-: #+name: my-babel-block
-: #+begin_src elisp :var tbl=""
-: (append tbl
-:         '(hline (ginger na na na na)))
-: #+end_src
-
-The block is passed the table to process in a Lisp variable called
-=*this*=.
-
-* Virtual input table from Babel
-:PROPERTIES:
-:CUSTOM_ID: virtual-input-table-from-babel
-:END:
-
-Any of the input tables may be the result of executing a Babel
-script. In this case, the table is virtual in the sense that it
-appears nowhere.
-
-(Babel is the Org Mode infrastructure to run scripts in any language,
-like Python, R, C++, Java, D, shell, whatever, with inputs and outputs
-connected to Org Mode).
-
-Example:
-
-Here is a script in Emacs Lisp which creates an Org Mode table.
-
-#+begin_example
-#+name: ascript
-#+begin_src elisp :colnames yes
-(list
- '(type quty)
- 'hline
- (list "tomato" (* 53.1 12))
- (list "tofu" (* 12.5 7)))
-#+end_src
-#+end_example
-
-If executed, the script would output this table:
-
-#+begin_example
-,#+RESULTS: ascript
-| type   |  quty |
-|--------+-------|
-| tomato | 637.2 |
-| tofu   |  87.5 |
-#+end_example
-
-But instead, OrgtblJoin will execute the script and consume its
-output:
-
-#+begin_example
-,#+BEGIN: join :mas-table "ascript" :ref-table "nut" :mas-column "type" :ref-column "type" :full "mas"
-| type   |  quty | Fiber | Sugar | Protein | Carb |
-|--------+-------+-------+-------+---------+------|
-| tomato | 637.2 |   0.6 |   2.1 |     0.8 |  3.4 |
-| tofu   |  87.5 |   0.7 |   0.5 |     6.6 |  1.4 |
-,#+END:
-#+end_example
-
-Here the parameter =:mas-table= specifies the name of the script to be
-executed.
-
-* Wide variety of input tables
-:PROPERTIES:
-:CUSTOM_ID: wide-variety-of-input-tables
-:END:
-
-As in any other Org Mode source block, the input table may come from
-several places. OrgAggregate adds even more kinds of input.
-
-The parameter after =:table= may be:
-
-- =mytable=: an ordinary Org Mode table in the same buffer, named
-  =mytable=.
-
-- =/some/dir/file.org:mytable=: an ordinary Org Mode table named
-  =mytable=, in a distant Org file named =/some/dir/file.org=.
-
-- =mybabel=: an Org Mode Babel block named =mybabel= in the current
-  buffer, generating a table as its output, written in any language.
-
-- =mybabel(param1=123,param2=456)=: passing parameters to an Org Mode
-  Babel block named =mybabel= in the current buffer, generating a table
-  as its output, written in any language.
-
-- =/some/dir/file.org:mybabel(param1=123,param2=456)=: an Org Mode Babel
-  block named =mybabel= in a distant org file named =/some/dir/file.org=,
-  called with parameters.
-
-- =/some/dir/file.csv:(csv params…)=: a comma-separated-values file in
-  the CSV format, in the file =/some/dir/file.csv=. The separators may
-  be TAB, comma, or semicolon, they are guessed and different
-  separators may be mixed. Any empty row in the CSV file is
-  interpreted as an horizontal separator (=hline= in Org table
-  parlance).
-
-  Parameters may be:
-  - =header=: the first row in the CSV file is interpreted as a header
-    containing the column names.
-  - =colnames (column1 column2 column3 …)=: the column names are given
-    explicitly, in case the CSV file contains only data, no header.
-  In any case, the columns may be references as =$1, $2, $3, …= as
-  usual.
-
-- =/some/dir/file.json:(json params…)=: a file containing a JSON
-  formatted table, in the file =/some/dir/file.csv=. Currently, the only
-  accepted format is an array of arrays. There are currently no
-  parameters. In the future it may be possible to specify alternative
-  sub-formats.
-
-- =34cbc63a-c664-471e-a620-d654b26ffa31=: an identifier of an Org Mode
-  sub-tree. The sub-tree is supposed to contain a table, which is
-  retrieved. Those Org Mode identifiers span all known Org Mode
-  files. To add such an identifier, put the cursor on the heading of
-  the sub-tree, and type =M-x org-id-get-create=.
-
-The Org Mode also provides for table slicing. All of the previous
-references may be followed by an optional slicing. Examples:
-
-- =mytable[0:5]=: retain only the first 6 rows of the input table; if
-  the table has a header, then it counts as 2 rows (the header and the
-  separation line); in this example, it would retain rows 0 and 1 for
-  the header, and rows 2,3,4,5 for the content.
-
-- =mytable[,0:1]=: retain only the first 2 columns.
-
-- =mytable[0:5,0:1]=: retain only the first 6 rows and the first 2
-  columns.
-
-* Chaining
-:PROPERTIES:
-:CUSTOM_ID: chaining
-:END:
-
-In an above example we gave a name to the resulting joined table:
-=#+name: richer=. Doing so the joined table may become an input for a
-further computation, for example in a Babel block.
-
-The name will survive re-computations. This happens only in /pull mode/.
-
-Note that the =#+name: richer= line could appear above the =#+BEGIN:=
-line.  But sometimes this is not taken into account by further Babel
-blocks.
-
-* Multiple reference tables
-:PROPERTIES:
-:CUSTOM_ID: multiple-reference-tables
-:END:
-
-OrgtblJoin used to handle just one reference table. Now, as many as
-wanted are handled.
-
-To specify the reference tables, just use several times the =:ref-table=
-and =:ref-column= parameters. They must match: for instance, the third
-=:ref-table= must match the third =:ref-column=.
-
-For now, the =:full= and =:mas-column= parameters should be mentionned
-just once. This could change in the future with as many such
-parameters as reference tables.
-
-One side effect of going multiple, is that zero reference table is now
-accepted. In this case, the result of the join is just the master
-table. But it can be change in several ways:
-
-- Selection and re-ordering of columns through the =:cols= parameter.
-- Additional computed columns through the =:formula= parameter and
-  survival of =#+TBLFM:= lines.
-- Lisp and Babel post-processing through the =:post= parameter.
 
 * Installation
 :PROPERTIES:
@@ -844,6 +962,7 @@ Contributors
   =#+tblfm:= or in =:formula=. The overall join may be up to x4
   faster and ÷4 less memory hungry.
 - Add the chapter "Joining 2 similar tables" for a common use case.
+- Aggregation of the titles of this README.
 
 * GPL 3 License
 :PROPERTIES:
