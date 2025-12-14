@@ -22,6 +22,24 @@ buffer. When done, the buffer and the original, untouched
 ~wizardtest.org~, are compared, stopping at the first difference.
 
 #+begin_src elisp :results none
+;; define a utility to run a unit test
+(defun orgtbl-join-wizard-test (&rest args)
+  (execute-kbd-macro
+   (kbd
+    (mapconcat
+     #'identity
+     (cl-loop
+      for a in args
+      if (symbolp a)
+      do (unless (memq a '(:init :isid :orgid :file :name :params :slice
+                                 :precompute :cols :cond :hline :post
+                                 :mascol :refcol :full :another))
+           (user-error "tag %s not recognized" a))
+      else
+      collect a)
+     "\n"))))
+
+;; display this buffer in a window occupying half the frame
 (delete-other-windows)
 (goto-char (point-min))
 (org-cycle '(64))
@@ -42,24 +60,26 @@ buffer. When done, the buffer and the original, untouched
   (goto-char (point-min))
   (replace-regexp
    (rx
-    bol "#+BEGIN: join" (* not-newline) "\n"
+    bol "#+begin: " (* not-newline) "\n"
     (*? (* any) "\n")
-    "#+END:" (* any) "\n")
+    "#+end:" (* any) "\n")
    ""))
 
 ;; call all wizard invocations
 (goto-char (point-min))
-(while (search-forward "(execute-kbd-macro" nil t)
-  (beginning-of-line)
-  (forward-sexp)
-  (forward-line)
-  (beginning-of-line)
-  (eval-last-sexp nil))
+(org-next-visible-heading 2)
+
+(while (re-search-forward
+        (rx "orgtbl-join-wizard-test"
+            (*? (* any) "\n")
+            "#+end_src" (* any) "\n")
+        nil t)
+  (org-ctrl-c-ctrl-c))
 
 ;; Compare the disposable buffer with the reference wiz1.org
 (goto-char (point-min))
 (compare-windows nil)
-  #+end_src
+#+end_src
 
 * A country table
 
@@ -75,18 +95,24 @@ buffer. When done, the buffer and the original, untouched
 | Bolivia   | South America |
 | Laos      | Asia          |
 
-(execute-kbd-macro (kbd "
-C-c C-x x j o <tab> <return>
-<return>
-<tab> C-a C-k l a n d <tab> <return>
-<return> g e o g r <tab>
-j s o <tab> <return>
-<return>
-<return>
-<tab> u n <tab> <return>
-$ 2 <return>
-<return>
-n"))
+#+begin_src elisp :results none
+(orgtbl-join-wizard-test
+ :init    "C-c C-x x jo <tab> <return>"
+ :isid    "n"
+ :file    "<return>"
+ :name    "<tab> C-a C-k land <tab> <return>"
+ :params  "<return>"
+ :slice   "<return>"
+ :isid    "n"
+ :file    "geogr <tab> jso <tab> <return>"
+ :name    "<return>"
+ :params  "<return>"
+ :slice   "<return>"
+ :mascol  "<tab> un <tab> <return>"
+ :refcol  "$2 <return>"
+ :full    "<return>"
+ :another "n")
+#+end_src
 #+BEGIN: join :mas-table "lando" :ref-table "geography-a.json:(json)" :mas-column "country" :ref-column "$2" :full "mas"
 | country   | continent     |
 |-----------+---------------+--------------+----------+----------|
@@ -108,23 +134,29 @@ n"))
 ** Try modifying existing BEGIN..END
 
 do not remove this next line: it is a template for the following test!
-!+BEGIN: join :mas-table "lando" :ref-table "~/GitHub/orgtbljoin/tests/country.csv:(csv header)" :mas-column "country" :ref-column "Country" :full "mas" :cols "continent country Population 'Yearly Increase'"
-(execute-kbd-macro (kbd "
-M-C-b C-p C-a C-f C-SPC C-e M-w
-M-C-f C-n # C-y <return> # + E N D : <return>
-C-a C-p C-p
-C-c C-x x j o i <tab> <return>
-<return>
-<return>
-<return>
-<return>
-<return>
-<return>
-<return>
-<return>
-<return>
-n"))
-#+BEGIN: join :mas-table "lando" :ref-table "~/GitHub/orgtbljoin/tests/country.csv:(csv header)" :mas-column "country" :ref-column "Country" :full "mas" :cols "continent country Population 'Yearly Increase'"
+!+BEGIN: join :mas-table "lando" :ref-table "country.csv:(csv header)" :mas-column "country" :ref-column "Country" :full "mas" :cols "continent country Population 'Yearly Increase'"
+#+begin_src elisp :results none
+(orgtbl-join-wizard-test
+ :init    "C-r ! + B E G I N : C-a C-f C-SPC C-e M-w"
+ :init    "C-s # + e n d _ s r c C-a C-n # C-y <return>"
+ :init    "#+END: <return>"
+ :init    "C-a C-p C-p"
+ :init    "C-c C-x x joi <tab> <return>"
+ :file    "<return>"
+ :name    "<return>"
+ :params  "<return>"
+ :slice   "<return>"
+ :isid    "n"
+ :file    "<return>"
+ :name    "<return>"
+ :params  "<return>"
+ :slice   "<return>"
+ :mascol  "<return>"
+ :refcol  "<return>"
+ :full    "<return>"
+ :another "n")
+#+end_src
+#+BEGIN: join :mas-table "lando" :ref-table "country.csv:(csv header)" :mas-column "country" :ref-column "Country" :full "mas" :cols "continent country Population 'Yearly Increase'"
 | continent     | country   | Population | Yearly Increase |
 |---------------+-----------+------------+-----------------|
 | Asia          | Japan     |  123425000 |         -655000 |
@@ -139,30 +171,42 @@ n"))
 
 * Distant colors
 
-(execute-kbd-macro (kbd "
-C-c C-x x j o <tab> <return>
-u n i t t e s <tab> <return>
-c o l o <tab> <return>
-<return>
-u n i t t e <tab> <return>
-s p a n i s <tab> <return>
-<return> n a m <tab> <return>
-c o l o <tab> <return>
-<return>
-y
-u n i t t <tab> <return>
-1 2 b i <tab> <return>
-<return>
-<return>
-c o <tab> <return>
-<return>
-y u n i t t <tab> <return>
-e s p <tab> <return>
-<return>
-<return>
-c o l o <tab> <return>
-<return>
-n"))
+#+begin_src elisp :results none
+(orgtbl-join-wizard-test
+ :init    "C-c C-x x jo <tab> <return>"
+ :isid    "n"
+ :file    "unittes <tab> <return>"
+ :name    "colo <tab> <return>"
+ :params  "<return>"
+ :slice   "<return>"
+ :isid    "n"
+ :file    "unitte <tab> <return>"
+ :name    "spanis <tab> <return>"
+ :params  "<return>"
+ :slice   "<return>"
+ :mascol  "nam <tab> <return>"
+ :refcol  "colo <tab> <return>"
+ :full    "<return>"
+ :another "y"
+ :isid    "n"
+ :file    "unitt <tab> <return>"
+ :name    "12bi <tab> <return>"
+ :params  "<return>"
+ :slice   "<return>"
+ :mascol  "x C-a C-k nam <tab> <return>"
+ :refcol  "colo <tab> <return>"
+ :full    "<return>"
+ :another "y"
+ :isid    "n"
+ :file    "unitt <tab> <return>"
+ :name    "esp <tab> <return>"
+ :params  "<return>"
+ :slice   "<return>"
+ :mascol  "x C-a C-k nam <tab> <return>"
+ :refcol  "x C-a C-k colo <tab> <return>"
+ :full    "<return>"
+ :another "n")
+#+end_src
 #+BEGIN: join :mas-table "unittests.org:colors" :ref-table "unittests.org:spanish_colors" :mas-column "name" :ref-column "color" :full "mas" :ref-table "unittests.org:12bits_colors" :mas-column "name" :ref-column "color" :full "mas" :ref-table "unittests.org:esperanto_colors" :mas-column "name" :ref-column "color" :full "mas"
 | name   | español  | 12bits | esperanto |
 |--------+----------+--------+-----------|
@@ -176,18 +220,24 @@ n"))
 
 * :post
 
-(execute-kbd-macro (kbd "
-C-c C-x x j o i <tab> <return>
-u n i t t <tab> <return>
-m e a l _ x <backspace> w i t <tab> <return>
-<return>
-u n i t t <tab> <return>
-n u t _ w i t h _ <tab> <return>
-<return>
-p r o d u <tab> <return>
-t y p e <return>
-<return>
-n"))
+#+begin_src elisp :results none
+(orgtbl-join-wizard-test
+ :init    "C-c C-x x joi <tab> <return>"
+ :isid    "n"
+ :file    "unitt <tab> <return>"
+ :name    "meal _ x <backspace> wit <tab> <return>"
+ :params  "<return>"
+ :slice   "<return>"
+ :isid    "n"
+ :file    "unitt <tab> <return>"
+ :name    "nut_with_ <tab> <return>"
+ :params  "<return>"
+ :slice   "<return>"
+ :mascol  "produ <tab> <return>"
+ :refcol  "type <return>"
+ :full    "<return>"
+ :another "n")
+#+end_src
 #+BEGIN: join :mas-table "unittests.org:meal_with_header" :ref-table "unittests.org:nut_with_header" :mas-column "product" :ref-column "type" :full "mas"
 | product   |   quty | Carb | Fiber | Sugar | Protein |
 | common    |     in | ohyd |       |       |         |

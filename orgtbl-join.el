@@ -356,19 +356,26 @@ The header have an ID property equal to ID in a PROPERTY drawer."
            (re-search-forward (rx (skipmetatable (any "*#:"))) nil t)
            (orgtbl-join--table-to-lisp)))))))
 
-(defun orgtbl-join-table-from-any-ref (name-or-id)
-  "Find a table referenced by NAME-OR-ID.
-The reference is all the accepted Org references,
-and additionally pointers to CSV or JSON files.
-The pointed to object may also be a Babel block, which when executed
-returns an Org table. Parameters may be passed to the Babel block
-in parenthesis.
-A slicing may be applied to the table, to select rows or columns.
-The syntax for slicing is like [1:3] or [1:3,2:5].
-Return it as a Lisp list of lists.
-An horizontal line is translated as the special symbol `hline'."
-  (unless (stringp name-or-id)
-    (setq name-or-id (format "%s" name-or-id)))
+(defun orgtbl-join--nil-if-empty (field)
+  (and
+   field
+   (not (string-match-p (rx bos (* blank) eos) field))
+   field))
+
+(defun orgtbl-join--parse-locator (locator)
+  "Parse LOCATOR, a description of where to find the input table.
+The result is a vector containing:
+[
+  FILE   ; optional file where the table/Babel/CSV/JSON may be found
+  NAME   ; name of table/Babel denoted by #+name:
+  ORGID  ; Org Mode id in a property drawer (exclusive with file+name)
+  PARAMS ; optional parameters to pass to babel/CSV/JSON
+  SLICE  ; optional slicing of the resultin table, like [0:7]
+]
+If LOCATOR looks like NAME(params…)[slice] or just NAME, then NAME
+is searched in the Org Mode database, and if found it is interpreted
+as an Org Id and put in the `orgid' field."
+  (unless locator (setq locator ""))
   (unless
       (string-match
        (rx
@@ -383,54 +390,93 @@ An horizontal line is translated as the special symbol `hline'."
         (? (group-n 4 "[" (* any) "]"))
         (* space)
         eos)
-       name-or-id)
-    (user-error "Malformed table reference %S" name-or-id))
-  (let ((file   (match-string 1 name-or-id))
-        (name   (match-string 2 name-or-id))
-        (params (match-string 3 name-or-id))
-        (slice  (match-string 4 name-or-id)))
-    (if (eq (length file) 0)
-        (setq file nil))
-    (if (eq (length name) 0)
-        (setq name nil))
-    (unless (or file name)
-      (user-error "Malformed table reference %S" name-or-id))
-    (let
-        ((table
-          (cond
-           ;; name-or-id = "file:(csv …)"
-           ((and file (not name)
-                 (string-match (rx bos "(csv") params))
-            (orgtbl-join--table-from-csv file params))
-           ;; name-or-id = "file:(json …)"
-           ((and file (not name)
-                 (string-match (rx bos "(json") params))
-            (orgtbl-join--table-from-json file params))
-           ;; name-or-id = "babel(p=…)" or "file:babel(p=…)"
-           ((and params
-                 (orgtbl-join--table-from-babel
-                  (if file
-                      (format "%s:%s%s" file name params)
-                    (format "%s%s" name params)))))
-           ;;name-or-id = "table" or "file:table"
-           ((orgtbl-join--table-from-name file name))
-           ;; name-or-id = "babel" or "file:babel"
-           ((orgtbl-join--table-from-babel
-             (if file
-                 (format "%s:%s" file name)
-               name)))
-           ;; name-or-id = "34cbc63a-c664-471e-a620-d654b26ffa31"
-           ;; pointing to a header in a distant org file, followed by a table
-           ((and (not file) name (not params)
-                 (orgtbl-join--table-from-id name)))
-           ;; everything failed
-           (t
-            (user-error
-             "Cannot find table or babel block with reference %S"
-             name-or-id)))))
+       locator)
+    (user-error "Malformed table reference %S" locator))
+  (let ((file   (orgtbl-join--nil-if-empty (match-string 1 locator)))
+        (name   (orgtbl-join--nil-if-empty (match-string 2 locator)))
+        (orgid                                                           )
+        (params (orgtbl-join--nil-if-empty (match-string 3 locator)))
+        (slice  (orgtbl-join--nil-if-empty (match-string 4 locator))))
+    (when (and
+           (not file)
+           (progn
+             (unless org-id-locations (org-id-locations-load))
+             (and org-id-locations
+	          (hash-table-p org-id-locations)
+	          (gethash name org-id-locations))))
+      (setq orgid name)
+      (setq name nil))
+    (vector file name orgid params slice)))
+
+(defun orgtbl-join--assemble-locator (file name orgid params slice)
+  "Assemble fields of a locator as a string.
+FILE NAME ORGID PARAMS SLICE are the 5 fields composing a locator.
+Many of them are optional.
+The result is a locator suitable for orgtbl-join and Org Mode."
+  (unless params (setq params ""))
+  (unless slice  (setq slice  ""))
+  (setq file  (orgtbl-join--nil-if-empty file ))
+  (setq orgid (orgtbl-join--nil-if-empty orgid))
+  (cond
+   (orgid (format "%s%s%s"         orgid        params slice))
+   (file  (format "%s:%s%s%s" file (or name "") params slice))
+   (t     (format "%s%s%s"         name         params slice))))
+
+(defun orgtbl-join-table-from-any-ref (name-or-id)
+  "Find a table referenced by NAME-OR-ID.
+The reference is all the accepted Org references,
+and additionally pointers to CSV or JSON files.
+The pointed to object may also be a Babel block, which when executed
+returns an Org table. Parameters may be passed to the Babel block
+in parenthesis.
+A slicing may be applied to the table, to select rows or columns.
+The syntax for slicing is like [1:3] or [1:3,2:5].
+Return it as a Lisp list of lists.
+An horizontal line is translated as the special symbol `hline'."
+  (unless (stringp name-or-id)
+    (setq name-or-id (format "%s" name-or-id)))
+  (let*
+      ((struct (orgtbl-join--parse-locator name-or-id))
+       (file   (aref struct 0))
+       (name   (aref struct 1))
+       (orgid  (aref struct 2))
+       (params (aref struct 3))
+       (slice  (aref struct 4))
+       (table
+        (cond
+         ;; name-or-id = "file:(csv …)"
+         ((and file (not name)
+               (string-match (rx bos "(csv") params))
+          (orgtbl-join--table-from-csv file params))
+         ;; name-or-id = "file:(json …)"
+         ((and file (not name)
+               (string-match (rx bos "(json") params))
+          (orgtbl-join--table-from-json file params))
+         ;; name-or-id = "34cbc63a-c664-471e-a620-d654b26ffa31"
+         ;; pointing to a header in a distant org file, followed by a table
+         (orgid
+          (orgtbl-join--table-from-id orgid))
+         ;; name-or-id = "babel(p=…)" or "file:babel(p=…)"
+         ((and params
+               (orgtbl-join--table-from-babel
+                (if file
+                    (format "%s:%s%s" file name params)
+                  (format "%s%s" name params)))))
+         ;;name-or-id = "table" or "file:table"
+         ((orgtbl-join--table-from-name file name))
+         ;; name-or-id = "babel" or "file:babel"
+         ((orgtbl-join--table-from-babel
+           (if file
+               (format "%s:%s" file name)
+             name)))
+         ;; everything failed
+         (t
+          (user-error
+           "Cannot find table or babel block with reference %S"
+           name-or-id)))))
       (if slice
           (org-babel-ref-index-list slice table)
-        table))))
+        table)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Utilities
@@ -675,11 +721,122 @@ with an Org Mode table."
 ;; Wizard
 
 (defun orgtbl-join--display-help (explain &rest args)
-  "Display help for each field the wizard queries."
-  (with-current-buffer "*orgtbl-join-help*"
+  "Display help for each field the wizard queries.
+EXPLAIN is a text in Org Mode to display. It is process
+through `format' with replacements in ARGS."
+  (let ((docs
+         '(
+           :isorgid "* Input table locator
+The input table may be pointed to by:
+- a file and a name,
+- an Org Mode identifier"
+           :orgid "* Org ID
+It is an identifier hidden in a =properties= drawer.
+Org Mode globally keeps track of all Ids and knows how to access them.
+It is supposed that the ID location is followed by a table or
+a Babel block suitable for aggregation."
+           :masfile "* In which file is the master table?
+The master table may be in another file.
+The master table is the one we want to enrich with material from other tables.
+Leave answer empty to mean that the table is in the current buffer."
+           :reffile "* In which file is the reference table?
+A reference table is a storage of knowledge where orgtbl-join will pick
+selected rows. The flow of information is from the reference tables to the
+master table to be enriched.
+Leave answer empty to mean that the table is in the current buffer."
+           :name "* The input table may be:
+- a regular Org table,
+- a Babel block whose output will be the input table.
+Org table & Babel block names are available at completion (type ~TAB~).
+Leave empty for a CSV or JSON formatted table."
+           :params "* Parameters for Babel code block (optional)
+** A Babel code block may require specific parameters
+Give them here if needed, surrounded by parenthesis. Example:
+  ~(size=4,reverse=nil)~
+** CSV or JSON formatted tables.
+Examples:
+  ~(csv header)~ ~(json)~
+** Regular Org Mode table
+Leave empty."
+           :slice "* Slicing (optional)
+Slicing is an Org Mode feature allowing to cut the input table.
+It applies to any input: Org table, Babel output, CSV, JSON.
+Leave empty for no slicing.
+** Examples:
+- ~mytable[0:5]~     retains only the first 6 rows of the input table
+- ~mytable[*,0:1]~   retains only the first 2 columns
+- ~mytable[0:5,0:1]~ retains 5 rows and 2 columns"
+           :cols "* Columns re-arrangement 'optional)
+The natural ordering of columns puts the master columns first,
+then each of the reference columns.
+This order may be changed by specifying the list of output columns.
+Columns may also be ignored by this way.
+Candidates are:
+  %s"
+           :cond "* Filter rows (optional)
+Lisp function, lambda, or Babel block to filter out rows.
+** Available input columns
+  %s
+** Example
+  ~(>= (string-to-number quty) 3)~
+  only rows with cell ~quty~ higher or equal to ~3~ are retained.
+  ~(not (equal tag \"dispose\"))~
+  rows with cell ~tag~ equal to ~dispose~ are filtered out."
+           :post "* Post-process (optional)
+The output table may be post-processed prior to printing it
+in the current buffer.
+The processor may be a Lisp function, a lambda, or a Babel block.
+** Example:
+  ~(lambda (table) (append table '(hline (banana 42))))~
+  two rows are appended at the end of the output table:
+  ~hline~ which means horizontal line,
+  and a row with two cells."
+           :mascol "* Which master column?
+One of the columns in the master table will be used to search
+for a selection of matching rows in the reference table.
+Candidates are:
+  %s"
+           :refcol "* Which reference column?
+One of the columns in the reference table will be matched
+in order to collect some rows and add them to the master table.
+Candidates are:
+  %s"
+           :full "* Which table should be kept entirely?
+Possible answers are:
+- =mas=: the master table is kept entirely.
+  This is the standard case. Only matching rows are picked from
+  the reference tables.
+- =ref=: the reference table is kept entirely.
+  This option should probably never be used.
+- =mas+ref=: master & reference tables are kept entirely.
+  Useful in cases where both tables are somehow symmetric.
+  Missing rows from one or the other table will be present in the result
+  with some empty cells.
+- =none=: only matching rows will be kept.
+  the resulting enriched table may therefore be shorter than both tables."
+           :another "* Another reference table?
+Up to now, the reference tables used in the joining are:
+%s"
+           ))
+        (main-window (selected-window))
+        (help-window (get-buffer-window "*orgtbl-join-help*")))
+    (if help-window
+        (select-window help-window)
+      (setq main-window (split-window nil 16 'above))
+      (switch-to-buffer "*orgtbl-join-help*")
+      (setq help-window (selected-window)))
+    (org-mode)
     (erase-buffer)
-    (insert (apply #'format explain args))
-    (goto-char (point-min))))
+    (insert (apply #'format (plist-get docs explain) args))
+    (goto-char (point-min))
+    (select-window main-window)))
+
+(defun orgtbl-join--dismiss-help ()
+  "Hide the wizard help window."
+  (let ((help-window (get-buffer-window "*orgtbl-join-help*")))
+    (if help-window
+        (delete-window help-window))))
+
 
 ;; This variable contains the history of user entered answers,
 ;; so that they can be entered again or edited.
@@ -705,8 +862,7 @@ KEEPANSWER should be true to keep the user's answer into ALLCOLUMNS."
 	    for _row in (car table)
 	    for i from 1
 	    collect (format "$%s" i)))))
-    (orgtbl-join--display-help
-     help
+    (orgtbl-join--display-help help
      (mapconcat (lambda (x) (format " ~%s~" x)) completions))
     (let ((answer
            (completing-read
@@ -727,97 +883,80 @@ KEEPANSWER should be true to keep the user's answer into ALLCOLUMNS."
 If TABLE is not nil, it is decomposed into file:name:slice, and each
 of those 3 fields serve as default answer when prompting.
 TYPEOFTABLE is a qualifier: t for master, nil for reference."
-  (let (file slice tablenames)
-    (when (and
-           table
-           (string-match
-            (rx bos
-                (? (group (+ (not (any ":[]")))) ":")
-                (group (+ (not "[")))
-                (?  (group "[" (* any) "]"))
-                eos)
-            table))
-      (setq file  (match-string 1 table))
-      (setq slice (match-string 3 table))
-      (setq table (match-string 2 table)))
+  (let (file name orgid params slice isorgid)
+    (if table
+        (let ((struct (orgtbl-join--parse-locator table)))
+          (setq file   (aref struct 0))
+          (setq name   (aref struct 1))
+          (setq orgid  (aref struct 2))
+          (setq params (aref struct 3))
+          (setq slice  (aref struct 4))))
 
-    (orgtbl-join--display-help
-     (if typeoftable
-         "* In which file is the master table?
-The master table may be in another file.
-The master table is the one we want to enrich with material from other tables.
-Leave answer empty to mean that the table is in the current buffer."
-       "* In which file is the reference table?
-A reference table is a storage of knowledge where orgtbl-join will pick
-selected rows. The flow of information is from the reference tables to the
-master table to be enriched.
-Leave answer empty to mean that the table is in the current buffer."))
-    (let ((insert-default-directory nil))
-      (setq file
-            (read-file-name "File (RET for current buffer): "
-                            nil
-                            nil
-                            nil
-                            file)))
+    (setq
+     isorgid
+     (cond
+      (orgid t)
+      (name nil)
+      (t
+       (orgtbl-join--display-help :isorgid)
+       (let ((use-short-answers t))
+         (yes-or-no-p "Is the input pointed to by an Org Mode ID? ")))))
 
-    (if (equal file "") (setq file nil))
+    (if isorgid
+        (progn
+          (orgtbl-join--display-help :orgid)
+          (unless org-id-locations (org-id-locations-load))
+          (setq orgid
+                (completing-read
+                 "Org ID: "
+                 (hash-table-keys org-id-locations)
+                 nil
+                 nil ;; user is free to input anything
+                 orgid)))
 
-    (setq tablenames (orgtbl-join--list-local-tables file))
-    (if file
-        (setq tablenames (nconc tablenames '("(csv)" "(csv header)" "(json)"))))
+      (orgtbl-join--display-help (if typeoftable :masfile :reffile))
+      (let ((insert-default-directory nil))
+        (setq file
+              (orgtbl-join--nil-if-empty
+               (read-file-name "File (RET for current buffer): "
+                               nil
+                               nil
+                               nil
+                               file))))
+
+      (orgtbl-join--display-help :name)
+      (setq name
+            (completing-read
+             "Table or Babel: "
+             (orgtbl-join--list-local-tables file)
+             nil
+             nil ;; user is free to input anything
+             name)))
 
     (and
      file
-     (not table)
+     (not params)
      (cond
       ((string-match (rx ".csv"  eos) file)
-       (setq table "(csv)"))
+       (setq params "(csv)"))
       ((string-match (rx ".json" eos) file)
-       (setq table "(json)"))))
+       (setq params "(json)"))))
 
-    (orgtbl-join--display-help
-     "* The input %s table may be:
-- a regular Org table,
-- a Babel block whose output will be the input table,
-- a ~CSV~ or ~JSON~ formatted file.
-Org table & Babel block names are available at completion (type ~TAB~).
-Alternately, it may be an Org ID pointing to a table or Babel block
-  (no completion).
-For a Babel block, the name of the Babel may be followed by
-  parameters in parenthesis. Example: ~mybabel(p=\"a\",quty=12)~
-for a ~CSV~ table, type ~(csv params…)~
-  currently only ~(cvs header)~ is recognized: first row is a header
-for a ~JSON~ table, type ~(json params…)~
-  currently no parameters are recognized."
-     (if typeoftable "master" "reference"))
-    (setq table
-          (completing-read
-           "Table, Babel, ID, (csv…), (json…): "
-           tablenames
-           nil
-           nil ;; user is free to input anything
-           table))
+    (orgtbl-join--display-help :params)
+    (setq params
+          (read-string
+           "Babel parameters (optional): "
+           params
+           'orgtbl-join-history-cols))
 
-    (unless (string-match-p (rx bos (* space) eos) table)
-      (orgtbl-join--display-help "* Slicing
-Slicing is an Org Mode feature allowing to cut the input table.
-It applies to any input: Org table, Babel output, CSV, JSON.
-Leave empty for no slicing.
-** Examples:
-- ~mytable[0:5]~     retains only the first 6 rows of the input table
-- ~mytable[*,0:1]~   retains only the first 2 columns
-- ~mytable[0:5,0:1]~ retains 5 rows and 2 columns")
-      (setq slice
-            (read-string
-             "Input slicing (optional): "
-             slice
-             'orgtbl-join-history-cols))
+    (orgtbl-join--display-help :slice)
+    (setq slice
+          (read-string
+           "Input slicing (optional): "
+           slice
+           'orgtbl-join-history-cols))
 
-      (concat
-       (or file "")
-       (if file ":" "")
-       table
-       (or slice "")))))
+    (orgtbl-join--assemble-locator file name orgid params slice)))
 
 (defun orgtbl-join--wizard-create-update (mastable params)
   "Interactively query tables and joining columns.
@@ -830,10 +969,6 @@ The updated PARAMS is returned."
         (allcolumns (list nil))
         (newparams))
     (save-window-excursion
-      (save-selected-window
-        (split-window nil 15 'above)
-        (switch-to-buffer "*orgtbl-join-help*")
-        (org-mode))
       (unless mastable
         (setq mastable
               (orgtbl-join--wizard-query-table
@@ -851,11 +986,7 @@ The updated PARAMS is returned."
               nil))
        (setq mascol
 	     (orgtbl-join--join-query-column
-              "* Which master column?
-One of the columns in the master table will be used to search
-for a selection of matching rows in the reference table.
-Candidates are:
-  %s"
+              :mascol
 	      "Master column: "
 	      mastable
               (or
@@ -865,30 +996,14 @@ Candidates are:
               t))
        (setq refcol
 	     (orgtbl-join--join-query-column
-              "* Which reference column?
-One of the columns in the reference table will be matched
-in order to collect some rows and add them to the master table.
-Candidates are:
-  %s"
+              :refcol
 	      "Reference column: "
 	      (orgtbl-join-table-from-any-ref reftable)
 	      (or
                (orgtbl-join--plist-get-remove params :ref-column)
                mascol)
               allcolumns))
-       (orgtbl-join--display-help "* Which table should be kept entirely?
-Possible answers are:
-- =mas=: the master table is kept entirely.
-  This is the standard case. Only matching rows are picked from
-  the reference tables.
-- =ref=: the reference table is kept entirely.
-  This option should probably never be used.
-- =mas+ref=: master & reference tables are kept entirely.
-  Useful in cases where both tables are somehow symmetric.
-  Missing rows from one or the other table will be present in the result
-  with some empty cells.
-- =none=: only matching rows will be kept.
-  the resulting enriched table may therefore be shorter than both tables.")
+       (orgtbl-join--display-help :full)
        (setq full
 	     (completing-read
 	      "Which table should appear entirely? "
@@ -904,10 +1019,7 @@ Possible answers are:
                ,:mas-column ,mascol
                ,:ref-column ,refcol
                ,:full ,full))
-       (orgtbl-join--display-help
-        "* Another reference table?
-Up to now, the reference tables used in the joining are:
-%s"
+       (orgtbl-join--display-help :another
         (cl-loop
          for pair on newparams
          if (eq (car pair) :ref-table)
@@ -924,14 +1036,7 @@ Up to now, the reference tables used in the joining are:
         ;; Do they refer to columns in the master table or in any of
         ;; the references tables?
         ;; There also might be duplicate column names which create ambiguity.
-        (orgtbl-join--display-help
-         "* Columns re-arrangement
-The natural ordering of columns puts the master columns first,
-then each of the reference columns.
-This order may be changed by specifying the list of output columns.
-Columns may also be ignored by this way.
-Candidates are:
-  %s"
+        (orgtbl-join--display-help :colrearrange
          (mapconcat
           (lambda (x) (format " ~%s~" x))
           allcolumns))
