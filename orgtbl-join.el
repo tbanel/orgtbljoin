@@ -64,6 +64,7 @@
 ;;; Requires:
 (require 'org)
 (require 'org-table)
+(require 'org-id)
 (eval-when-compile (require 'cl-lib))
 (require 'rx)
 (require 'json)
