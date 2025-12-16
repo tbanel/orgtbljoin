@@ -1,0 +1,114 @@
+#+TITLE: Unit Tests & Examples for Orgtbl Join
+Copyright (C) 2013-2025  Thierry Banel
+
+orgtbl-join is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+orgtbl-join is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+* How to run?
+Running all tests should not change anything to this page.
+
+Run this script to complete all the unit tests in a disposable
+buffer. When done, the buffer and the original, untouched
+~unfoldtest.org~, are compared, stopping at the first difference.
+
+#+begin_src elisp :results none
+;; define a utility to run a unit test
+(defun orgtbl-join-unfold-test (&rest args)
+  (execute-kbd-macro
+   (kbd
+    (mapconcat #'identity (cons "C-n" args) "\n"))))
+
+;; display this buffer in a window occupying half the frame
+(delete-other-windows)
+(goto-char (point-min))
+(org-cycle '(64))
+(split-window-right)
+
+;; Make a new buffer and fill it with the content of unittests.org
+(let ((f (buffer-file-name)))
+  (switch-to-buffer "disposable-unfoldtests.org")
+  (erase-buffer)
+  (insert-file f))
+(org-mode)
+(org-cycle '(64))
+
+;; Clean results from prior tests:
+;; replace a pair of a simple and a complex join blocks
+;; with 2 copies of the simple one
+(rx-define joinblock
+  (group
+   "#+begin: " (* not-newline) "\n"
+   (*? (* any) "\n")
+   "#+end:" (* any) "\n"))
+
+(save-excursion
+  (goto-char (point-min))
+  (replace-regexp
+   (rx bol joinblock joinblock)
+   "\\2\\2"))
+
+;; call all wizard invocations
+(goto-char (point-min))
+(org-next-visible-heading 2)
+;;(while (search-forward "(execute-kbd-macro" nil t)
+;;  (beginning-of-line)
+;;  (forward-sexp)
+;;  (forward-line)
+;;  (beginning-of-line)
+;;  (eval-last-sexp nil))
+
+(while (re-search-forward
+        (rx "orgtbl-join-unfold-test"
+            (*? (* any) "\n")
+            "#+end_src")
+        nil t)
+  (beginning-of-line)
+  (org-ctrl-c-ctrl-c))
+
+;; Compare the disposable buffer with the reference
+(goto-char (point-min))
+(compare-windows nil)
+#+end_src
+
+* unua testo
+
+#+begin_src elisp :results none
+(orgtbl-join-unfold-test
+ "C-a <right> <tab>"
+ "<down> <tab> u n i t t e <tab> M-b M-b C-SPC C-a <delete> <return>"
+ "<down> <tab> c o l o <tab> <return>"
+ "<down> <down> <down> <down> <tab> n <tab> <return>"
+ "<down> <tab> u n i t t e s <tab> M-b M-b C-SPC C-a <backspace> <return>"
+ "<down> <tab> 1 2 <tab> <return>"
+ "<down> <down> <down> <down> <tab> c o <tab> <return>"
+ "<down> <tab> <end> C-a M-f M-f C-k <tab>"
+ "<down> <down> <up> <tab> <return>"
+ "<down> <tab> <return>"
+ "<down> <tab>"
+ "<up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <left> <left> <left> <tab>"
+ "C-a C-c C-c"
+ ))
+#+end_src
+#+begin: join :mas-table "unittests.org:colors" :mas-column "name" :ref-table "unittests.org:12bits_colors" :ref-column "color" :full "mas"
+| name   | 12bits |
+|--------+--------|
+| white  | #FFF   |
+| red    | #F00   |
+| green  | #0F0   |
+| yellow | #FF0   |
+| blue   | #00F   |
+| pink   | #F8F   |
+#+end:
+#+begin: join :mas-table "" :ref-table ""
+#+end:
+

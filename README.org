@@ -6,9 +6,11 @@ One table (the master table) is grown by selectively appending columns of
 other tables (the reference tables).
 
 * New
+A new, experimental wizard is available.
 
-The titles of this README have been aggregated. The result is more
-structured and easier to understand.
+Hit the =TAB= key on a ="begin: join"= line (not at the beginning of
+line) and look at all parameters unfolded. See [[#experimental-free-form-wizard][Experimental free form
+wizard]].
 
 * Table of Contents
 :PROPERTIES:
@@ -28,6 +30,9 @@ structured and easier to understand.
 - [[#matching-rows][Matching rows]]
   - [[#duplicate-rows][Duplicate rows]]
   - [[#how-to-handle-missing-rows][How to handle missing rows?]]
+- [[#wizard][Wizard]]
+  - [[#guiding-traditional-wizard][Guiding (traditional) wizard]]
+  - [[#experimental-free-form-wizard][Experimental free form wizard]]
 - [[#wide-variety-of-input-tables][Wide variety of input tables]]
   - [[#standard-org-mode-input][Standard Org Mode input]]
   - [[#virtual-input-table-from-babel][Virtual input table from Babel]]
@@ -46,7 +51,6 @@ structured and easier to understand.
   - [[#computing-spreadsheet-formulas-afterward][Computing spreadsheet formulas afterward]]
   - [[#algorithm-post-processing][Algorithm post processing]]
   - [[#chaining][Chaining]]
-- [[#wizard][Wizard]]
 - [[#installation][Installation]]
 - [[#author-contributors][Author, contributors]]
 - [[#changes][Changes]]
@@ -331,6 +335,94 @@ The use cases may be as follow:
   instance we have a list of items in the main warehouse, and another
   list of damaged items. We are interested only in damaged items in
   the main warehouse.
+
+* Wizard
+:PROPERTIES:
+:CUSTOM_ID: wizard
+:END:
+
+There are now 2 wizards. Use whichever is easier for you.
+
+** Guiding (traditional) wizard
+:PROPERTIES:
+:CUSTOM_ID: guiding-traditional-wizard
+:END:
+
+The wizard may be invoked in-place or for the pull-mode.
+
+Invoke the wizard in-place by typing =M-x orgtbl-join= with the cursor
+inside the master table to be enriched. The cursor should be anywhere
+in the column serving the join process.
+
+The menu entry =Tbl > Column > Join with another table= is equivalent to
+=M-x orgtbl-join=.
+
+For the pull-mode, the same wizard may create a fresh new block
+=#+BEGIN: join...=, or amend an existing one. Invoke it with
+- either =M-x orgtbl-join-insert-dblock-join=
+- or =C-c C-x x =join=.
+Put the cursor on an empty space in your Org Mode file, or on an
+existing =#+BEGIN: join...= block.
+
+For all questions, completion is available.
+
+Note: there are many kinds of dynamic blocks that can be inserted
+besides =join=.
+
+As there might be as many reference tables as wanted, the wizard
+continues asking for reference tables. When done, answer =n= when the
+wizard ask if you want an additional reference table to be joined.
+
+The wizard does not (yet) take into account the =:cols= and =:post=
+parameters. If there where such parameters already specified, the
+wizard will leave them untouched.
+
+** Experimental free form wizard
+:PROPERTIES:
+:CUSTOM_ID: experimental-free-form-wizard
+:END:
+
+Suppose we have an join block like this one:
+
+#+begin_example
+,#+BEGIN: join :table "my_table" :cols "vsum(b) count()" :hline "1"
+,#+END:
+#+end_example
+
+Then, hitting the =TAB= key anywhere on the "begin" line (but not at the
+beginning) unfolds it. The result is this one:
+
+#+begin_example
+,#+BEGIN: join
+,#+join: :file
+,#+join: :name my_table
+,#+join: :orgid
+,#+join: :params
+,#+join: :slice
+,#+join: :precompute
+,#+join: :cols vsum(b) count()
+,#+join: :cond
+,#+join: :hline 1
+,#+join: :post
+,#+END:
+#+end_example
+
+This unfolded form is easier to read. Furthermore, help and completion
+is available on each line, by hitting the =TAB= key.
+
+Hit =TAB= again on the "begin" line (not at the beginning) to fold back
+the form.
+
+The usual behaviour of Org Mode =TAB= is preserved when the =TAB= key is
+pressed at the beginning of line.
+
+All fields recognized by OrgJoin are displayed, even when they
+are empty. The empty fields will be ignored when folding back. This
+allows to grasp all the parameters in a single eyesight.
+
+All in all, this new wizard covers the same features as the
+traditional, guiding wizard. Except, one can fill the fields in any
+order, and just ignore the unnecessary ones.
 
 * Wide variety of input tables
 :PROPERTIES:
@@ -830,40 +922,6 @@ Note that the =#+name: richer= line could appear above the =#+BEGIN:=
 line.  But sometimes this is not taken into account by further Babel
 blocks. In this case, put =#+name: richer= bellow  =#+BEGIN:=.
 
-* Wizard
-:PROPERTIES:
-:CUSTOM_ID: wizard
-:END:
-
-The wizard may be invoked in-place or for the pull-mode.
-
-Invoke the wizard in-place by typing =M-x orgtbl-join= with the cursor
-inside the master table to be enriched. The cursor should be anywhere
-in the column serving the join process.
-
-The menu entry =Tbl > Column > Join with another table= is equivalent to
-=M-x orgtbl-join=.
-
-For the pull-mode, the same wizard may create a fresh new block
-=#+BEGIN: join...=, or amend an existing one. Invoke it with
-- either =M-x orgtbl-join-insert-dblock-join=
-- or =C-c C-x x =join=.
-Put the cursor on an empty space in your Org Mode file, or on an
-existing =#+BEGIN: join...= block.
-
-For all questions, completion is available.
-
-Note: there are many kinds of dynamic blocks that can be inserted
-besides =join=.
-
-As there might be as many reference tables as wanted, the wizard
-continues asking for reference tables. When done, answer =n= when the
-wizard ask if you want an additional reference table to be joined.
-
-The wizard does not (yet) take into account the =:cols= and =:post=
-parameters. If there where such parameters already specified, the
-wizard will leave them untouched.
-
 * Installation
 :PROPERTIES:
 :CUSTOM_ID: installation
@@ -963,6 +1021,7 @@ Contributors
   faster and ÷4 less memory hungry.
 - Add the chapter "Joining 2 similar tables" for a common use case.
 - Aggregation of the titles of this README.
+- New free-form wizard.
 
 * GPL 3 License
 :PROPERTIES:

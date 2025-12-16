@@ -22,11 +22,11 @@ of other tables (the reference tables).
 * Example::
 * In-place, Push, Pull: In-place Push Pull.
 * Matching rows::
+* Wizard::
 * Wide variety of input tables::
 * About reference tables::
 * Selecting the output columns::
 * Post processing::
-* Wizard::
 * Installation::
 * Author, contributors: Author contributors.
 * Changes::
@@ -50,6 +50,11 @@ Matching rows
 
 * Duplicate rows::
 * How to handle missing rows?::
+
+Wizard
+
+* Guiding (traditional) wizard::
+* Experimental free form wizard::
 
 Wide variety of input tables
 
@@ -81,8 +86,11 @@ File: orgtbl-join.info,  Node: New,  Next: Example,  Prev: Top,  Up: Top
 1 New
 *****
 
-The titles of this README have been aggregated.  The result is more
-structured and easier to understand.
+A new, experimental wizard is available.
+
+   Hit the ‘TAB’ key on a ‘"begin: join"’ line (not at the beginning of
+line) and look at all parameters unfolded.  See *note Experimental free
+form wizard::.
 
 
 File: orgtbl-join.info,  Node: Example,  Next: In-place Push Pull,  Prev: New,  Up: Top
@@ -263,7 +271,7 @@ modes use the same underlying engine, so using one or the other is just
 a matter or convenience.
 
 
-File: orgtbl-join.info,  Node: Matching rows,  Next: Wide variety of input tables,  Prev: In-place Push Pull,  Up: Top
+File: orgtbl-join.info,  Node: Matching rows,  Next: Wizard,  Prev: In-place Push Pull,  Up: Top
 
 4 Matching rows
 ***************
@@ -368,9 +376,101 @@ will still contain the ‘amaranth’ row, with empty nutritional facts.
      the main warehouse.
 
 
-File: orgtbl-join.info,  Node: Wide variety of input tables,  Next: About reference tables,  Prev: Matching rows,  Up: Top
+File: orgtbl-join.info,  Node: Wizard,  Next: Wide variety of input tables,  Prev: Matching rows,  Up: Top
 
-5 Wide variety of input tables
+5 Wizard
+********
+
+There are now 2 wizards.  Use whichever is easier for you.
+
+* Menu:
+
+* Guiding (traditional) wizard::
+* Experimental free form wizard::
+
+
+File: orgtbl-join.info,  Node: Guiding (traditional) wizard,  Next: Experimental free form wizard,  Up: Wizard
+
+5.1 Guiding (traditional) wizard
+================================
+
+The wizard may be invoked in-place or for the pull-mode.
+
+   Invoke the wizard in-place by typing ‘M-x orgtbl-join’ with the
+cursor inside the master table to be enriched.  The cursor should be
+anywhere in the column serving the join process.
+
+   The menu entry ‘Tbl > Column > Join with another table’ is equivalent
+to ‘M-x orgtbl-join’.
+
+   For the pull-mode, the same wizard may create a fresh new block
+‘#+BEGIN: join...’, or amend an existing one.  Invoke it with
+   • either ‘M-x orgtbl-join-insert-dblock-join’
+   • or ‘C-c C-x x =join’.
+   Put the cursor on an empty space in your Org Mode file, or on an
+existing ‘#+BEGIN: join...’ block.
+
+   For all questions, completion is available.
+
+   Note: there are many kinds of dynamic blocks that can be inserted
+besides ‘join’.
+
+   As there might be as many reference tables as wanted, the wizard
+continues asking for reference tables.  When done, answer ‘n’ when the
+wizard ask if you want an additional reference table to be joined.
+
+   The wizard does not (yet) take into account the ‘:cols’ and ‘:post’
+parameters.  If there where such parameters already specified, the
+wizard will leave them untouched.
+
+
+File: orgtbl-join.info,  Node: Experimental free form wizard,  Prev: Guiding (traditional) wizard,  Up: Wizard
+
+5.2 Experimental free form wizard
+=================================
+
+Suppose we have an join block like this one:
+
+     #+BEGIN: join :table "my_table" :cols "vsum(b) count()" :hline "1"
+     #+END:
+
+   Then, hitting the ‘TAB’ key anywhere on the "begin" line (but not at
+the beginning) unfolds it.  The result is this one:
+
+     #+BEGIN: join
+     #+join: :file
+     #+join: :name my_table
+     #+join: :orgid
+     #+join: :params
+     #+join: :slice
+     #+join: :precompute
+     #+join: :cols vsum(b) count()
+     #+join: :cond
+     #+join: :hline 1
+     #+join: :post
+     #+END:
+
+   This unfolded form is easier to read.  Furthermore, help and
+completion is available on each line, by hitting the ‘TAB’ key.
+
+   Hit ‘TAB’ again on the "begin" line (not at the beginning) to fold
+back the form.
+
+   The usual behaviour of Org Mode ‘TAB’ is preserved when the ‘TAB’ key
+is pressed at the beginning of line.
+
+   All fields recognized by OrgJoin are displayed, even when they are
+empty.  The empty fields will be ignored when folding back.  This allows
+to grasp all the parameters in a single eyesight.
+
+   All in all, this new wizard covers the same features as the
+traditional, guiding wizard.  Except, one can fill the fields in any
+order, and just ignore the unnecessary ones.
+
+
+File: orgtbl-join.info,  Node: Wide variety of input tables,  Next: About reference tables,  Prev: Wizard,  Up: Top
+
+6 Wide variety of input tables
 ******************************
 
 As in any other Org Mode source block, the input table may come from
@@ -392,7 +492,7 @@ several places.  OrgtblJoin adds even more kinds of input.
 
 File: orgtbl-join.info,  Node: Standard Org Mode input,  Next: Virtual input table from Babel,  Up: Wide variety of input tables
 
-5.1 Standard Org Mode input
+6.1 Standard Org Mode input
 ===========================
 
    • ‘mytable’: an ordinary Org Mode table in the same buffer, named
@@ -404,7 +504,7 @@ File: orgtbl-join.info,  Node: Standard Org Mode input,  Next: Virtual input tab
 
 File: orgtbl-join.info,  Node: Virtual input table from Babel,  Next: An Org ID,  Prev: Standard Org Mode input,  Up: Wide variety of input tables
 
-5.2 Virtual input table from Babel
+6.2 Virtual input table from Babel
 ==================================
 
    • ‘mybabel’: an Org Mode Babel block named ‘mybabel’ in the current
@@ -462,7 +562,7 @@ be executed.
 
 File: orgtbl-join.info,  Node: An Org ID,  Next: CSV input,  Prev: Virtual input table from Babel,  Up: Wide variety of input tables
 
-5.3 An Org ID
+6.3 An Org ID
 =============
 
    • ‘34cbc63a-c664-471e-a620-d654b26ffa31’: an identifier of an Org
@@ -476,7 +576,7 @@ type ‘M-x org-id-get-create’.
 
 File: orgtbl-join.info,  Node: CSV input,  Next: JSON input,  Prev: An Org ID,  Up: Wide variety of input tables
 
-5.4 CSV input
+6.4 CSV input
 =============
 
 CVS input is specific to OrgtblJoin.  Org Mode does not offers those
@@ -503,7 +603,7 @@ usual.
 
 File: orgtbl-join.info,  Node: JSON input,  Next: Input slicing,  Prev: CSV input,  Up: Wide variety of input tables
 
-5.5 JSON input
+6.5 JSON input
 ==============
 
    • ‘/some/dir/file.json:(json params…)’: a file containing a JSON
@@ -516,7 +616,7 @@ alternative sub-formats.
 
 File: orgtbl-join.info,  Node: Input slicing,  Next: Malformed input tables,  Prev: JSON input,  Up: Wide variety of input tables
 
-5.6 Input slicing
+6.6 Input slicing
 =================
 
 The Org Mode also provides for table slicing.  All of the previous
@@ -535,7 +635,7 @@ references may be followed by an optional slicing.  Examples:
 
 File: orgtbl-join.info,  Node: Malformed input tables,  Next: Headers,  Prev: Input slicing,  Up: Wide variety of input tables
 
-5.7 Malformed input tables
+6.7 Malformed input tables
 ==========================
 
 Sometimes an input table may be unaligned or malformed, with incomplete
@@ -563,7 +663,7 @@ rows, like those ones:
 
 File: orgtbl-join.info,  Node: Headers,  Prev: Malformed input tables,  Up: Wide variety of input tables
 
-5.8 Headers
+6.8 Headers
 ===========
 
 The master and the reference tables may or may not have a header.  When
@@ -587,7 +687,7 @@ pretty much the same as in the Org Mode spreadsheet.
 
 File: orgtbl-join.info,  Node: About reference tables,  Next: Selecting the output columns,  Prev: Wide variety of input tables,  Up: Top
 
-6 About reference tables
+7 About reference tables
 ************************
 
 Why is there a distinction between the _master table_ and the _reference
@@ -608,7 +708,7 @@ tables_?
 
 File: orgtbl-join.info,  Node: Multiple reference tables,  Next: Zero reference table,  Up: About reference tables
 
-6.1 Multiple reference tables
+7.1 Multiple reference tables
 =============================
 
 OrgtblJoin used to handle just one reference table.  Now, as many as
@@ -625,7 +725,7 @@ as reference tables.
 
 File: orgtbl-join.info,  Node: Zero reference table,  Next: Joining 2 similar tables,  Prev: Multiple reference tables,  Up: About reference tables
 
-6.2 Zero reference table
+7.2 Zero reference table
 ========================
 
 One side effect of going multiple, is that _zero_ reference table is now
@@ -648,7 +748,7 @@ Org Mode table.  Then OrgtblJoin is able to perform just this conversion
 
 File: orgtbl-join.info,  Node: Joining 2 similar tables,  Prev: Zero reference table,  Up: About reference tables
 
-6.3 Joining 2 similar tables
+7.3 Joining 2 similar tables
 ============================
 
 What if we need not to append data from some table/s to a main table,
@@ -727,7 +827,7 @@ table, just type TAB inside it.
 
 File: orgtbl-join.info,  Node: Selecting the output columns,  Next: Post processing,  Prev: About reference tables,  Up: Top
 
-7 Selecting the output columns
+8 Selecting the output columns
 ******************************
 
 By default, all columns from the master table and all the reference
@@ -776,9 +876,9 @@ appears only once):
      #+END:
 
 
-File: orgtbl-join.info,  Node: Post processing,  Next: Wizard,  Prev: Selecting the output columns,  Up: Top
+File: orgtbl-join.info,  Node: Post processing,  Next: Installation,  Prev: Selecting the output columns,  Up: Top
 
-8 Post processing
+9 Post processing
 *****************
 
 * Menu:
@@ -790,7 +890,7 @@ File: orgtbl-join.info,  Node: Post processing,  Next: Wizard,  Prev: Selecting 
 
 File: orgtbl-join.info,  Node: Computing spreadsheet formulas afterward,  Next: Algorithm post processing,  Up: Post processing
 
-8.1 Computing spreadsheet formulas afterward
+9.1 Computing spreadsheet formulas afterward
 ============================================
 
 Additional columns can be specified for the resulting table.  With the
@@ -816,7 +916,7 @@ This will fill-in the 7th column header.  It is translated into a usual
 
 File: orgtbl-join.info,  Node: Algorithm post processing,  Next: Chaining,  Prev: Computing spreadsheet formulas afterward,  Up: Post processing
 
-8.2 Algorithm post processing
+9.2 Algorithm post processing
 =============================
 
 The joined table can be post-processed with the ‘:post’ parameter.  It
@@ -872,7 +972,7 @@ to the ‘:post’ parameter:
 
 File: orgtbl-join.info,  Node: Chaining,  Prev: Algorithm post processing,  Up: Post processing
 
-8.3 Chaining
+9.3 Chaining
 ============
 
 In an above example we gave a name to the resulting joined table:
@@ -887,42 +987,7 @@ line.  But sometimes this is not taken into account by further Babel
 blocks.  In this case, put ‘#+name: richer’ bellow ‘#+BEGIN:’.
 
 
-File: orgtbl-join.info,  Node: Wizard,  Next: Installation,  Prev: Post processing,  Up: Top
-
-9 Wizard
-********
-
-The wizard may be invoked in-place or for the pull-mode.
-
-   Invoke the wizard in-place by typing ‘M-x orgtbl-join’ with the
-cursor inside the master table to be enriched.  The cursor should be
-anywhere in the column serving the join process.
-
-   The menu entry ‘Tbl > Column > Join with another table’ is equivalent
-to ‘M-x orgtbl-join’.
-
-   For the pull-mode, the same wizard may create a fresh new block
-‘#+BEGIN: join...’, or amend an existing one.  Invoke it with
-   • either ‘M-x orgtbl-join-insert-dblock-join’
-   • or ‘C-c C-x x =join’.
-   Put the cursor on an empty space in your Org Mode file, or on an
-existing ‘#+BEGIN: join...’ block.
-
-   For all questions, completion is available.
-
-   Note: there are many kinds of dynamic blocks that can be inserted
-besides ‘join’.
-
-   As there might be as many reference tables as wanted, the wizard
-continues asking for reference tables.  When done, answer ‘n’ when the
-wizard ask if you want an additional reference table to be joined.
-
-   The wizard does not (yet) take into account the ‘:cols’ and ‘:post’
-parameters.  If there where such parameters already specified, the
-wizard will leave them untouched.
-
-
-File: orgtbl-join.info,  Node: Installation,  Next: Author contributors,  Prev: Wizard,  Up: Top
+File: orgtbl-join.info,  Node: Installation,  Next: Author contributors,  Prev: Post processing,  Up: Top
 
 10 Installation
 ***************
@@ -1016,6 +1081,7 @@ File: orgtbl-join.info,  Node: Changes,  Next: GPL 3 License,  Prev: Author cont
      faster and ÷4 less memory hungry.
    • Add the chapter "Joining 2 similar tables" for a common use case.
    • Aggregation of the titles of this README.
+   • New free-form wizard.
 
 
 File: orgtbl-join.info,  Node: GPL 3 License,  Prev: Changes,  Up: Top
@@ -1042,41 +1108,43 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Tag Table:
 Node: Top83
-Node: New1284
-Node: Example1479
-Node: A cooking recipe1641
-Node: SQL equivalent3503
-Node: In-place Push Pull3969
-Node: _In-place_ mode4258
-Node: _Push_ mode4603
-Node: _Pull_ mode5400
-Node: As a rule of thumb6528
-Node: Matching rows7037
-Node: Duplicate rows7595
-Node: How to handle missing rows?9412
-Node: Wide variety of input tables11650
-Node: Standard Org Mode input12214
-Node: Virtual input table from Babel12648
-Node: An Org ID14685
-Node: CSV input15192
-Node: JSON input16145
-Node: Input slicing16602
-Node: Malformed input tables17333
-Node: Headers18229
-Node: About reference tables19219
-Node: Multiple reference tables19920
-Node: Zero reference table20579
-Node: Joining 2 similar tables21573
-Node: Selecting the output columns23982
-Node: Post processing25762
-Node: Computing spreadsheet formulas afterward26009
-Node: Algorithm post processing27291
-Node: Chaining29183
-Node: Wizard29802
-Node: Installation31128
-Node: Author contributors32411
-Node: Changes33276
-Node: GPL 3 License34726
+Node: New1360
+Node: Example1659
+Node: A cooking recipe1821
+Node: SQL equivalent3683
+Node: In-place Push Pull4149
+Node: _In-place_ mode4438
+Node: _Push_ mode4783
+Node: _Pull_ mode5580
+Node: As a rule of thumb6708
+Node: Matching rows7217
+Node: Duplicate rows7753
+Node: How to handle missing rows?9570
+Node: Wizard11808
+Node: Guiding (traditional) wizard12074
+Node: Experimental free form wizard13466
+Node: Wide variety of input tables14883
+Node: Standard Org Mode input15440
+Node: Virtual input table from Babel15874
+Node: An Org ID17911
+Node: CSV input18418
+Node: JSON input19371
+Node: Input slicing19828
+Node: Malformed input tables20559
+Node: Headers21455
+Node: About reference tables22445
+Node: Multiple reference tables23146
+Node: Zero reference table23805
+Node: Joining 2 similar tables24799
+Node: Selecting the output columns27208
+Node: Post processing28988
+Node: Computing spreadsheet formulas afterward29241
+Node: Algorithm post processing30523
+Node: Chaining32415
+Node: Installation33034
+Node: Author contributors34326
+Node: Changes35191
+Node: GPL 3 License36670
 
 End Tag Table
 

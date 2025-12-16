@@ -287,8 +287,7 @@ but this has already been short-circuited."
 
 (defun orgtbl-join--table-from-csv (file params)
   "Parse a CSV formatted table located in FILE.
-The cell-separator is currently guessed.
-Currently, there is no header."
+The cell-separator is currently guessed."
   (let ((header) (colnames))
     (cl-loop
      for p on (cdr (read params))
@@ -721,6 +720,16 @@ with an Org Mode table."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Wizard
 
+(defun orgtbl-join--alist-get-remove (key alist)
+  "A variant of alist-get which removes an entry once read.
+ALIST is a list of pairs (key . value).
+Search ALIST for a KEY. If found, replace the key in (key . value)
+by nil, and return value. If nothing is found, return nil."
+  (let ((x (assq key alist)))
+    (when x
+      (setcar x nil)
+      (cdr x))))
+
 (defun orgtbl-join--display-help (explain &rest args)
   "Display help for each field the wizard queries.
 EXPLAIN is a text in Org Mode to display. It is process
@@ -838,6 +847,30 @@ Up to now, the reference tables used in the joining are:
     (if help-window
         (delete-window help-window))))
 
+(defun orgtbl-join--get-header-table (table)
+  "Return the header of TABLE as a list of column names.
+TABLE may be a Lisp list of rows, or the name or id of a distant table.
+The function takes care of possibly missing headers,
+and in this case returns a list of $1, $2, $3… column names.
+Actual column names which are not fully alphanumeric are quoted."
+  (unless (consp table)
+    (setq table
+          (condition-case _err
+              (orgtbl-join-table-from-any-ref table)
+            (error
+             '(("$1" "$2" "$3" "…") hline)))))
+  (orgtbl-join--pop-leading-hline table)
+  (if (memq 'hline table)
+      (cl-loop for x in (car table)
+	       collect
+	       (if (string-match-p
+                    (rx bos (+ (any "$._#@" word)) eos)
+                    x)
+		   x
+		 (format "\"%s\"" x)))
+    (cl-loop for _x in (car table)
+	     for i from 1
+	     collect (format "$%s" i))))
 
 ;; This variable contains the history of user entered answers,
 ;; so that they can be entered again or edited.
@@ -855,15 +888,9 @@ DEFAULT is a proposed column name.
 ALLCOLUMNS is an accumulation list of all columns seen through all
 invocations of this function.
 KEEPANSWER should be true to keep the user's answer into ALLCOLUMNS."
-  (orgtbl-join--pop-leading-hline table)
-  (let ((completions
-	 (if (memq 'hline table) ;; table has a header
-	     (car table)
-	   (cl-loop ;; table does not have a header
-	    for _row in (car table)
-	    for i from 1
-	    collect (format "$%s" i)))))
-    (orgtbl-join--display-help help
+  (let ((completions (orgtbl-join--get-header-table table)))
+    (orgtbl-join--display-help
+     help
      (mapconcat (lambda (x) (format " ~%s~" x)) completions))
     (let ((answer
            (completing-read
@@ -880,9 +907,11 @@ KEEPANSWER should be true to keep the user's answer into ALLCOLUMNS."
       answer)))
 
 (defun orgtbl-join--wizard-query-table (table typeoftable)
-  "Query the 3 fields composing a generalized table: file:name:slice.
-If TABLE is not nil, it is decomposed into file:name:slice, and each
-of those 3 fields serve as default answer when prompting.
+  "Query the 4 fields composing a generalized table: file:name:params:slice.
+It may be only 3 fields in case of orgid:params:slice or
+file.csv:(csv):slice.
+If TABLE is not nil, it is decomposed into file:name:params:slice, and each
+of those 4 fields serve as default answer when prompting.
 TYPEOFTABLE is a qualifier: t for master, nil for reference."
   (let (file name orgid params slice isorgid)
     (if table
@@ -938,9 +967,9 @@ TYPEOFTABLE is a qualifier: t for master, nil for reference."
      file
      (not params)
      (cond
-      ((string-match (rx ".csv"  eos) file)
+      ((string-match-p (rx ".csv"  eos) file)
        (setq params "(csv)"))
-      ((string-match (rx ".json" eos) file)
+      ((string-match-p (rx ".json" eos) file)
        (setq params "(json)"))))
 
     (orgtbl-join--display-help :params)
@@ -1031,28 +1060,42 @@ The updated PARAMS is returned."
 
       (pop allcolumns)
 
-      (when nil ;; not active
-        ;; The :cols parameter is not yet ready for interactive query.
-        ;; This is because there are ambiguities with $1 $2 $3 names.
-        ;; Do they refer to columns in the master table or in any of
-        ;; the references tables?
-        ;; There also might be duplicate column names which create ambiguity.
-        (orgtbl-join--display-help :colrearrange
-         (mapconcat
-          (lambda (x) (format " ~%s~" x))
-          allcolumns))
-        (let ((cols
-               (read-string
-                "(Optional) specify output columns: "
-                (or
-                 (orgtbl-join--plist-get-remove params :cols)
-                 (mapconcat #'identity allcolumns " "))
-                'orgtbl-join-history-cols)))
-          (unless (string-match-p (rx bos (* space) eos) cols)
+      ;; There may be ambiguities with $1 $2 $3 names.
+      ;; Do they refer to columns in the master table or in any of
+      ;; the references tables?
+      ;; There also might be duplicate column names which create ambiguity.
+      (let* ((dup
+              (cl-loop
+               for el on allcolumns
+               if (member (car el) (cdr el))
+               collect (car el)))
+             (dupmsg
+              (if dup
+                  (format
+                   "\nBeware, those columns have duplicate names:\n  %s"
+                   (mapconcat
+                    (lambda (x) (format " ~%s~" x))
+                    dup))
+                "")))
+        (orgtbl-join--display-help
+         :cols
+         (format
+          "%s%s"
+          (mapconcat
+           (lambda (x) (format " ~%s~" x))
+           allcolumns)
+          dupmsg)))
+      (let ((cols
+             (orgtbl-join--nil-if-empty
+              (read-string
+               "(Optional) specify output columns: "
+               (orgtbl-join--plist-get-remove params :cols)
+               'orgtbl-join-history-cols))))
+        (if cols
             (setq newparams
                   `(,@newparams
                     :cols
-                    ,cols)))))
+                    ,cols))))
       )
 
     ;; recover parameters not taken into account by the wizard
@@ -1062,6 +1105,407 @@ The updated PARAMS is returned."
      do (nconc newparams `(,(car pair) ,(cadr pair)))
      do (setq pair (cdr pair)))
     `(:name "join" ,@newparams)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Unfold, Fold
+;; Experimental
+;; Typing TAB on a line like
+;; #+begin join params…
+;; unfolds the parameters: a new line for each parameter
+;; and a dedicated help & completion for each activated by TAB
+
+(defun orgtbl-aggregate-dispatch-TAB ()
+  "Type TAB on a line like #+begin: join to activate custom functions.
+Actually, any line following this pattern will do:
+#+xxxxx: yyyyy
+Typing TAB will dispatch to function org-TAB-xxxxx-yyyyy if it exists.
+If it does not exist, Org Mode will proceed as usual.
+If it exists and returns nil, Org Mode will proceed as usual as well.
+It it returns non-nil, the TAB processing will stop there."
+  (save-excursion
+    (if (and
+         (not (bolp))
+         (progn
+           (end-of-line)
+           (not (org-fold-core-folded-p)))
+         (progn
+           (beginning-of-line)
+           (re-search-forward
+            (rx
+             point
+             "#+"
+             (group (+ (any "a-z0-9_-")))
+             ":"
+             (* blank)
+             (group (+ (any ":a-z0-9_-")))
+             (* blank))
+            nil t)))
+        (let ((symb
+               (intern
+                (format
+                 "org-TAB-%s-%s"
+                 (downcase (match-string-no-properties 1))
+                 (downcase (match-string-no-properties 2))))))
+          (if (symbol-function symb)
+              (funcall symb))))))
+
+(defun org-TAB-begin-join ()
+  "Dispatch to unfolding or folding code.
+If the line following
+  #+begin: join
+is an unfoled one of the form:
+  #+join: …
+then proceed to folding, otherwise unfold."
+  (if (save-excursion
+        (forward-line 1)
+        (beginning-of-line)
+        (re-search-forward
+         (rx point "#+join:")
+         nil t))
+      (org-TAB-begin-join-fold)
+    (org-TAB-begin-join-unfold)))
+
+(defun orgtbl-join--insert-remove-pair-from-alist (tag alist)
+  "Helper function for folding a pair (TAG . VALUE) in ALIST."
+  (let ((value
+         (orgtbl-join--nil-if-empty
+          (orgtbl-join--alist-get-remove tag alist))))
+    (if value
+        (insert (format " %s \"%s\"" tag value)))))
+
+(defun org-TAB-begin-join-fold ()
+  "Turn all lines of the form #+join: … into a single line.
+That is, fold the may lines of the form:
+  #+join: param…
+into the single line of the form:
+  #+begin: join params…
+Note that the resulting :table XXX parameter is composed of several
+individual parameters."
+  (orgtbl-join--dismiss-help)
+  (let* ((alist (orgtbl-join-get-all-unfolded)))
+    (end-of-line)
+    (insert
+     " :mas-table \""
+     (orgtbl-join--assemble-locator
+      (orgtbl-join--alist-get-remove :mas-file   alist)
+      (orgtbl-join--alist-get-remove :mas-name   alist)
+      (orgtbl-join--alist-get-remove :mas-orgid  alist)
+      (orgtbl-join--alist-get-remove :mas-params alist)
+      (orgtbl-join--alist-get-remove :mas-slice  alist))
+     "\"")
+    (orgtbl-join--insert-remove-pair-from-alist :mas-column alist)
+    (while (or (alist-get :ref-file  alist)
+               (alist-get :ref-name  alist)
+               (alist-get :ref-orgid alist))
+      (insert
+       " :ref-table \""
+       (orgtbl-join--assemble-locator
+        (orgtbl-join--alist-get-remove :ref-file   alist)
+        (orgtbl-join--alist-get-remove :ref-name   alist)
+        (orgtbl-join--alist-get-remove :ref-orgid  alist)
+        (orgtbl-join--alist-get-remove :ref-params alist)
+        (orgtbl-join--alist-get-remove :ref-slice  alist))
+       "\"")
+      (orgtbl-join--insert-remove-pair-from-alist :ref-column alist)
+      (orgtbl-join--insert-remove-pair-from-alist :full       alist))
+    (orgtbl-join--insert-remove-pair-from-alist :cols alist)
+    (orgtbl-join--insert-remove-pair-from-alist :cond alist)
+    (orgtbl-join--insert-remove-pair-from-alist :post alist)
+    (cl-loop
+     for pair in alist
+     if (car pair)
+     do (orgtbl-join--insert-remove-pair-from-alist (car pair) alist))
+    (forward-line 1)
+    (while
+        (progn
+          (beginning-of-line)
+          (re-search-forward (rx point "#+join:") nil t))
+      (beginning-of-line)
+      (delete-line))
+    (forward-line -1)
+    t))
+
+(defun org-TAB-begin-join-unfold ()
+  "Turn the single line #+begin: join into several lines.
+That is, move all parameters in the line
+  #+begin: join params…
+into several lines, each with a single parameter.
+Note that the :table XXX parameter is decomposed into several
+individual parameter for an easier reading."
+  (let* ((line (orgtbl-join--parse-header-arguments))
+         (point (progn (end-of-line) (point)))
+         (ref-table))
+    (let ((struct (orgtbl-join--parse-locator
+                   (orgtbl-join--alist-get-remove :mas-table line))))
+      (insert "\n#+join: :mas-file "   (or (aref struct 0) ""))
+      (insert "\n#+join: :mas-name "   (or (aref struct 1) ""))
+      (insert "\n#+join: :mas-orgid "  (or (aref struct 2) ""))
+      (insert "\n#+join: :mas-params " (or (aref struct 3) ""))
+      (insert "\n#+join: :mas-slice "  (or (aref struct 4) "")))
+    (insert "\n#+join: :mas-column "
+            (or (orgtbl-join--alist-get-remove :mas-column line) ""))
+    (while (setq ref-table (orgtbl-join--alist-get-remove :ref-table line))
+      (let ((struct (orgtbl-join--parse-locator ref-table)))
+        (insert "\n#+join: :ref-file "   (or (aref struct 0) ""))
+        (insert "\n#+join: :ref-name "   (or (aref struct 1) ""))
+        (insert "\n#+join: :ref-orgid "  (or (aref struct 2) ""))
+        (insert "\n#+join: :ref-params " (or (aref struct 3) ""))
+        (insert "\n#+join: :ref-slice "  (or (aref struct 4) "")))
+      (insert "\n#+join: :ref-column "
+              (or (orgtbl-join--alist-get-remove :ref-column line) ""))
+      (insert "\n#+join: :full "
+              (or (orgtbl-join--alist-get-remove :full line) "")))
+    (insert "\n#+join: :cols "
+            (or (orgtbl-join--alist-get-remove :cols       line) ""))
+    (insert "\n#+join: :cond "
+            (or (orgtbl-join--alist-get-remove :cond       line) ""))
+    (insert "\n#+join: :post "
+            (or (orgtbl-join--alist-get-remove :post       line) ""))
+    (cl-loop
+     for pair in line
+     if (car pair)
+     do (insert (format "\n#+join: %s %s" (car pair) (cdr pair))))
+    (goto-char point)
+    (beginning-of-line)
+    (forward-word 2)
+    (delete-region (point) point)
+    t))
+
+(defun orgtbl-join-get-all-unfolded ()
+  "Prepare an a-list of all unfolded parameters."
+  (interactive)
+  (save-excursion
+    (re-search-backward (rx bol "#+begin:") nil t)
+    (let ((alist))
+      (while
+          (progn
+            (forward-line 1)
+            (re-search-forward
+             (rx point "#+join:" (* blank)
+               (group (+ (any ":a-z0-9_-")))
+               (* blank)
+               (group (* any)))
+             nil t))
+        (push (cons
+               (intern (match-string-no-properties 1))
+               (match-string-no-properties 2))
+              alist))
+      (reverse alist))))
+
+(defun orgtbl-join--column-names-from-unfolded ()
+  "Return the list of column names.
+They are computed by looking at the distant table
+(an Org table, a Babel block, a CSV, or a JSON)
+and recovering its header if any.
+If there is no header, $1 $2 $3... is returned."
+  (let ((alist (orgtbl-join-get-all-unfolded)))
+    (mapconcat
+     (lambda (x) (format " ~%s~" x))
+     (append
+      (orgtbl-join--get-header-table
+       (orgtbl-join--assemble-locator
+        (alist-get :mas-file   alist)
+        (alist-get :mas-name   alist)
+        (alist-get :mas-orgid  alist)
+        (alist-get :mas-params alist)
+        (alist-get :mas-slice  alist)))
+      (orgtbl-join--get-header-table
+       (orgtbl-join--assemble-locator
+        (alist-get :ref-file   alist)
+        (alist-get :ref-name   alist)
+        (alist-get :ref-orgid  alist)
+        (alist-get :ref-params alist)
+        (alist-get :ref-slice  alist)))))))
+
+(defun orgtbl-join--TAB-replace-value (getter)
+  "Update a #+join: line
+from
+  #+join: :tag OLD
+to
+  #+join: :tag NEW
+NEW being the result of executing (GETTER OLD)"
+  (let* ((start (point))
+         (end (pos-eol))
+         (new
+          (funcall
+           getter
+           (buffer-substring-no-properties start end))))
+    (when new
+      (delete-region start end)
+      (delete-horizontal-space)
+      (insert " " new))))
+
+(defun org-TAB-join-:mas-file ()
+  "Provide help and completion for the #+join: mas-file XXX parameter."
+  (orgtbl-join--display-help :masfile)
+  (orgtbl-join--TAB-replace-value
+   (lambda (old)
+     (read-file-name
+      "File: "
+      (file-name-directory    old)
+      nil
+      nil
+      (file-name-nondirectory old)))))
+
+(defun org-TAB-join-:ref-file ()
+  "Provide help and completion for the #+join: ref-file XXX parameter."
+  (orgtbl-join--display-help :reffile)
+  (orgtbl-join--TAB-replace-value
+   (lambda (old)
+     (read-file-name
+      "File: "
+      (file-name-directory    old)
+      nil
+      nil
+      (file-name-nondirectory old)))))
+
+(defun org-TAB-join-:mas-name ()
+  "Provide help and completion for the #+join: mas-name XXX parameter."
+  (orgtbl-join--display-help :name)
+  (orgtbl-join--TAB-replace-value
+   (lambda (old)
+     (completing-read
+      "Table or Babel name: "
+      (orgtbl-join--list-local-tables
+       (orgtbl-join--nil-if-empty
+        (alist-get :mas-file (orgtbl-join-get-all-unfolded))))
+      nil
+      nil ;; user is free to input anything
+      old))))
+
+(defun org-TAB-join-:ref-name ()
+  "Provide help and completion for the #+join: ref-name XXX parameter."
+  (orgtbl-join--display-help :name)
+  (orgtbl-join--TAB-replace-value
+   (lambda (old)
+     (completing-read
+      "Table or Babel name: "
+      (orgtbl-join--list-local-tables
+       (orgtbl-join--nil-if-empty
+        (alist-get :ref-file (orgtbl-join-get-all-unfolded))))
+      nil
+      nil ;; user is free to input anything
+      old))))
+
+(defun org-TAB-join-:mas-orgid ()
+  "Provide help and completion for the #+join: mas-orgid XXX parameter."
+  (orgtbl-join--display-help :orgid)
+  (unless org-id-locations (org-id-locations-load))
+  (orgtbl-join--TAB-replace-value
+   (lambda (old)
+     (completing-read
+      "Org-ID: "
+      (hash-table-keys org-id-locations)
+      nil
+      nil ;; user is free to input anything
+      old))))
+
+(defun org-TAB-join-:ref-orgid ()
+  "Provide help and completion for the #+join: ref-orgid XXX parameter."
+  (orgtbl-join--display-help :orgid)
+  (unless org-id-locations (org-id-locations-load))
+  (orgtbl-join--TAB-replace-value
+   (lambda (old)
+     (completing-read
+      "Org-ID: "
+      (hash-table-keys org-id-locations)
+      nil
+      nil ;; user is free to input anything
+      old))))
+
+(defun org-TAB-join-:mas-params ()
+  (orgtbl-join--display-help :params))
+
+(defun org-TAB-join-:ref-params ()
+  (orgtbl-join--display-help :params))
+
+(defun org-TAB-join-:mas-slice ()
+  (orgtbl-join--display-help :slice))
+
+(defun org-TAB-join-:ref-slice ()
+  (orgtbl-join--display-help :slice))
+
+(defun org-TAB-join-:mas-column ()
+  "Provide help and completion for the #+join: mas-column XXX parameter."
+  (orgtbl-join--TAB-replace-value
+   (lambda (old)
+     (orgtbl-join--join-query-column
+      :mascol
+      "Master column: "
+      (let*
+          ((alist (orgtbl-join-get-all-unfolded))
+           (table
+            (orgtbl-join--assemble-locator
+             (alist-get :mas-file    alist)
+             (alist-get :mas-name    alist)
+             (alist-get :mas-orgid   alist)
+             (alist-get :mas-params  alist)
+             (alist-get :mas-slice   alist))))
+        (orgtbl-join-table-from-any-ref table))
+      old
+      (list nil)
+      nil))))
+
+(defun org-TAB-join-:ref-column ()
+  "Provide help and completion for the #+join: ref-column XXX parameter."
+  (orgtbl-join--TAB-replace-value
+   (lambda (old)
+     (orgtbl-join--join-query-column
+      :refcol
+      "Reference column: "
+      (let*
+          ((alist (orgtbl-join-get-all-unfolded))
+           (table
+            (orgtbl-join--assemble-locator
+             (alist-get :ref-file    alist)
+             (alist-get :ref-name    alist)
+             (alist-get :ref-orgid   alist)
+             (alist-get :ref-params  alist)
+             (alist-get :ref-slice   alist))))
+        (orgtbl-join-table-from-any-ref table))
+      old
+      (list nil)
+      nil))))
+
+(defun org-TAB-join-:cols ()
+  (orgtbl-join--display-help
+   :cols
+   (orgtbl-join--column-names-from-unfolded))
+  (orgtbl-join--TAB-replace-value
+   (lambda (old)
+     (read-string
+      "(Optional) specify output columns: "
+      old
+      'orgtbl-join-history-cols))))
+
+(defun org-TAB-join-:cond ()
+  (orgtbl-join--display-help
+   :cond
+   (orgtbl-join--column-names-from-unfolded))
+  (orgtbl-join--TAB-replace-value
+   (lambda (old)
+     (read-string
+      "(Optional) specify output columns: "
+      old
+      'orgtbl-join-history-cols))))
+
+(defun org-TAB-join-:full ()
+  "Hitting TAB on #+join: :full X cycles the parameter value.
+The cycle is
+nothing → mas → mas+ref → ref → none -> nothing."
+  (orgtbl-join--display-help :full)
+  (orgtbl-join--TAB-replace-value
+   (lambda (old)
+     (cond
+      ((equal old ""       ) "mas"    )
+      ((equal old "mas"    ) "mas+ref")
+      ((equal old "mas+ref") "ref"    )
+      ((equal old "ref"    ) "none"   )
+      ((equal old "none"   ) ""       )
+      (t "")))))
+
+(defun org-TAB-join-:post ()
+  (orgtbl-join--display-help :post))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Backend engine
@@ -1532,6 +1976,14 @@ or put this in your .emacs:
 (eval-after-load 'org
   '(when (fboundp 'org-dynamic-block-define)
      (org-dynamic-block-define "join" #'orgtbl-join-insert-dblock-join)))
+
+;; This hook will only work if orgtbl-join is loaded,
+;; thus the eval-after-load 'orgtbl-join
+;; We do not want this hook to be added to Org Mode if orgtbl-join
+;; is not used, thus the eval-after-load 'orgtbl-join
+;;;###autoload
+(eval-after-load 'orgtbl-join
+  '(add-hook 'org-cycle-tab-first-hook #'orgtbl-aggregate-dispatch-TAB))
 
 (provide 'orgtbl-join)
 ;;; orgtbl-join.el ends here
