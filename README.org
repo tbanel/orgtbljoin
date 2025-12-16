@@ -382,39 +382,17 @@ wizard will leave them untouched.
 :CUSTOM_ID: experimental-free-form-wizard
 :END:
 
-<<<<<<< HEAD
-Suppose we have an join block like this one:
-
-#+begin_example
-,#+BEGIN: join :table "my_table" :cols "vsum(b) count()" :hline "1"
-,#+END:
-=======
 Suppose we have a join block like this one:
 
 #+begin_example
 #+BEGIN: join :mas-table "my_table" :mas-column "the_column" :ref-table "other_table" :ref-column "another_column"
 #+END:
->>>>>>> faldi
 #+end_example
 
 Then, hitting the =TAB= key anywhere on the "begin" line (but not at the
 beginning) unfolds it. The result is this one:
 
 #+begin_example
-<<<<<<< HEAD
-,#+BEGIN: join
-,#+join: :file
-,#+join: :name my_table
-,#+join: :orgid
-,#+join: :params
-,#+join: :slice
-,#+join: :precompute
-,#+join: :cols vsum(b) count()
-,#+join: :cond
-,#+join: :hline 1
-,#+join: :post
-,#+END:
-=======
 #+BEGIN: join
 #+join: :mas-file
 #+join: :mas-name my_table
@@ -433,7 +411,6 @@ beginning) unfolds it. The result is this one:
 #+join: :cond
 #+join: :post
 #+END:
->>>>>>> faldi
 #+end_example
 
 This unfolded form is easier to read. Furthermore, help and completion
@@ -445,11 +422,7 @@ the form.
 The usual behaviour of Org Mode =TAB= is preserved when the =TAB= key is
 pressed at the beginning of line.
 
-<<<<<<< HEAD
-All fields recognized by OrgJoin are displayed, even when they
-=======
 All fields recognized by OrgtblJoin are displayed, even when they
->>>>>>> faldi
 are empty. The empty fields will be ignored when folding back. This
 allows to grasp all the parameters in a single eyesight.
 
