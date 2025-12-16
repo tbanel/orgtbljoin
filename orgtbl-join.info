@@ -429,15 +429,22 @@ File: orgtbl-join.info,  Node: Experimental free form wizard,  Prev: Guiding (tr
 5.2 Experimental free form wizard
 =================================
 
+<<<<<<< HEAD
 Suppose we have an join block like this one:
 
      #+BEGIN: join :table "my_table" :cols "vsum(b) count()" :hline "1"
+=======
+Suppose we have a join block like this one:
+
+     #+BEGIN: join :mas-table "my_table" :mas-column "the_column" :ref-table "other_table" :ref-column "another_column"
+>>>>>>> faldi
      #+END:
 
    Then, hitting the ‘TAB’ key anywhere on the "begin" line (but not at
 the beginning) unfolds it.  The result is this one:
 
      #+BEGIN: join
+<<<<<<< HEAD
      #+join: :file
      #+join: :name my_table
      #+join: :orgid
@@ -447,6 +454,23 @@ the beginning) unfolds it.  The result is this one:
      #+join: :cols vsum(b) count()
      #+join: :cond
      #+join: :hline 1
+=======
+     #+join: :mas-file
+     #+join: :mas-name my_table
+     #+join: :mas-orgid
+     #+join: :mas-params
+     #+join: :mas-slice
+     #+join: :mas-column the_column
+     #+join: :ref-file
+     #+join: :ref-name other_table
+     #+join: :ref-orgid
+     #+join: :ref-params
+     #+join: :ref-slice
+     #+join: :ref-column another_column
+     #+join: :full
+     #+join: :cols
+     #+join: :cond
+>>>>>>> faldi
      #+join: :post
      #+END:
 
@@ -459,7 +483,11 @@ back the form.
    The usual behaviour of Org Mode ‘TAB’ is preserved when the ‘TAB’ key
 is pressed at the beginning of line.
 
+<<<<<<< HEAD
    All fields recognized by OrgJoin are displayed, even when they are
+=======
+   All fields recognized by OrgtblJoin are displayed, even when they are
+>>>>>>> faldi
 empty.  The empty fields will be ignored when folding back.  This allows
 to grasp all the parameters in a single eyesight.
 
@@ -1123,6 +1151,7 @@ Node: How to handle missing rows?9570
 Node: Wizard11808
 Node: Guiding (traditional) wizard12074
 Node: Experimental free form wizard13466
+<<<<<<< HEAD
 Node: Wide variety of input tables14883
 Node: Standard Org Mode input15440
 Node: Virtual input table from Babel15874
@@ -1145,6 +1174,30 @@ Node: Installation33034
 Node: Author contributors34326
 Node: Changes35191
 Node: GPL 3 License36670
+=======
+Node: Wide variety of input tables15116
+Node: Standard Org Mode input15673
+Node: Virtual input table from Babel16107
+Node: An Org ID18144
+Node: CSV input18651
+Node: JSON input19604
+Node: Input slicing20061
+Node: Malformed input tables20792
+Node: Headers21688
+Node: About reference tables22678
+Node: Multiple reference tables23379
+Node: Zero reference table24038
+Node: Joining 2 similar tables25032
+Node: Selecting the output columns27441
+Node: Post processing29221
+Node: Computing spreadsheet formulas afterward29474
+Node: Algorithm post processing30756
+Node: Chaining32648
+Node: Installation33267
+Node: Author contributors34559
+Node: Changes35424
+Node: GPL 3 License36903
+>>>>>>> faldi
 
 End Tag Table
 
