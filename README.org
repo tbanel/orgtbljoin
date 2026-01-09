@@ -1033,7 +1033,7 @@ Contributors
 :PROPERTIES:
 :CUSTOM_ID: gpl-3-license
 :END:
-Copyright (C) 2014-2025  Thierry Banel
+Copyright (C) 2014-2026  Thierry Banel
 
 orgtbl-join is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
