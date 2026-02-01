@@ -26,7 +26,7 @@ buffer. When done, the buffer and the original, untouched
 (defun orgtbl-join-unfold-test (&rest args)
   (execute-kbd-macro
    (kbd
-    (mapconcat #'identity (cons "C-n" args) "\n"))))
+    (mapconcat #'identity (cons "C-n" args) " "))))
 
 ;; display this buffer in a window occupying half the frame
 (delete-other-windows)
@@ -85,17 +85,17 @@ buffer. When done, the buffer and the original, untouched
 #+begin_src elisp :results none
 (orgtbl-join-unfold-test
  "C-a <right> <tab>"
- "<down> <tab> u n i t t e <tab> M-b M-b C-SPC C-a <delete> <return>"
+ "<down> <tab> C-a C-k u n i t t e <tab> <return>"
  "<down> <tab> c o l o <tab> <return>"
  "<down> <down> <down> <down> <tab> n <tab> <return>"
- "<down> <tab> u n i t t e s <tab> M-b M-b C-SPC C-a <backspace> <return>"
+ "<down> <tab> C-a C-k u n i t t e s <tab> <return>"
  "<down> <tab> 1 2 <tab> <return>"
  "<down> <down> <down> <down> <tab> c o <tab> <return>"
- "<down> <tab> <end> C-a M-f M-f C-k <tab>"
+ "<down> <tab> <end>"
  "<down> <down> <up> <tab> <return>"
  "<down> <tab> <return>"
  "<down> <tab>"
- "<up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <left> <left> <left> <tab>"
+ "<up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <left> <left> <left> <tab>"
  "C-a C-c C-c"
  ))
 #+end_src
