@@ -118,7 +118,7 @@
     `(while (not (listp (car ,table)))
        (orgtbl-join--pop-simple ,table)))
 
-  (defmacro string-match-p (regexp string &optional start)
+  (defmacro orgtbl-join--string-match-p (regexp string &optional start)
     "Same as standard `string-match-p'
 but written as a defmacro instead of a defsubst,
 which saves 4 or 5 byte-codes at each call."
@@ -1723,6 +1723,17 @@ then proceed to folding, otherwise unfold."
       (org-TAB-begin-join-fold)
     (org-TAB-begin-join-unfold)))
 
+(defun orgtbl-join--insert-remove-pair-from-alist (tag alist)
+  "Helper function for folding a pair (TAG . VALUE) in ALIST."
+  (let ((value
+         (orgtbl-join--nil-if-empty
+          (orgtbl-join--alist-get-remove tag alist))))
+    (if value
+        (insert
+         (format " %s %s"
+                 tag
+                 (prin1-to-string value))))))
+
 (defun orgtbl-join-get-all-unfolded ()
   "Prepare an a-list of all unfolded parameters."
   (interactive)
@@ -1762,14 +1773,6 @@ NEW being the result of executing (GETTER OLD)"
       (insert " " new))))
 
 ;; bazilo]
-
-(defun orgtbl-join--insert-remove-pair-from-alist (tag alist)
-  "Helper function for folding a pair (TAG . VALUE) in ALIST."
-  (let ((value
-         (orgtbl-join--nil-if-empty
-          (orgtbl-join--alist-get-remove tag alist))))
-    (if value
-        (insert (format " %s \"%s\"" tag value)))))
 
 (defun org-TAB-begin-join-fold ()
   "Turn all lines of the form #+join: … into a single line.

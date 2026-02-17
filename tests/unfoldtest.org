@@ -112,3 +112,44 @@ buffer. When done, the buffer and the original, untouched
 #+begin: join :mas-table "" :ref-table ""
 #+end:
 
+* quote quotes
+#+begin_src elisp :results none
+(orgtbl-join-unfold-test
+ "C-a <right> <tab>"
+ "C-s : p o s t <left> <end> ( a p p e n d SPC * t h i s * SPC ' ( ( \" gold \" SPC \" #EF4 \" SPC \" ora \" ) ) )"
+ "C-r begin: <left> <tab>"
+ "C-c C-c")
+#+end_src
+#+BEGIN: join :mas-table "unittests.org:12bits_colors" :mas-column "color" :ref-table "unittests.org:esperanto_colors" :ref-column "color" :full "mas+ref" :post "(append *this* '((\"gold\" \"#EF4\" \"ora\")))"
+| color  | 12bits | esperanto |
+|--------+--------+-----------|
+| black  | #000   | nigra     |
+| blue   | #00F   | blua      |
+| green  | #0F0   | verda     |
+| brown  | #880   | bruna     |
+| grey   | #888   |
+| red    | #F00   | ruĝa      |
+| purple | #F0F   | purpura   |
+| orange | #F80   | oranĝa    |
+| pink   | #F8F   | rozkolora |
+| yellow | #FF0   | flava     |
+| white  | #FFF   | blanka    |
+|--------+--------+-----------|
+| gold   | #EF4   | ora       |
+#+END:
+#+BEGIN: join :mas-table "unittests.org:12bits_colors" :ref-table "unittests.org:esperanto_colors" :mas-column "color" :ref-column "color" :full "mas+ref"
+| color  | 12bits | esperanto |
+|--------+--------+-----------|
+| black  | #000   | nigra     |
+| blue   | #00F   | blua      |
+| green  | #0F0   | verda     |
+| brown  | #880   | bruna     |
+| grey   | #888   |
+| red    | #F00   | ruĝa      |
+| purple | #F0F   | purpura   |
+| orange | #F80   | oranĝa    |
+| pink   | #F8F   | rozkolora |
+| yellow | #FF0   | flava     |
+| white  | #FFF   | blanka    |
+|--------+--------+-----------|
+#+END:
