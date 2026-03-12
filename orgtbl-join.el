@@ -1148,7 +1148,7 @@ Destructively modify PARAMS."
 ;; IN-PLACE mode
 
 ;;;###autoload
-(defun orgtbl-join (&optional params)
+(defun orgtbl-join (&optional expert params)
   "Add material from a reference table to the current table.
 
 Optional PARAMS gives reference tables information.
@@ -1165,8 +1165,10 @@ reference table, then the current row is duplicated and each copy
 is appended with a different reference row.
 
 If no matching row is found in the reference table, then the
-current row is kept, with empty cells appended to it."
-  (interactive)
+current row is kept, with empty cells appended to it.
+
+When EXPERΤ is nil, only basic settings are queried."
+  (interactive "P")
   (org-table-check-inside-data-field)
   (let ((col (org-table-current-column))
 	(tbl (orgtbl-join--table-to-lisp))
@@ -1179,7 +1181,7 @@ current row is kept, with empty cells appended to it."
              (if (memq 'hline tbl)
                  (nth (1- col) (car tbl))
                (format "$%s" col))))
-      (setq params (orgtbl-join--wizard-create-update tbl params)))
+      (setq params (orgtbl-join--wizard-create-update tbl params expert)))
     (let ((b (org-table-begin))
 	  (e (org-table-end)))
       (save-excursion
@@ -1415,14 +1417,17 @@ Up to now, the reference tables used in the joining are:
     (goto-char (point-min))
     (select-window main-window)))
 
-(defun orgtbl-join--wizard-query-table (table typeoftable)
+(defun orgtbl-join--wizard-query-table (table typeoftable expert)
   "Query the 4 fields composing a generalized table: file:name:params:slice.
 It may be only 3 fields in case of orgid:params:slice or
 file.csv:(csv):slice.
 If TABLE is not nil, it is decomposed into file:name:params:slice, and each
 of those 4 fields serve as default answer when prompting.
 Alternately, file:name may be orgid, an ID which knows its file location.
-TYPEOFTABLE is a qualifier: t for master, nil for reference."
+TYPEOFTABLE is a qualifier: t for master, nil for reference.
+When EXPERT is nil, only basic parameters are queried.
+Note that when an expert parameter was set prior to entering the wizard,
+it is queried even when EXPERT is nil."
   (let (file name orgid params slice isorgid)
     (if table
         (let ((struct (orgtbl-join--parse-locator table)))
@@ -1437,10 +1442,11 @@ TYPEOFTABLE is a qualifier: t for master, nil for reference."
      (cond
       (orgid t)
       (name nil)
-      (t
+      (expert
        (orgtbl-join--display-help :isorgid)
        (let ((use-short-answers t))
-         (yes-or-no-p "Is the input pointed to by an Org Mode ID? ")))))
+         (yes-or-no-p "Is the input pointed to by an Org Mode ID? ")))
+      (t nil)))
 
     (if isorgid
         (progn
@@ -1454,20 +1460,23 @@ TYPEOFTABLE is a qualifier: t for master, nil for reference."
                  nil ;; user is free to input anything
                  orgid)))
 
-      (orgtbl-join--display-help (if typeoftable :masfile :reffile))
-      (let ((insert-default-directory nil))
-        (setq file
-              (orgtbl-join--nil-if-empty
-               (read-file-name "File (RET for current buffer): "
-                               nil
-                               nil
-                               nil
-                               file))))
+      (when (or expert file)
+        (orgtbl-join--display-help (if typeoftable :masfile :reffile))
+        (let ((insert-default-directory nil))
+          (setq file
+                (orgtbl-join--nil-if-empty
+                 (read-file-name "File (RET for current buffer): "
+                                 nil
+                                 nil
+                                 nil
+                                 file)))))
 
       (orgtbl-join--display-help :name)
       (setq name
             (completing-read
-             "Table or Babel: "
+             (if typeoftable
+                 "Master table or babel: "
+               "Reference table or babel: ")
              (orgtbl-join--list-local-tables file)
              nil
              nil ;; user is free to input anything
@@ -1482,19 +1491,21 @@ TYPEOFTABLE is a qualifier: t for master, nil for reference."
       ((string-match-p (rx ".json" eos) file)
        (setq params "(json)"))))
 
-    (orgtbl-join--display-help :params)
-    (setq params
-          (read-string
-           "Babel parameters (optional): "
-           params
-           'orgtbl-join-history-cols))
+    (when (or expert params)
+      (orgtbl-join--display-help :params)
+      (setq params
+            (read-string
+             "Babel parameters (optional): "
+             params
+             'orgtbl-join-history-cols)))
 
-    (orgtbl-join--display-help :slice)
-    (setq slice
-          (read-string
-           "Input slicing (optional): "
-           slice
-           'orgtbl-join-history-cols))
+    (when (or expert slice)
+      (orgtbl-join--display-help :slice)
+      (setq slice
+            (read-string
+             "Input slicing (optional): "
+             slice
+             'orgtbl-join-history-cols)))
 
     (orgtbl-join--assemble-locator file name orgid params slice)))
 
@@ -1530,7 +1541,7 @@ KEEPANSWER should be true to keep the user's answer into ALLCOLUMNS."
                  (delete answer completions))))
       answer)))
 
-(defun orgtbl-join--wizard-create-update (mastable params)
+(defun orgtbl-join--wizard-create-update (mastable params expert)
   "Interactively query tables and joining columns.
 PARAMS is a plist (possibly empty) where user answers accumulate.
 The updated PARAMS is returned."
@@ -1545,7 +1556,8 @@ The updated PARAMS is returned."
         (setq mastable
               (orgtbl-join--wizard-query-table
                (orgtbl-join--plist-get-remove params :mas-table)
-               t))
+               t
+               expert))
         (setq newparams `(,@newparams ,:mas-table ,mastable))
         (setq mastable
               (orgtbl-join-table-from-any-ref mastable)))
@@ -1555,7 +1567,8 @@ The updated PARAMS is returned."
        (setq reftable
              (orgtbl-join--wizard-query-table
               (orgtbl-join--plist-get-remove params :ref-table)
-              nil))
+              nil
+              expert))
        (setq mascol
 	     (orgtbl-join--join-query-column
               :mascol
@@ -1575,16 +1588,14 @@ The updated PARAMS is returned."
                (orgtbl-join--plist-get-remove params :ref-column)
                mascol)
               allcolumns))
-       (orgtbl-join--display-help :full)
-       (setq full
-	     (completing-read
-	      "Which table should appear entirely? "
-	      '("mas" "ref" "mas+ref" "none")
-	      nil nil
-              (or
-               (orgtbl-join--plist-get-remove params :full)
-               full
-               "mas")))
+       (setq full (or (orgtbl-join--plist-get-remove params :full) "mas"))
+       (when (or expert (not (equal full "mas")))
+         (orgtbl-join--display-help :full)
+         (setq full
+	       (completing-read
+	        "Which table should appear entirely? "
+	        '("mas" "ref" "mas+ref" "none")
+	        nil nil full)))
        (setq newparams
              `(,@newparams
                ,:ref-table ,reftable
@@ -1598,7 +1609,7 @@ The updated PARAMS is returned."
          concat (format " ~%s~" (cadr pair))
          do (setq pair (cdr pair))))
        while
-       (y-or-n-p "Another reference table? "))
+       (and expert (y-or-n-p "Another reference table? ")))
 
       (pop allcolumns)
 
@@ -1628,11 +1639,12 @@ The updated PARAMS is returned."
            allcolumns)
           dupmsg)))
       (let ((cols
-             (orgtbl-join--nil-if-empty
-              (read-string
-               "(Optional) specify output columns: "
-               (orgtbl-join--plist-get-remove params :cols)
-               'orgtbl-join-history-cols))))
+             (if expert
+                 (orgtbl-join--nil-if-empty
+                  (read-string
+                   "(Optional) specify output columns: "
+                   (orgtbl-join--plist-get-remove params :cols)
+                   'orgtbl-join-history-cols)))))
         (if cols
             (setq newparams
                   `(,@newparams
@@ -1651,11 +1663,14 @@ The updated PARAMS is returned."
 ;; [bazilo synchronize orgtbl-αggregate & orgtbl-joιn
 
 ;;;###autoload
-(defun orgtbl-join-insert-dblock-join ()
-  "Wizard to interactively insert a dynamic joined block."
-  (interactive)
+(defun orgtbl-join-insert-dblock-join (&optional expert)
+  "Wizard to interactively insert a dynamic joined block.
+When EXPERT is nil, only basic parameters are queried.
+Note that when an expert parameter was set prior to entering the wizard,
+it is queried even when EXPERT is nil."
+  (interactive "P")
   (let* ((oldline (flatten-list (orgtbl-join--parse-header-arguments "join")))
-         (params (orgtbl-join--wizard-create-update nil oldline)))
+         (params (orgtbl-join--wizard-create-update nil oldline expert)))
     (when oldline
       (org-mark-element)
       (delete-region (region-beginning) (1- (region-end))))

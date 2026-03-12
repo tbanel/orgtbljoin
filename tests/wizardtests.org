@@ -97,7 +97,7 @@ buffer. When done, the buffer and the original, untouched
 
 #+begin_src elisp :results none
 (orgtbl-join-wizard-test
- :init    "C-c C-x x jo <tab> <return>"
+ :init    "C-u C-c C-x x jo <tab> <return>"
  :isid    "n"
  :file    "<return>"
  :name    "<tab> C-a C-k land <tab> <return>"
@@ -141,7 +141,7 @@ do not remove this next line: it is a template for the following test!
  :init    "C-s # + e n d _ s r c C-a C-n # C-y <return>"
  :init    "#+END: <return>"
  :init    "C-a C-p C-p"
- :init    "C-c C-x x joi <tab> <return>"
+ :init    "C-u C-c C-x x joi <tab> <return>"
  :file    "<return>"
  :name    "<return>"
  :params  "<return>"
@@ -173,7 +173,7 @@ do not remove this next line: it is a template for the following test!
 
 #+begin_src elisp :results none
 (orgtbl-join-wizard-test
- :init    "C-c C-x x jo <tab> <return>"
+ :init    "C-u C-c C-x x jo <tab> <return>"
  :isid    "n"
  :file    "unittes <tab> <return>"
  :name    "colo <tab> <return>"
@@ -222,7 +222,7 @@ do not remove this next line: it is a template for the following test!
 
 #+begin_src elisp :results none
 (orgtbl-join-wizard-test
- :init    "C-c C-x x joi <tab> <return>"
+ :init    "C-u C-c C-x x joi <tab> <return>"
  :isid    "n"
  :file    "unitt <tab> <return>"
  :name    "meal _ x <backspace> wit <tab> <return>"

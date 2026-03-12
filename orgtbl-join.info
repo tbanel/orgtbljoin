@@ -7,6 +7,11 @@ START-INFO-DIR-ENTRY
 * Orgtbl Join: (orgtbl-join).     Join columns from other Org Mode tables
 END-INFO-DIR-ENTRY
 
+INFO-DIR-SECTION Misc
+START-INFO-DIR-ENTRY
+* (orgtbl-join).        Join several Org Mode Tables.
+END-INFO-DIR-ENTRY
+
 
 File: orgtbl-join.info,  Node: Top,  Next: New,  Up: (dir)
 
@@ -86,11 +91,8 @@ File: orgtbl-join.info,  Node: New,  Next: Example,  Prev: Top,  Up: Top
 1 New
 *****
 
-A new, experimental wizard is available.
-
-   Hit the ‘TAB’ key on a ‘"begin: join"’ line (not at the beginning of
-line) and look at all parameters unfolded.  See *note Experimental free
-form wizard::.
+The wizard now offers the basic and expert modes.  See *note Guiding
+(traditional) wizard::.
 
 
 File: orgtbl-join.info,  Node: Example,  Next: In-place Push Pull,  Prev: New,  Up: Top
@@ -398,15 +400,18 @@ The wizard may be invoked in-place or for the pull-mode.
 
    Invoke the wizard in-place by typing ‘M-x orgtbl-join’ with the
 cursor inside the master table to be enriched.  The cursor should be
-anywhere in the column serving the join process.
+anywhere in the column serving the join process.  Use the ‘C-u’ prefix
+to invoke the wizard in expert mode.
 
-   The menu entry ‘Tbl > Column > Join with another table’ is equivalent
-to ‘M-x orgtbl-join’.
+   The menu entry ‘Table > Column > Join with tables’ is equivalent to
+‘M-x orgtbl-join’, if this menu entry has been added (see *note
+Installation:: for how to do that).
 
    For the pull-mode, the same wizard may create a fresh new block
 ‘#+BEGIN: join...’, or amend an existing one.  Invoke it with
    • either ‘M-x orgtbl-join-insert-dblock-join’
    • or ‘C-c C-x x =join’.
+   • prefix any of the above two commands with ‘C-u’ to use expert mode.
    Put the cursor on an empty space in your Org Mode file, or on an
 existing ‘#+BEGIN: join...’ block.
 
@@ -415,11 +420,17 @@ existing ‘#+BEGIN: join...’ block.
    Note: there are many kinds of dynamic blocks that can be inserted
 besides ‘join’.
 
-   As there might be as many reference tables as wanted, the wizard
-continues asking for reference tables.  When done, answer ‘n’ when the
-wizard ask if you want an additional reference table to be joined.
+   The basic mode (as opposed to expert mode) only queries for input
+tables in the current buffer.  Of course, if the wizard updates an
+existing block with exotic parameters, those parameters will be queried
+even in basic mode.
 
-   The wizard does not (yet) take into account the ‘:cols’ and ‘:post’
+   As there might be as many reference tables as wanted, the wizard
+continues asking for reference tables (in expert mode).  When done,
+answer ‘n’ when the wizard ask if you want an additional reference table
+to be joined.
+
+   The wizard does not (yet) take into account the ‘:cond’ and ‘:post’
 parameters.  If there where such parameters already specified, the
 wizard will leave them untouched.
 
@@ -1088,6 +1099,7 @@ File: orgtbl-join.info,  Node: Changes,  Next: GPL 3 License,  Prev: Author cont
    • Add the chapter "Joining 2 similar tables" for a common use case.
    • Aggregation of the titles of this README.
    • New free-form wizard.
+   • Wizard can now be called in basic or expert mode.
 
 
 File: orgtbl-join.info,  Node: GPL 3 License,  Prev: Changes,  Up: Top
@@ -1113,44 +1125,44 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 Tag Table:
-Node: Top83
-Node: New1360
-Node: Example1659
-Node: A cooking recipe1821
-Node: SQL equivalent3683
-Node: In-place Push Pull4149
-Node: _In-place_ mode4438
-Node: _Push_ mode4783
-Node: _Pull_ mode5580
-Node: As a rule of thumb6708
-Node: Matching rows7217
-Node: Duplicate rows7753
-Node: How to handle missing rows?9570
-Node: Wizard11808
-Node: Guiding (traditional) wizard12074
-Node: Experimental free form wizard13466
-Node: Wide variety of input tables15116
-Node: Standard Org Mode input15673
-Node: Virtual input table from Babel16107
-Node: An Org ID18144
-Node: CSV input18651
-Node: JSON input19604
-Node: Input slicing20061
-Node: Malformed input tables20792
-Node: Headers21688
-Node: About reference tables22678
-Node: Multiple reference tables23379
-Node: Zero reference table24038
-Node: Joining 2 similar tables25032
-Node: Selecting the output columns27441
-Node: Post processing29221
-Node: Computing spreadsheet formulas afterward29474
-Node: Algorithm post processing30756
-Node: Chaining32648
-Node: Installation33267
-Node: Author contributors34559
-Node: Changes35424
-Node: GPL 3 License36903
+Node: Top200
+Node: New1477
+Node: Example1660
+Node: A cooking recipe1822
+Node: SQL equivalent3684
+Node: In-place Push Pull4150
+Node: _In-place_ mode4439
+Node: _Push_ mode4784
+Node: _Pull_ mode5581
+Node: As a rule of thumb6709
+Node: Matching rows7218
+Node: Duplicate rows7754
+Node: How to handle missing rows?9571
+Node: Wizard11809
+Node: Guiding (traditional) wizard12075
+Node: Experimental free form wizard13931
+Node: Wide variety of input tables15581
+Node: Standard Org Mode input16138
+Node: Virtual input table from Babel16572
+Node: An Org ID18609
+Node: CSV input19116
+Node: JSON input20069
+Node: Input slicing20526
+Node: Malformed input tables21257
+Node: Headers22153
+Node: About reference tables23143
+Node: Multiple reference tables23844
+Node: Zero reference table24503
+Node: Joining 2 similar tables25497
+Node: Selecting the output columns27906
+Node: Post processing29686
+Node: Computing spreadsheet formulas afterward29939
+Node: Algorithm post processing31221
+Node: Chaining33113
+Node: Installation33732
+Node: Author contributors35024
+Node: Changes35889
+Node: GPL 3 License37425
 
 End Tag Table
 
