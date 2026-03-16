@@ -249,7 +249,7 @@ COLNAMES, if not nil, is a list of column names."
   ;; skip lines beginning with # in order to reach the start of table
   (rx-define skip-meta-table (firstchars)
     (seq
-     (0+ (0+ blank) (? firstchars (0+ any)) "\n")
+     (0+ (0+ blank) (? firstchars (0+ nonl)) "\n")
      (0+ blank) "|"))
 
   ;; just to get ride of a few parenthesis
@@ -286,7 +286,7 @@ If FILE is nil, use current buffer."
         (cl-loop
          while
          (re-search-forward
-          (rx tblname (group (*? any)) (* blank) eol)
+          (rx tblname (group (*? nonl)) (* blank) eol)
           nil t)
          collect (match-string-no-properties 1))))))
 
@@ -319,7 +319,7 @@ If FILE is nil, look in the current buffer."
         (if (re-search-forward
              (rx ;; a single regexp :)
               tblname (literal name) (* blank) "\n"
-              (0+ blank) "#+begin" (0+ any) "\n"
+              (0+ blank) "#+begin" (0+ nonl) "\n"
               (group (*? (or any "\n")))
               bol (* space) "#+end")
              nil t)
@@ -479,9 +479,9 @@ as an Org Id and put in the `orgid' field."
         (* space)
         (   group-n 2 (* (notany "[]():")))
         (* space)
-        (? (group-n 3 "(" (* any) ")"))
+        (? (group-n 3 "(" (* nonl) ")"))
         (* space)
-        (? (group-n 4 "[" (* any) "]"))
+        (? (group-n 4 "[" (* nonl) "]"))
         (* space)
         eos)
        locator)
@@ -904,7 +904,7 @@ with new formulas (if any) given in the `formula' directive."
          (and content
 	      (let ((case-fold-search t))
 	        (string-match
-	         (rx bol (* blank) (group "#+tblfm:" (* any)))
+	         (rx bol (* blank) (group "#+tblfm:" (* nonl)))
 	         content))
               (match-string 1 content))))
     (if (stringp formula)
@@ -955,7 +955,7 @@ appended in the result, because it is already present in MASROW."
 	     do (orgtbl-join--list-append result cell))
     (cl-loop for cell in refrow
 	     for i from 0
-	     unless (equal i refcol)
+	     unless (eq i refcol)
 	     do (orgtbl-join--list-append result cell))
     (orgtbl-join--list-get result)))
 
@@ -1063,7 +1063,7 @@ Returns MASTABLE enriched with material from REFTABLE."
 	 if (listp refrow) do
 	 (let ((hashentry
                 (gethash (orgtbl-join--cell-to-string (nth refcol refrow)) refhash)))
-	   (if (equal (car hashentry) 0)
+	   (if (eq (car hashentry) 0)
 	       (let ((fake-masrow (make-list width "")))
 		 (setcar (nthcdr mascol fake-masrow)
 			 (nth refcol (cadr hashentry)))
@@ -1762,7 +1762,7 @@ then proceed to folding, otherwise unfold."
         (rx point "#+join:" (* blank)
             (group (+ (any ":a-z0-9_-")))
             (* blank)
-            (group (* any)))
+            (group (* nonl)))
         nil t))
      collect
      (cons
