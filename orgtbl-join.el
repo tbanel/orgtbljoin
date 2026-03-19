@@ -1609,7 +1609,9 @@ The updated PARAMS is returned."
          concat (format " ~%s~" (cadr pair))
          do (setq pair (cdr pair))))
        while
-       (and expert (y-or-n-p "Another reference table? ")))
+       (or
+        (plist-get params :ref-table)
+        (and expert (y-or-n-p "Another reference table? "))))
 
       (pop allcolumns)
 
