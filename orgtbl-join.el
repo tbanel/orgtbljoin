@@ -125,6 +125,23 @@ which saves 4 or 5 byte-codes at each call."
     `(string-match ,regexp ,string ,start t))
   )
 
+(defun orgtbl-join--alist-get-remove (key alist)
+  "A variant of alist-get which removes an entry once read.
+ALIST is a list of pairs (key . value).
+Search ALIST for a KEY. If found, replace the key in (key . value)
+by nil, and return value. If nothing is found, return nil."
+  (let ((x (assq key alist)))
+    (when x
+      (setcar x nil)
+      (cdr x))))
+
+(defun orgtbl-join--plist-get-remove (params prop)
+  "Like `plist-get', but also remove PROP from PARAMS."
+  (let ((v (plist-get params prop)))
+    (if v
+        (setcar (memq prop params) nil))
+    v))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; The function (org-table-to-lisp) have been greatly enhanced
 ;; in Org Mode version 9.4
@@ -617,8 +634,10 @@ otherwise nil is returned."
   (orgtbl-join--pop-leading-hline table)
   (cond ((string= colname "")
 	 (and err (user-error "Empty column name")))
-	((string= colname "hline")
+	((string= colname "@#")
 	 0)
+	((string= colname "hline")
+	 (1+ (length (car table))))
 	((string-match (rx bos "$" (group (+ digit)) eos) colname)
 	 (let ((n (string-to-number (match-string 1 colname))))
 	   (if (<= n (length (car table)))
@@ -849,16 +868,6 @@ with an Org Mode table."
     (let ((*this* table))
       (eval post)))
    (t (user-error ":post %S header could not be understood" post))))
-
-(defun orgtbl-join--alist-get-remove (key alist)
-  "A variant of alist-get which removes an entry once read.
-ALIST is a list of pairs (key . value).
-Search ALIST for a KEY. If found, replace the key in (key . value)
-by nil, and return value. If nothing is found, return nil."
-  (let ((x (assq key alist)))
-    (when x
-      (setcar x nil)
-      (cdr x))))
 
 (defun orgtbl-join--recalculate-fast ()
   "Wrapper arround `org-table-recalculate'.
@@ -1100,13 +1109,6 @@ TABLE so that it contains only COLS, in the same order."
 	collect (nth c row))))
   table)
 
-(defun orgtbl-join--plist-get-remove (params prop)
-  "Like `plist-get', but also remove PROP from PARAMS."
-  (let ((v (plist-get params prop)))
-    (if v
-        (setcar (memq prop params) nil))
-    v))
-
 (defun orgtbl-join--join-all-ref-tables (mas-table params)
   "Repeatedly join reference tables found in PARAMS to MAS-TABLE.
 Destructively modify PARAMS."
@@ -1143,56 +1145,6 @@ Destructively modify PARAMS."
   (let ((cols (plist-get params :cols)))
     (if cols (orgtbl-join--join-rearrange-columns mas-table cols)))
   (orgtbl-join--post-process mas-table (plist-get params :post)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; IN-PLACE mode
-
-;;;###autoload
-(defun orgtbl-join (&optional expert params)
-  "Add material from a reference table to the current table.
-
-Optional PARAMS gives reference tables information.
-If it is nil, then this information is queried interactively.
-
-Rows from the reference table are appended to rows of the current
-table.  For each row of the current table, matching rows from the
-reference table are searched and appended.  The matching is
-performed by testing for equality of cells in the current column,
-and a joining column in the reference table.
-
-If a row in the current table matches several rows in the
-reference table, then the current row is duplicated and each copy
-is appended with a different reference row.
-
-If no matching row is found in the reference table, then the
-current row is kept, with empty cells appended to it.
-
-When EXPERΤ is nil, only basic settings are queried."
-  (interactive "P")
-  (org-table-check-inside-data-field)
-  (let ((col (org-table-current-column))
-	(tbl (orgtbl-join--table-to-lisp))
-	(pt (line-number-at-pos))
-	(cn (- (point) (line-beginning-position))) )
-    (unless params
-      (setq params
-            (list
-             :mas-column
-             (if (memq 'hline tbl)
-                 (nth (1- col) (car tbl))
-               (format "$%s" col))))
-      (setq params (orgtbl-join--wizard-create-update tbl params expert)))
-    (let ((b (org-table-begin))
-	  (e (org-table-end)))
-      (save-excursion
-	(goto-char e)
-	(orgtbl-join--insert-elisp-table
-         (orgtbl-join--join-all-ref-tables tbl params))
-        (insert "\n")
-        (delete-region b e)))
-    (goto-char (point-min))
-    (forward-line (1- pt))
-    (forward-char cn)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; PUSH mode
@@ -1541,7 +1493,7 @@ KEEPANSWER should be true to keep the user's answer into ALLCOLUMNS."
                  (delete answer completions))))
       answer)))
 
-(defun orgtbl-join--wizard-create-update (mastable params expert)
+(defun orgtbl-join--wizard-join-create-update (mastable params expert)
   "Interactively query tables and joining columns.
 PARAMS is a plist (possibly empty) where user answers accumulate.
 The updated PARAMS is returned."
@@ -1662,6 +1614,56 @@ The updated PARAMS is returned."
      do (setq pair (cdr pair)))
     `(:name "join" ,@newparams)))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; IN-PLACE mode
+
+;;;###autoload
+(defun orgtbl-join (&optional expert params)
+  "Add material from a reference table to the current table.
+
+Optional PARAMS gives reference tables information.
+If it is nil, then this information is queried interactively.
+
+Rows from the reference table are appended to rows of the current
+table.  For each row of the current table, matching rows from the
+reference table are searched and appended.  The matching is
+performed by testing for equality of cells in the current column,
+and a joining column in the reference table.
+
+If a row in the current table matches several rows in the
+reference table, then the current row is duplicated and each copy
+is appended with a different reference row.
+
+If no matching row is found in the reference table, then the
+current row is kept, with empty cells appended to it.
+
+When EXPERΤ is nil, only basic settings are queried."
+  (interactive "P")
+  (org-table-check-inside-data-field)
+  (let ((col (org-table-current-column))
+	(tbl (orgtbl-join--table-to-lisp))
+	(pt (line-number-at-pos))
+	(cn (- (point) (line-beginning-position))) )
+    (unless params
+      (setq params
+            (list
+             :mas-column
+             (if (memq 'hline tbl)
+                 (nth (1- col) (car tbl))
+               (format "$%s" col))))
+      (setq params (orgtbl-join--wizard-join-create-update tbl params expert)))
+    (let ((b (org-table-begin))
+	  (e (org-table-end)))
+      (save-excursion
+	(goto-char e)
+	(orgtbl-join--insert-elisp-table
+         (orgtbl-join--join-all-ref-tables tbl params))
+        (insert "\n")
+        (delete-region b e)))
+    (goto-char (point-min))
+    (forward-line (1- pt))
+    (forward-char cn)))
+
 ;; [bazilo synchronize orgtbl-αggregate & orgtbl-joιn
 
 ;;;###autoload
@@ -1672,7 +1674,8 @@ Note that when an expert parameter was set prior to entering the wizard,
 it is queried even when EXPERT is nil."
   (interactive "P")
   (let* ((oldline (flatten-list (orgtbl-join--parse-header-arguments "join")))
-         (params (orgtbl-join--wizard-create-update nil oldline expert)))
+         (params
+          (save-excursion (orgtbl-join--wizard-join-create-update nil oldline expert))))
     (when oldline
       (org-mark-element)
       (delete-region (region-beginning) (1- (region-end))))
