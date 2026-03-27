@@ -1497,7 +1497,10 @@ KEEPANSWER should be true to keep the user's answer into ALLCOLUMNS."
   "Interactively query tables and joining columns.
 PARAMS is a plist (possibly empty) where user answers accumulate.
 The updated PARAMS is returned."
-  (let ((mascol (orgtbl-join--plist-get-remove params :mas-column))
+  (let ((minibuffer-local-completion-map
+         (define-keymap :parent minibuffer-local-completion-map
+           "SPC" nil)) ;; allow inserting spaces
+        (mascol (orgtbl-join--plist-get-remove params :mas-column))
         (reftable)
         (refcol)
         (full)
