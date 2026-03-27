@@ -45,20 +45,26 @@ buffer. When done, the buffer and the original, untouched
        (* "|" (* not-newline) "\n"))
    "\\1"))
 
-;; Compute all pull-mode tests
 (let ((org-calc-default-modes
        (cons 'calc-float-format (cons '(float 12) org-calc-default-modes))))
-  (org-update-all-dblocks))
 
-;; Compute all push-mode tests
-(let ((org-calc-default-modes
-       (cons 'calc-float-format (cons '(float 12) org-calc-default-modes))))
+  ;; Compute all pull-mode tests
+  (org-update-all-dblocks)
+
+  ;; Compute all push-mode tests
   (org-table-map-tables
-    (lambda ()
-      (when (save-excursion
-	      (forward-line -1)
-	      (looking-at-p (rx (or "#+begin" "#+orgtbl"))))
-	(orgtbl-send-table 'maybe)))))
+   (lambda ()
+     (when (save-excursion
+	     (forward-line -1)
+	     (looking-at-p (rx (or "#+begin" "#+orgtbl"))))
+       (orgtbl-send-table 'maybe))))
+
+  ;; Compute all keyboard macros
+  (org-block-map
+   (lambda ()
+     (if (search-forward ":kbd-macro" (point-at-eol) t)
+         (org-babel-execute-src-block))))
+  )
 
 ;; Compare the disposable buffer with the reference unittests.org
 (goto-char (point-min))
@@ -126,14 +132,25 @@ Those recipes should to be augmented interactively with nutritional facts
 The master tables have a formula on the last column, which will be
 preserved after joining.
 
-With header.
-- Put the cursor on the "type" column
+*** With header
+This small script will:
+- put the cursor on the "type" column
 - type
   : M-x orgtbl-join
 - answer
   : nut_with_header
   : type
+which should transform exactly the "start" table into the "expected result" table.
 
+#+begin_src elisp :results none :kbd-macro t
+(execute-kbd-macro
+ (kbd
+  "C-c C-n C-c C-n <tab> C-k C-k C-c C-p <tab> C-k C-k C-y C-y <up> <tab> C-e M-<backspace> expected SPC result
+ <up> <home> <tab> C-c C-n <down> <tab> <tab> M-x orgtbl-join <return> nut_with_h <tab> <return>
+ <return> <return>"))
+#+end_src
+
+*** start
 | quty | type     | units |  mul |
 |------+----------+-------+------|
 |   70 | onion    |     5 |  350 |
@@ -147,20 +164,59 @@ With header.
 |   80 | amarante |     1 |   80 |
 #+TBLFM: $4=$1*$3
 
-Without header.
-- Put the cursor on the second column
+*** expected result
+| quty | type     | units |  mul | Carb | Fiber | Sugar | Protein |
+|------+----------+-------+------+------+-------+-------+---------|
+|   70 | onion    |     5 |  350 |  9.0 |   1.3 |   4.4 |     1.3 |
+|  120 | tomatoe  |     8 |  960 |  3.4 |   0.6 |   2.1 |     0.8 |
+|  300 | eggplant |     2 |  600 |  8.6 |   2.5 |   3.2 |     0.8 |
+|  300 | eggplant |     2 |  600 |  8.7 |   2.6 |   3.3 |     0.9 |
+|  300 | eggplant |     2 |  600 |  8.5 |     ? |     ? |       ? |
+|------+----------+-------+------+------+-------+-------+---------|
+|  100 | tofu     |     1 |  100 |  1.4 |   0.7 |   0.5 |     6.6 |
+|  250 | corn     |    15 | 3750 | 21.3 |   4.7 |   1.8 |     2.8 |
+|   90 | tomatoe  |     5 |  450 |  3.4 |   0.6 |   2.1 |     0.8 |
+|------+----------+-------+------+------+-------+-------+---------|
+|   80 | amarante |     1 |   80 |
+#+TBLFM: $4=$1*$3
+
+*** Without header
+This small script will
+- put the cursor on the second column
 - type
   : M-x orgtbl-join
 - answer
   : nut_with_header
   : type
 
+#+begin_src elisp :results none :kbd-macro t
+(execute-kbd-macro
+ (kbd
+  "C-c C-n <tab> C-k C-k C-y C-y <up> <tab> C-e M-<backspace> expected SPC result C-c C-n <tab> C-k C-k C-c C-p <down> <tab> <tab>
+ M-x orgtbl-join <return> nut_with_header <return>
+        <return> type <return>
+C-c C-p C-c C-p <tab>"))
+#+end_src
+
+*** start
 |  70 | onion    |  5 |  350 |
 | 120 | tomatoe  |  8 |  960 |
 | 300 | eggplant |  2 |  600 |
 | 100 | tofu     |  1 |  100 |
 | 250 | corn     | 15 | 3750 |
 |  90 | tomatoe  |  5 |  450 |
+|  80 | amarante |  1 |   80 |
+#+TBLFM: $4=$1*$3
+
+*** expected result
+|  70 | onion    |  5 |  350 |  9.0 | 1.3 | 4.4 | 1.3 |
+| 120 | tomatoe  |  8 |  960 |  3.4 | 0.6 | 2.1 | 0.8 |
+| 300 | eggplant |  2 |  600 |  8.6 | 2.5 | 3.2 | 0.8 |
+| 300 | eggplant |  2 |  600 |  8.7 | 2.6 | 3.3 | 0.9 |
+| 300 | eggplant |  2 |  600 |  8.5 |   ? |   ? |   ? |
+| 100 | tofu     |  1 |  100 |  1.4 | 0.7 | 0.5 | 6.6 |
+| 250 | corn     | 15 | 3750 | 21.3 | 4.7 | 1.8 | 2.8 |
+|  90 | tomatoe  |  5 |  450 |  3.4 | 0.6 | 2.1 | 0.8 |
 |  80 | amarante |  1 |   80 |
 #+TBLFM: $4=$1*$3
 
@@ -797,8 +853,8 @@ columns. Therefore:
 | a | yes   |
 | a | 32    |
 
-this is a mistake ---------v
-                           v
+this is a mistake ╶────────╮
+                           ▼
 #+BEGIN: join :ref-column "15" :mas-table "missing-header" :mas-column "$1" :ref-table "ref-missing-header" :full "mas"
 
 #+END:
