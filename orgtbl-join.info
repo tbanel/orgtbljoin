@@ -521,6 +521,8 @@ File: orgtbl-join.info,  Node: Standard Org Mode input,  Next: Virtual input tab
 6.1 Standard Org Mode input
 ===========================
 
+The parameter after ‘:mas-table’ or ‘:ref-table’ may be:
+
    • ‘mytable’: an ordinary Org Mode table in the same buffer, named
      ‘mytable’.
 
@@ -548,8 +550,8 @@ File: orgtbl-join.info,  Node: Virtual input table from Babel,  Next: An Org ID,
 this case, the table is virtual in the sense that is appears nowhere.
 
    (Babel is the Org Mode infrastructure to run scripts in any language,
-like Python, R, C++, Java, D, shell, whatever, with inputs and outputs
-connected to Org Mode).
+like Python, R, C++, Java, D, Rust, shell, whatever, with inputs and
+outputs connected to Org Mode).
 
    Example:
 
@@ -585,6 +587,16 @@ output:
    Here the parameter ‘:mas-table’ specifies the name of the script to
 be executed.
 
+   *Beware* of the ‘:results code’ parameter.  It does not work as an
+input for OrgtblJoin.  This is because in this case the Babel script
+returns a string, not a table.  Example:
+
+     '((a b c)
+       hline
+       (1 2 3))
+
+   Use ‘:results table’ or nothing instead.
+
 
 File: orgtbl-join.info,  Node: An Org ID,  Next: CSV input,  Prev: Virtual input table from Babel,  Up: Wide variety of input tables
 
@@ -592,12 +604,12 @@ File: orgtbl-join.info,  Node: An Org ID,  Next: CSV input,  Prev: Virtual input
 =============
 
    • ‘34cbc63a-c664-471e-a620-d654b26ffa31’: an identifier of an Org
-     Mode sub-tree.  The sub-tree is supposed to contain a table, which
-     is retrieved.
+     Mode sub-tree.  The sub-tree is supposed to contain an Org table
+     (which is retrieved) or a Babel script (which is executed).
 
-   Those Org Mode identifiers span all known Org Mode files.  To add
-such an identifier, put the cursor on the heading of the sub-tree, and
-type ‘M-x org-id-get-create’.
+   Those Org Mode identifiers span all known Org Mode files.  (Therefore
+there is no need to specify a file).  To add such an identifier, put the
+cursor on the heading of the sub-tree, and type ‘M-x org-id-get-create’.
 
 
 File: orgtbl-join.info,  Node: CSV input,  Next: JSON input,  Prev: An Org ID,  Up: Wide variety of input tables
@@ -611,8 +623,14 @@ formats.
    • ‘/some/dir/file.csv:(csv params…)’: a comma-separated-values file
      in the CSV format, in the file ‘/some/dir/file.csv’.
 
-   The separators may be TAB, comma, or semicolon, they are guessed and
-different separators may be mixed.
+   • ‘name(csv params…)’: CSV formatted data within an Org block named
+     ‘"name"’, in the current file.
+
+   • ‘/some/dir/file.org:name(csv params…)’: CSV formatted data within
+     an Org block named ‘"name"’, in a distant Org file.
+
+   The cells separators in the CSV files may be TAB, comma, or
+semicolon, they are guessed and different separators may be mixed.
 
    Any empty row in the CSV file is interpreted as an horizontal
 separator (‘hline’ in Org table parlance).
@@ -622,9 +640,21 @@ separator (‘hline’ in Org table parlance).
      containing the column names.
    • ‘colnames (column1 column2 column3 …)’: the column names are given
      explicitly, in case the CSV file contains only data, no header.
-
-   In any case, the columns may be references as ‘$1, $2, $3, …’ as
+   In any case, the columns may be referenced as ‘$1, $2, $3, …’ as
 usual.
+
+   When data is in an Org Mode file, it is supposed to be within a named
+block of any kind.  Example with a "quote" block:
+
+     #+name: mycsvdata
+     #+begin_quote
+     label,quantity
+     yellow,27
+     red,-61
+     yellow,41
+     red,-29
+     red,-17
+     #+end_quote
 
 
 File: orgtbl-join.info,  Node: JSON input,  Next: Input slicing,  Prev: CSV input,  Up: Wide variety of input tables
@@ -635,9 +665,80 @@ File: orgtbl-join.info,  Node: JSON input,  Next: Input slicing,  Prev: CSV inpu
    • ‘/some/dir/file.json:(json params…)’: a file containing a JSON
      formatted table, in the file ‘/some/dir/file.csv’.
 
-   Currently, the only accepted format is an array of arrays.  There are
-currently no parameters.  In the future it may be possible to specify
-alternative sub-formats.
+   • ‘name(json params…)’: JSON formatted data within an Org block named
+     ‘"name"’, in the current file.
+
+   • ‘/some/dir/file.org:name(json params…)’: JSON formatted data within
+     an Org block named ‘"name"’, in a distant Org file.
+
+   The accepted formats are a vector of vectors, or a vector of
+hash-objects.
+
+   Currently, no ‘params’ are recognized.
+
+   Example of a vector of vectors:
+
+     [
+       ["mon",12,"red"  ],
+       ["thu",34,"blue" ],
+       ["wed",27,"green"],
+       ["wed",21,"red"  ],
+       ["mon", 7,"blue" ],
+       …
+     ]
+
+   Example of a vector of hash-objects:
+
+     [
+       {"day":"mon", "quty":12, "color":"red"  },
+       {"day":"thu", "quty":34, "color":"blue" },
+       {"quty":27, "day":"wed", "color":"green"},
+       {"quty":21, "color":"red", "day":"wed"  },
+       {"day":"mon", "quty": 7, "color":"blue" },
+       …
+     ]
+
+   In the case of hash-objects, the keys are collected as the header of
+the resulting table, in the order seen in the JSON file.  In each
+hash-object, the order of key-value pairs is irrelevant.
+
+   A header may be specified in the JSON file as a first vector,
+followed by an hline (horizontal line).  Example:
+
+     [
+       ["day","quty","color"],
+       "hline",
+       ["mon",12,"red"  ],
+       ["thu",34,"blue" ],
+       …
+     ]
+
+   Horizontal lines may be ‘"hline"’, ‘[]’, ‘{}’, or ‘null’.
+
+   It is possible to mix both formats: vectors and hash-objects.
+Example:
+
+     [
+       ["quty","color"],                         // incomplete header
+       null,                                     // horizontal line
+       {"day":"mon", "quty":12, "color":"red" }, // an hash-object
+       [34, "blue", "thu" ],                     // a vector
+       …
+     ]
+
+   When data is in an Org Mode file, it is supposed to be within a named
+block of any kind.  Example with a "src" block for JavaScript:
+
+     #+name: myjsondata
+     #+begin_src js
+     [
+       ["day","quty","color"],   // names of columns in the header
+       [],                       // an horizontal line
+       ["mon",12,"red"  ],
+       ["thu",34,"blue" ],
+       …
+     ]
+     #+end_src
 
 
 File: orgtbl-join.info,  Node: Input slicing,  Next: Malformed input tables,  Prev: JSON input,  Up: Wide variety of input tables
@@ -645,7 +746,7 @@ File: orgtbl-join.info,  Node: Input slicing,  Next: Malformed input tables,  Pr
 6.6 Input slicing
 =================
 
-The Org Mode also provides for table slicing.  All of the previous
+Org Mode also provides for table slicing.  All of the previous
 references may be followed by an optional slicing.  Examples:
 
    • ‘mytable[0:5]’: retain only the first 6 rows of the input table; if
@@ -653,7 +754,7 @@ references may be followed by an optional slicing.  Examples:
      the separation line); in this example, it would retain rows 0 and 1
      for the header, and rows 2,3,4,5 for the content.
 
-   • ‘mytable[,0:1]’: retain only the first 2 columns.
+   • ‘mytable[*,0:1]’: retain only the first 2 columns.
 
    • ‘mytable[0:5,0:1]’: retain only the first 6 rows and the first 2
      columns.
@@ -1156,26 +1257,26 @@ Node: Guiding (traditional) wizard12461
 Node: Experimental free form wizard14317
 Node: Wide variety of input tables15967
 Node: Standard Org Mode input16524
-Node: Virtual input table from Babel16958
-Node: An Org ID18995
-Node: CSV input19502
-Node: JSON input20455
-Node: Input slicing20912
-Node: Malformed input tables21643
-Node: Headers22539
-Node: About reference tables23529
-Node: Multiple reference tables24230
-Node: Zero reference table24889
-Node: Joining 2 similar tables25883
-Node: Selecting the output columns28292
-Node: Post processing30072
-Node: Computing spreadsheet formulas afterward30325
-Node: Algorithm post processing31607
-Node: Chaining33499
-Node: Installation34118
-Node: Author contributors35410
-Node: Changes36275
-Node: GPL 3 License38059
+Node: Virtual input table from Babel17024
+Node: An Org ID19346
+Node: CSV input19946
+Node: JSON input21455
+Node: Input slicing23930
+Node: Malformed input tables24658
+Node: Headers25554
+Node: About reference tables26544
+Node: Multiple reference tables27245
+Node: Zero reference table27904
+Node: Joining 2 similar tables28898
+Node: Selecting the output columns31307
+Node: Post processing33087
+Node: Computing spreadsheet formulas afterward33340
+Node: Algorithm post processing34622
+Node: Chaining36514
+Node: Installation37133
+Node: Author contributors38425
+Node: Changes39290
+Node: GPL 3 License41074
 
 End Tag Table
 

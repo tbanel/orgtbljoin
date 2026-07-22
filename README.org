@@ -460,6 +460,8 @@ Here we discus the =:mas-table= and =:ref-table= parameters.
 :CUSTOM_ID: standard-org-mode-input
 :END:
 
+The parameter after =:mas-table= or =:ref-table= may be:
+
 - =mytable=: an ordinary Org Mode table in the same buffer, named
   =mytable=.
 
@@ -486,8 +488,8 @@ The input table may be the result of executing a Babel script. In this
 case, the table is virtual in the sense that is appears nowhere.
 
 (Babel is the Org Mode infrastructure to run scripts in any language,
-like Python, R, C++, Java, D, shell, whatever, with inputs and outputs
-connected to Org Mode).
+like Python, R, C++, Java, D, Rust, shell, whatever, with inputs and
+outputs connected to Org Mode).
 
 Example:
 
@@ -529,18 +531,31 @@ output:
 Here the parameter =:mas-table= specifies the name of the script to be
 executed.
 
+*Beware* of the =:results code= parameter. It does not work as an input
+for OrgtblJoin. This is because in this case the Babel script
+returns a string, not a table. Example:
+
+#+begin_src elisp :results code
+'((a b c)
+  hline
+  (1 2 3))
+#+end_src
+
+Use =:results table= or nothing instead.
+
 ** An Org ID
 :PROPERTIES:
 :CUSTOM_ID: an-org-id
 :END:
 
 - =34cbc63a-c664-471e-a620-d654b26ffa31=: an identifier of an Org Mode
-  sub-tree. The sub-tree is supposed to contain a table, which is
-  retrieved.
+  sub-tree. The sub-tree is supposed to contain an Org table (which is
+  retrieved) or a Babel script (which is executed).
 
-Those Org Mode identifiers span all known Org Mode files. To add such
-an identifier, put the cursor on the heading of the sub-tree, and type
-=M-x org-id-get-create=.
+Those Org Mode identifiers span all known Org Mode files. (Therefore
+there is no need to specify a file). To add such an identifier, put
+the cursor on the heading of the sub-tree, and type =M-x
+org-id-get-create=.
 
 ** CSV input
 :PROPERTIES:
@@ -553,19 +568,39 @@ formats.
 - =/some/dir/file.csv:(csv params…)=: a comma-separated-values file in
   the CSV format, in the file =/some/dir/file.csv=.
 
-The separators may be TAB, comma, or semicolon, they are guessed and
-different separators may be mixed.
+- =name(csv params…)=: CSV formatted data within an Org block named
+  ="name"=, in the current file.
+
+- =/some/dir/file.org:name(csv params…)=: CSV formatted data within an
+  Org block named ="name"=, in a distant Org file.
+
+The cells separators in the CSV files may be TAB, comma, or semicolon,
+they are guessed and different separators may be mixed.
 
 Any empty row in the CSV file is interpreted as an horizontal
 separator (=hline= in Org table parlance).
 
-  Parameters may be:
+Parameters may be:
   - =header=: the first row in the CSV file is interpreted as a header
     containing the column names.
   - =colnames (column1 column2 column3 …)=: the column names are given
     explicitly, in case the CSV file contains only data, no header.
+In any case, the columns may be referenced as =$1, $2, $3, …= as usual.
 
-In any case, the columns may be references as =$1, $2, $3, …= as usual.
+When data is in an Org Mode file, it is supposed to be within a named
+block of any kind. Example with a "quote" block:
+
+#+begin_example
+#+name: mycsvdata
+#+begin_quote
+label,quantity
+yellow,27
+red,-61
+yellow,41
+red,-29
+red,-17
+#+end_quote
+#+end_example
 
 ** JSON input
 :PROPERTIES:
@@ -575,16 +610,96 @@ In any case, the columns may be references as =$1, $2, $3, …= as usual.
 - =/some/dir/file.json:(json params…)=: a file containing a JSON
   formatted table, in the file =/some/dir/file.csv=.
 
-Currently, the only accepted format is an array of arrays. There are
-currently no parameters. In the future it may be possible to specify
-alternative sub-formats.
+- =name(json params…)=: JSON formatted data within an Org block named
+  ="name"=, in the current file.
+
+- =/some/dir/file.org:name(json params…)=: JSON formatted data within an
+  Org block named ="name"=, in a distant Org file.
+
+The accepted formats are a vector of vectors, or a vector of
+hash-objects.
+
+Currently, no =params= are recognized.
+
+Example of a vector of vectors:
+
+#+begin_example
+[
+  ["mon",12,"red"  ],
+  ["thu",34,"blue" ],
+  ["wed",27,"green"],
+  ["wed",21,"red"  ],
+  ["mon", 7,"blue" ],
+  …
+]
+#+end_example
+
+Example of a vector of hash-objects:
+
+#+begin_example
+[
+  {"day":"mon", "quty":12, "color":"red"  },
+  {"day":"thu", "quty":34, "color":"blue" },
+  {"quty":27, "day":"wed", "color":"green"},
+  {"quty":21, "color":"red", "day":"wed"  },
+  {"day":"mon", "quty": 7, "color":"blue" },
+  …
+]
+#+end_example
+
+In the case of hash-objects, the keys are collected as the header of
+the resulting table, in the order seen in the JSON file. In each
+hash-object, the order of key-value pairs is irrelevant.
+
+A header may be specified in the JSON file as a first vector, followed
+by an hline (horizontal line). Example:
+
+#+begin_example
+[
+  ["day","quty","color"],
+  "hline",
+  ["mon",12,"red"  ],
+  ["thu",34,"blue" ],
+  …
+]
+#+end_example
+
+Horizontal lines may be ="hline"=, =[]=, ={}=, or =null=.
+
+It is possible to mix both formats: vectors and hash-objects. Example:
+
+#+begin_example
+[
+  ["quty","color"],                         // incomplete header
+  null,                                     // horizontal line
+  {"day":"mon", "quty":12, "color":"red" }, // an hash-object
+  [34, "blue", "thu" ],                     // a vector
+  …
+]
+#+end_example
+
+When data is in an Org Mode file, it is supposed to be within a named
+block of any kind. Example with a "src" block for JavaScript:
+
+#+begin_example
+#+name: myjsondata
+#+begin_src js
+[
+  ["day","quty","color"],   // names of columns in the header
+  [],                       // an horizontal line
+  ["mon",12,"red"  ],
+  ["thu",34,"blue" ],
+  …
+]
+#+end_src
+#+end_example
 
 ** Input slicing
 :PROPERTIES:
 :CUSTOM_ID: input-slicing
 :END:
 
-The Org Mode also provides for table slicing. All of the previous
+Org Mode also provides for table slicing. All of the previous
 references may be followed by an optional slicing. Examples:
 
 - =mytable[0:5]=: retain only the first 6 rows of the input table; if
@@ -592,7 +707,7 @@ references may be followed by an optional slicing. Examples:
   separation line); in this example, it would retain rows 0 and 1 for
   the header, and rows 2,3,4,5 for the content.
 
-- =mytable[,0:1]=: retain only the first 2 columns.
+- =mytable[*,0:1]=: retain only the first 2 columns.
 
 - =mytable[0:5,0:1]=: retain only the first 6 rows and the first 2
   columns.
