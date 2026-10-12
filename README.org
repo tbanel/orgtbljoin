@@ -56,7 +56,9 @@ Also, the directory part is simplified when querying a file name.
 - [[#post-processing][Post processing]]
   - [[#computing-spreadsheet-formulas-afterward][Computing spreadsheet formulas afterward]]
   - [[#algorithm-post-processing][Algorithm post processing]]
-  - [[#chaining][Chaining]]
+- [[#virtual-input-table-from-babel-0][Virtual input table from Babel]]
+- [[#wide-variety-of-input-tables-0][Wide variety of input tables]]
+- [[#chaining][Chaining]]
 - [[#installation][Installation]]
 - [[#author-contributors][Author, contributors]]
 - [[#changes][Changes]]
@@ -682,8 +684,8 @@ When data is in an Org Mode file, it is supposed to be within a named
 block of any kind. Example with a "src" block for JavaScript:
 
 #+begin_example
-#+name: myjsondata
-#+begin_src js
+,#+name: myjsondata
+,#+begin_example
 [
   ["day","quty","color"],   // names of columns in the header
   [],                       // an horizontal line
@@ -691,8 +693,114 @@ block of any kind. Example with a "src" block for JavaScript:
   ["thu",34,"blue" ],
   …
 ]
-#+end_src
+,#+end_example
 #+end_example
+
+** Fixed-width input
+:PROPERTIES:
+:CUSTOM_ID: fixed-width-input
+:END:
+
+As an example, the following block is a table formatted as "fixed-width".
+
+#+begin_example
+,#+name: fixed-qty-lev
+,#+begin_example
+day qty  lev
+Mon 45.2 5
+Mon 51.2 1
+Thu 87.3 8
+Thu 42.0 7
+Thu 12.1 1
+Wed  7.9 3
+Fri 56.8 9
+Fri 11.3 1
+Fri  1.2 1
+Sat  9.7 3
+Sun  3.8 2
+,#+end_example
+#+end_example
+
+The first column is 3 characters wide. The second column start at the
+4th character (assuming the first character is n° zero), and it is 4
+characters wide. And so on.
+
+Here is an example of how to reference this table for joining it:
+
+#+begin_example
+,#+BEGIN: join :table "fixed-qty-lev(fixed header 1)" …
+,#+END:
+#+end_example
+
+The general reference parameter of =:table= is as follows:
+
+#+begin_example
+ ╭─────────────────────╮      ╭─────────────────────────────╮
+ │the name of the File,│      │the name of the block        │
+ │optional             │      │if within an Org Mode buffer,│
+ ╰─┬───────────────────╯    ╭─┤optional                     │
+   │                        │ ╰─────────────────────────────╯
+ ╭─╯  ╭─────────────────────╯               ╭────────────────────────────╮
+ │    │          ╭───────────────────────╮  │the number of rows composing│
+ │    │          │the "Fixed-width" type,│  │the header of the table,    │
+ │    │     ╭────┤mandatory              │  │optional                    │
+ │    │     │    ╰───────────────────────╯  ╰───┬────────────────────────╯
+ │    │     │          ╭────────────────────────╯
+ ▼    ▼     ▼          ▼
+f​ile:name(f​ixed header 1 coord ((begA . endA) (begB . endB) …))
+                          ▲       ▲      ▲      ▲      ▲
+             ╭────────────╯       ╰───┬──╯      ╰───┬──╯
+ ╭───────────┴──────────╮ ╭───────────┴─────╮ ╭─────┴──────────────╮
+ │the columns positions,│ │start and end    │ │start and end       │
+ │optional              │ │of the 1st column│ │of the second column│
+ ╰──────────────────────╯ ╰─────────────────╯ ╰────────────────────╯
+#+end_example
+
+- The =file:= part is the path-name of the file where the table is
+  located. If not given, the current buffer is assumed.
+
+- The =name= part is the name of an Org-Mode block, usually tagged with
+  =#+name: …=. In this case, the =file:= part is either absent or points
+  to an Org-Mode file.
+
+- The =header= part is optional. It may be a number (usually 1) giving
+  the number of first rows to be considered as the header of the
+  table. It may be a list of strings, like =("Day" "Q" "Level")=
+  explicitly giving names to the columns. If =header= is not specified,
+  the columns must be referred with their dollar names: =$1, $2, $3, …=.
+
+- The =coord= parameter specifies the locations of the
+  columns. It is a list of pairs of begin-end. For the previous
+  example, it could be: =((0 . 3) (4 . 8) (9 . 12))=. The first column
+  starts at 0 included and ends at 3 excluded.
+
+When the =coord= parameter is not given, an attempt is made to
+guess those positions, based on how the fields are separated by blanks
+throughout the table. The guessed positions are printed in the
+=*Messages*= buffer, to easily copy-past them after =coord=.
+
+Guessing does not work if the columns are not separated by
+blanks. Joining does work thought. In this case, the =coord=
+parameter must be specified manually.
+
+This fixed-width format is the one created by many Linux commands. So
+for example the following Babel block is suitable as an input for
+OrgJoin.
+
+#+begin_example
+,#+name: lslfixed
+,#+begin_src sh :results raw
+ls -l | tail +2
+,#+end_src
+
+,#+BEGIN: join :mas-table "lslfixed(fixed)" : mas-col: $3 …
+,#+END:
+#+end_example
+
+In this example, we use the output of the =ls= command (list files in
+the current directory). The column =$3= (name of the owner of each
+file) is the key column for joining the output of =ls= to some other
+table (not shown in this example).
 
 ** Input slicing
 :PROPERTIES:
@@ -1043,7 +1151,127 @@ The =:post= parameter can also refer to a Babel block. Example:
 The block is passed the table to process in a Lisp variable called
 =*this*=.
 
-** Chaining
+* Virtual input table from Babel
+:PROPERTIES:
+:CUSTOM_ID: virtual-input-table-from-babel-0
+:END:
+
+Any of the input tables may be the result of executing a Babel
+script. In this case, the table is virtual in the sense that it
+appears nowhere.
+
+(Babel is the Org Mode infrastructure to run scripts in any language,
+like Python, R, C++, Java, D, shell, whatever, with inputs and outputs
+connected to Org Mode).
+
+Example:
+
+Here is a script in Emacs Lisp which creates an Org Mode table.
+
+#+begin_example
+#+name: ascript
+#+begin_src elisp :colnames yes
+(list
+ '(type quty)
+ 'hline
+ (list "tomato" (* 53.1 12))
+ (list "tofu" (* 12.5 7)))
+#+end_src
+#+end_example
+
+If executed, the script would output this table:
+
+#+begin_example
+,#+RESULTS: ascript
+| type   |  quty |
+|--------+-------|
+| tomato | 637.2 |
+| tofu   |  87.5 |
+#+end_example
+
+But instead, OrgtblJoin will execute the script and consume its
+output:
+
+#+begin_example
+,#+BEGIN: join :mas-table "ascript" :ref-table "nut" :mas-column "type" :ref-column "type" :full "mas"
+| type   |  quty | Fiber | Sugar | Protein | Carb |
+|--------+-------+-------+-------+---------+------|
+| tomato | 637.2 |   0.6 |   2.1 |     0.8 |  3.4 |
+| tofu   |  87.5 |   0.7 |   0.5 |     6.6 |  1.4 |
+,#+END:
+#+end_example
+
+Here the parameter =:mas-table= specifies the name of the script to be
+executed.
+
+* Wide variety of input tables
+:PROPERTIES:
+:CUSTOM_ID: wide-variety-of-input-tables-0
+:END:
+
+As in any other Org Mode source block, the input table may come from
+several places. OrgAggregate adds even more kinds of input.
+
+The parameter after =:table= may be:
+
+- =mytable=: an ordinary Org Mode table in the same buffer, named
+  =mytable=.
+
+- =/some/dir/file.org:mytable=: an ordinary Org Mode table named
+  =mytable=, in a distant Org file named =/some/dir/file.org=.
+
+- =mybabel=: an Org Mode Babel block named =mybabel= in the current
+  buffer, generating a table as its output, written in any language.
+
+- =mybabel(param1=123,param2=456)=: passing parameters to an Org Mode
+  Babel block named =mybabel= in the current buffer, generating a table
+  as its output, written in any language.
+
+- =/some/dir/file.org:mybabel(param1=123,param2=456)=: an Org Mode Babel
+  block named =mybabel= in a distant org file named =/some/dir/file.org=,
+  called with parameters.
+
+- =/some/dir/file.csv:(csv params…)=: a comma-separated-values file in
+  the CSV format, in the file =/some/dir/file.csv=. The separators may
+  be TAB, comma, or semicolon, they are guessed and different
+  separators may be mixed. Any empty row in the CSV file is
+  interpreted as an horizontal separator (=hline= in Org table
+  parlance).
+
+  Parameters may be:
+  - =header=: the first row in the CSV file is interpreted as a header
+    containing the column names.
+  - =colnames (column1 column2 column3 …)=: the column names are given
+    explicitly, in case the CSV file contains only data, no header.
+  In any case, the columns may be references as =$1, $2, $3, …= as
+  usual.
+
+- =/some/dir/file.json:(json params…)=: a file containing a JSON
+  formatted table, in the file =/some/dir/file.csv=. Currently, the only
+  accepted format is an array of arrays. There are currently no
+  parameters. In the future it may be possible to specify alternative
+  sub-formats.
+
+- =34cbc63a-c664-471e-a620-d654b26ffa31=: an identifier of an Org Mode
+  sub-tree. The sub-tree is supposed to contain a table, which is
+  retrieved. Those Org Mode identifiers span all known Org Mode
+  files. To add such an identifier, put the cursor on the heading of
+  the sub-tree, and type =M-x org-id-get-create=.
+
+The Org Mode also provides for table slicing. All of the previous
+references may be followed by an optional slicing. Examples:
+
+- =mytable[0:5]=: retain only the first 6 rows of the input table; if
+  the table has a header, then it counts as 2 rows (the header and the
+  separation line); in this example, it would retain rows 0 and 1 for
+  the header, and rows 2,3,4,5 for the content.
+
+- =mytable[,0:1]=: retain only the first 2 columns.
+
+- =mytable[0:5,0:1]=: retain only the first 6 rows and the first 2
+  columns.
+
+* Chaining
 :PROPERTIES:
 :CUSTOM_ID: chaining
 :END:
@@ -1163,6 +1391,7 @@ Contributors
   or wizard update.
 - Simplify directory part when querying a file name.
 - Centralize cell→string in =-cell-to-string= which is the fastest.
+- Fixed-width format supported as input table.
 
 * GPL 3 License
 :PROPERTIES:

@@ -1098,3 +1098,69 @@ They are joined on the country column.
 | Shijiazhuang     | China          |  4527329 |  4462103 | 1410526000 | -3221000 |  9445627 | 1.02 | 67.6 |
 | Jaipur           | India          |  4406280 |  4321166 | 1460496000 | 13027300 |  2991887 | 1.95 | 36.9 |
 #+END:
+
+* Fixed-width format
+
+#+name: itemprice
+#+begin_example
+item   cla price
+pencil   A  0.45
+pencil   B  0.59
+pencil  EX  1.17
+paper   EX  3.30
+paper    A  1.01
+paper    B  1.23
+eraser   A  0.18
+eraser   B  0.22
+clip    EX  0.87
+marker   A  0.84
+marker   B  1.05
+marker  EX  2.15
+envelop EX  0.95
+scissor  A  2.11
+scissor  B  2.80
+scissor EX  3.95
+#+end_example
+
+#+name: itemqty
+#+begin_example
+clip    EX   540
+eraser   B   900
+marker   B   430
+marker   A   700
+paper    B  3700
+eraser   A  1200
+pencil  EX   560
+pencil   A  5000
+pencil   B  4500
+scissor  A   110
+paper   EX  2070
+envelop EX  1800
+paper    A  4900
+scissor  B    30
+scissor EX    20
+marker  EX   120
+#+end_example
+
+Here we mix the first two columns of both fixed-width tables to have a key column made of the item and its class.
+
+#+begin: join :mas-table "itemprice(fixed header 1 coord ((0 . 10) (11 . 16) ))" :mas-column "$1" :ref-table "itemqty(fixed header (itemclass quantity) coord ((0 . 10) (11 . 16) ))" :ref-column "itemclass"
+| item   cla | price | quantity |
+|------------+-------+----------|
+| pencil   A |  0.45 |     5000 |
+| pencil   B |  0.59 |     4500 |
+| pencil  EX |  1.17 |      560 |
+| paper   EX |  3.30 |     2070 |
+| paper    A |  1.01 |     4900 |
+| paper    B |  1.23 |     3700 |
+| eraser   A |  0.18 |     1200 |
+| eraser   B |  0.22 |      900 |
+| clip    EX |  0.87 |      540 |
+| marker   A |  0.84 |      700 |
+| marker   B |  1.05 |      430 |
+| marker  EX |  2.15 |      120 |
+| envelop EX |  0.95 |     1800 |
+| scissor  A |  2.11 |      110 |
+| scissor  B |  2.80 |       30 |
+| scissor EX |  3.95 |       20 |
+#+end:

@@ -32,6 +32,9 @@ of other tables (the reference tables).
 * About reference tables::
 * Selecting the output columns::
 * Post processing::
+* Virtual input table from Babel: Virtual input table from Babel (1).
+* Wide variety of input tables: Wide variety of input tables (1).
+* Chaining::
 * Installation::
 * Author, contributors: Author contributors.
 * Changes::
@@ -68,6 +71,7 @@ Wide variety of input tables
 * An Org ID::
 * CSV input::
 * JSON input::
+* Fixed-width input::
 * Input slicing::
 * Malformed input tables::
 * Headers::
@@ -82,7 +86,6 @@ Post processing
 
 * Computing spreadsheet formulas afterward::
 * Algorithm post processing::
-* Chaining::
 
 
 
@@ -511,6 +514,7 @@ several places.  OrgtblJoin adds even more kinds of input.
 * An Org ID::
 * CSV input::
 * JSON input::
+* Fixed-width input::
 * Input slicing::
 * Malformed input tables::
 * Headers::
@@ -657,7 +661,7 @@ block of any kind.  Example with a "quote" block:
      #+end_quote
 
 
-File: orgtbl-join.info,  Node: JSON input,  Next: Input slicing,  Prev: CSV input,  Up: Wide variety of input tables
+File: orgtbl-join.info,  Node: JSON input,  Next: Fixed-width input,  Prev: CSV input,  Up: Wide variety of input tables
 
 6.5 JSON input
 ==============
@@ -730,7 +734,7 @@ Example:
 block of any kind.  Example with a "src" block for JavaScript:
 
      #+name: myjsondata
-     #+begin_src js
+     #+begin_example
      [
        ["day","quty","color"],   // names of columns in the header
        [],                       // an horizontal line
@@ -738,12 +742,113 @@ block of any kind.  Example with a "src" block for JavaScript:
        ["thu",34,"blue" ],
        …
      ]
-     #+end_src
+     #+end_example
 
 
-File: orgtbl-join.info,  Node: Input slicing,  Next: Malformed input tables,  Prev: JSON input,  Up: Wide variety of input tables
+File: orgtbl-join.info,  Node: Fixed-width input,  Next: Input slicing,  Prev: JSON input,  Up: Wide variety of input tables
 
-6.6 Input slicing
+6.6 Fixed-width input
+=====================
+
+As an example, the following block is a table formatted as
+"fixed-width".
+
+     #+name: fixed-qty-lev
+     #+begin_example
+     day qty  lev
+     Mon 45.2 5
+     Mon 51.2 1
+     Thu 87.3 8
+     Thu 42.0 7
+     Thu 12.1 1
+     Wed  7.9 3
+     Fri 56.8 9
+     Fri 11.3 1
+     Fri  1.2 1
+     Sat  9.7 3
+     Sun  3.8 2
+     #+end_example
+
+   The first column is 3 characters wide.  The second column start at
+the 4th character (assuming the first character is n° zero), and it is 4
+characters wide.  And so on.
+
+   Here is an example of how to reference this table for joining it:
+
+     #+BEGIN: join :table "fixed-qty-lev(fixed header 1)" …
+     #+END:
+
+   The general reference parameter of ‘:table’ is as follows:
+
+      ╭─────────────────────╮      ╭─────────────────────────────╮
+      │the name of the File,│      │the name of the block        │
+      │optional             │      │if within an Org Mode buffer,│
+      ╰─┬───────────────────╯    ╭─┤optional                     │
+        │                        │ ╰─────────────────────────────╯
+      ╭─╯  ╭─────────────────────╯               ╭────────────────────────────╮
+      │    │          ╭───────────────────────╮  │the number of rows composing│
+      │    │          │the "Fixed-width" type,│  │the header of the table,    │
+      │    │     ╭────┤mandatory              │  │optional                    │
+      │    │     │    ╰───────────────────────╯  ╰───┬────────────────────────╯
+      │    │     │          ╭────────────────────────╯
+      ▼    ▼     ▼          ▼
+     f​ile:name(f​ixed header 1 coord ((begA . endA) (begB . endB) …))
+                               ▲       ▲      ▲      ▲      ▲
+                  ╭────────────╯       ╰───┬──╯      ╰───┬──╯
+      ╭───────────┴──────────╮ ╭───────────┴─────╮ ╭─────┴──────────────╮
+      │the columns positions,│ │start and end    │ │start and end       │
+      │optional              │ │of the 1st column│ │of the second column│
+      ╰──────────────────────╯ ╰─────────────────╯ ╰────────────────────╯
+
+   • The ‘file:’ part is the path-name of the file where the table is
+     located.  If not given, the current buffer is assumed.
+
+   • The ‘name’ part is the name of an Org-Mode block, usually tagged
+     with ‘#+name: …’.  In this case, the ‘file:’ part is either absent
+     or points to an Org-Mode file.
+
+   • The ‘header’ part is optional.  It may be a number (usually 1)
+     giving the number of first rows to be considered as the header of
+     the table.  It may be a list of strings, like ‘("Day" "Q" "Level")’
+     explicitly giving names to the columns.  If ‘header’ is not
+     specified, the columns must be referred with their dollar names:
+     ‘$1, $2, $3, …’.
+
+   • The ‘coord’ parameter specifies the locations of the columns.  It
+     is a list of pairs of begin-end.  For the previous example, it
+     could be: ‘((0 . 3) (4 . 8) (9 . 12))’.  The first column starts at
+     0 included and ends at 3 excluded.
+
+   When the ‘coord’ parameter is not given, an attempt is made to guess
+those positions, based on how the fields are separated by blanks
+throughout the table.  The guessed positions are printed in the
+‘*Messages*’ buffer, to easily copy-past them after ‘coord’.
+
+   Guessing does not work if the columns are not separated by blanks.
+Joining does work thought.  In this case, the ‘coord’ parameter must be
+specified manually.
+
+   This fixed-width format is the one created by many Linux commands.
+So for example the following Babel block is suitable as an input for
+OrgJoin.
+
+     #+name: lslfixed
+     #+begin_src sh :results raw
+     ls -l | tail +2
+     #+end_src
+
+     #+BEGIN: join :mas-table "lslfixed(fixed)" : mas-col: $3 …
+     #+END:
+
+   In this example, we use the output of the ‘ls’ command (list files in
+the current directory).  The column ‘$3’ (name of the owner of each
+file) is the key column for joining the output of ‘ls’ to some other
+table (not shown in this example).
+
+
+File: orgtbl-join.info,  Node: Input slicing,  Next: Malformed input tables,  Prev: Fixed-width input,  Up: Wide variety of input tables
+
+6.7 Input slicing
 =================
 
 Org Mode also provides for table slicing.  All of the previous
@@ -762,7 +867,7 @@ references may be followed by an optional slicing.  Examples:
 
 File: orgtbl-join.info,  Node: Malformed input tables,  Next: Headers,  Prev: Input slicing,  Up: Wide variety of input tables
 
-6.7 Malformed input tables
+6.8 Malformed input tables
 ==========================
 
 Sometimes an input table may be unaligned or malformed, with incomplete
@@ -790,7 +895,7 @@ rows, like those ones:
 
 File: orgtbl-join.info,  Node: Headers,  Prev: Malformed input tables,  Up: Wide variety of input tables
 
-6.8 Headers
+6.9 Headers
 ===========
 
 The master and the reference tables may or may not have a header.  When
@@ -1003,7 +1108,7 @@ appears only once):
      #+END:
 
 
-File: orgtbl-join.info,  Node: Post processing,  Next: Installation,  Prev: Selecting the output columns,  Up: Top
+File: orgtbl-join.info,  Node: Post processing,  Next: Virtual input table from Babel (1),  Prev: Selecting the output columns,  Up: Top
 
 9 Post processing
 *****************
@@ -1012,7 +1117,6 @@ File: orgtbl-join.info,  Node: Post processing,  Next: Installation,  Prev: Sele
 
 * Computing spreadsheet formulas afterward::
 * Algorithm post processing::
-* Chaining::
 
 
 File: orgtbl-join.info,  Node: Computing spreadsheet formulas afterward,  Next: Algorithm post processing,  Up: Post processing
@@ -1041,7 +1145,7 @@ This will fill-in the 7th column header.  It is translated into a usual
      #+END:
 
 
-File: orgtbl-join.info,  Node: Algorithm post processing,  Next: Chaining,  Prev: Computing spreadsheet formulas afterward,  Up: Post processing
+File: orgtbl-join.info,  Node: Algorithm post processing,  Prev: Computing spreadsheet formulas afterward,  Up: Post processing
 
 9.2 Algorithm post processing
 =============================
@@ -1097,10 +1201,126 @@ to the ‘:post’ parameter:
 ‘*this*’.
 
 
-File: orgtbl-join.info,  Node: Chaining,  Prev: Algorithm post processing,  Up: Post processing
+File: orgtbl-join.info,  Node: Virtual input table from Babel (1),  Next: Wide variety of input tables (1),  Prev: Post processing,  Up: Top
 
-9.3 Chaining
-============
+10 Virtual input table from Babel
+*********************************
+
+Any of the input tables may be the result of executing a Babel script.
+In this case, the table is virtual in the sense that it appears nowhere.
+
+   (Babel is the Org Mode infrastructure to run scripts in any language,
+like Python, R, C++, Java, D, shell, whatever, with inputs and outputs
+connected to Org Mode).
+
+   Example:
+
+   Here is a script in Emacs Lisp which creates an Org Mode table.
+
+     #+name: ascript
+     #+begin_src elisp :colnames yes
+     (list
+      '(type quty)
+      'hline
+      (list "tomato" (* 53.1 12))
+      (list "tofu" (* 12.5 7)))
+     #+end_src
+
+   If executed, the script would output this table:
+
+     #+RESULTS: ascript
+     | type   |  quty |
+     |--------+-------|
+     | tomato | 637.2 |
+     | tofu   |  87.5 |
+
+   But instead, OrgtblJoin will execute the script and consume its
+output:
+
+     #+BEGIN: join :mas-table "ascript" :ref-table "nut" :mas-column "type" :ref-column "type" :full "mas"
+     | type   |  quty | Fiber | Sugar | Protein | Carb |
+     |--------+-------+-------+-------+---------+------|
+     | tomato | 637.2 |   0.6 |   2.1 |     0.8 |  3.4 |
+     | tofu   |  87.5 |   0.7 |   0.5 |     6.6 |  1.4 |
+     #+END:
+
+   Here the parameter ‘:mas-table’ specifies the name of the script to
+be executed.
+
+
+File: orgtbl-join.info,  Node: Wide variety of input tables (1),  Next: Chaining,  Prev: Virtual input table from Babel (1),  Up: Top
+
+11 Wide variety of input tables
+*******************************
+
+As in any other Org Mode source block, the input table may come from
+several places.  OrgAggregate adds even more kinds of input.
+
+   The parameter after ‘:table’ may be:
+
+   • ‘mytable’: an ordinary Org Mode table in the same buffer, named
+     ‘mytable’.
+
+   • ‘/some/dir/file.org:mytable’: an ordinary Org Mode table named
+     ‘mytable’, in a distant Org file named ‘/some/dir/file.org’.
+
+   • ‘mybabel’: an Org Mode Babel block named ‘mybabel’ in the current
+     buffer, generating a table as its output, written in any language.
+
+   • ‘mybabel(param1=123,param2=456)’: passing parameters to an Org Mode
+     Babel block named ‘mybabel’ in the current buffer, generating a
+     table as its output, written in any language.
+
+   • ‘/some/dir/file.org:mybabel(param1=123,param2=456)’: an Org Mode
+     Babel block named ‘mybabel’ in a distant org file named
+     ‘/some/dir/file.org’, called with parameters.
+
+   • ‘/some/dir/file.csv:(csv params…)’: a comma-separated-values file
+     in the CSV format, in the file ‘/some/dir/file.csv’.  The
+     separators may be TAB, comma, or semicolon, they are guessed and
+     different separators may be mixed.  Any empty row in the CSV file
+     is interpreted as an horizontal separator (‘hline’ in Org table
+     parlance).
+
+     Parameters may be:
+        • ‘header’: the first row in the CSV file is interpreted as a
+          header containing the column names.
+        • ‘colnames (column1 column2 column3 …)’: the column names are
+          given explicitly, in case the CSV file contains only data, no
+          header.
+     In any case, the columns may be references as ‘$1, $2, $3, …’ as
+     usual.
+
+   • ‘/some/dir/file.json:(json params…)’: a file containing a JSON
+     formatted table, in the file ‘/some/dir/file.csv’.  Currently, the
+     only accepted format is an array of arrays.  There are currently no
+     parameters.  In the future it may be possible to specify
+     alternative sub-formats.
+
+   • ‘34cbc63a-c664-471e-a620-d654b26ffa31’: an identifier of an Org
+     Mode sub-tree.  The sub-tree is supposed to contain a table, which
+     is retrieved.  Those Org Mode identifiers span all known Org Mode
+     files.  To add such an identifier, put the cursor on the heading of
+     the sub-tree, and type ‘M-x org-id-get-create’.
+
+   The Org Mode also provides for table slicing.  All of the previous
+references may be followed by an optional slicing.  Examples:
+
+   • ‘mytable[0:5]’: retain only the first 6 rows of the input table; if
+     the table has a header, then it counts as 2 rows (the header and
+     the separation line); in this example, it would retain rows 0 and 1
+     for the header, and rows 2,3,4,5 for the content.
+
+   • ‘mytable[,0:1]’: retain only the first 2 columns.
+
+   • ‘mytable[0:5,0:1]’: retain only the first 6 rows and the first 2
+     columns.
+
+
+File: orgtbl-join.info,  Node: Chaining,  Next: Installation,  Prev: Wide variety of input tables (1),  Up: Top
+
+12 Chaining
+***********
 
 In an above example we gave a name to the resulting joined table:
 ‘#+name: richer’.  Doing so the joined table may become an input for a
@@ -1114,9 +1334,9 @@ line.  But sometimes this is not taken into account by further Babel
 blocks.  In this case, put ‘#+name: richer’ bellow ‘#+BEGIN:’.
 
 
-File: orgtbl-join.info,  Node: Installation,  Next: Author contributors,  Prev: Post processing,  Up: Top
+File: orgtbl-join.info,  Node: Installation,  Next: Author contributors,  Prev: Chaining,  Up: Top
 
-10 Installation
+13 Installation
 ***************
 
 Emacs package on Melpa: add the following lines to your ‘.emacs’ file,
@@ -1154,7 +1374,7 @@ menu bindings are no longer hard-coded in the package.
 
 File: orgtbl-join.info,  Node: Author contributors,  Next: Changes,  Prev: Installation,  Up: Top
 
-11 Author, contributors
+14 Author, contributors
 ***********************
 
 Comments, enhancements, etc.  welcome.
@@ -1179,7 +1399,7 @@ Comments, enhancements, etc.  welcome.
 
 File: orgtbl-join.info,  Node: Changes,  Next: GPL 3 License,  Prev: Author contributors,  Up: Top
 
-12 Changes
+15 Changes
 **********
 
    • remove duplicate reference column
@@ -1214,11 +1434,12 @@ File: orgtbl-join.info,  Node: Changes,  Next: GPL 3 License,  Prev: Author cont
      refresh or wizard update.
    • Simplify directory part when querying a file name.
    • Centralize cell→string in ‘-cell-to-string’ which is the fastest.
+   • Fixed-width format supported as input table.
 
 
 File: orgtbl-join.info,  Node: GPL 3 License,  Prev: Changes,  Up: Top
 
-13 GPL 3 License
+16 GPL 3 License
 ****************
 
 Copyright (C) 2014-2026 Thierry Banel
@@ -1240,43 +1461,46 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Tag Table:
 Node: Top200
-Node: New1477
-Node: Example2046
-Node: A cooking recipe2208
-Node: SQL equivalent4070
-Node: In-place Push Pull4536
-Node: _In-place_ mode4825
-Node: _Push_ mode5170
-Node: _Pull_ mode5967
-Node: As a rule of thumb7095
-Node: Matching rows7604
-Node: Duplicate rows8140
-Node: How to handle missing rows?9957
-Node: Wizard12195
-Node: Guiding (traditional) wizard12461
-Node: Experimental free form wizard14317
-Node: Wide variety of input tables15967
-Node: Standard Org Mode input16524
-Node: Virtual input table from Babel17024
-Node: An Org ID19346
-Node: CSV input19946
-Node: JSON input21455
-Node: Input slicing23930
-Node: Malformed input tables24658
-Node: Headers25554
-Node: About reference tables26544
-Node: Multiple reference tables27245
-Node: Zero reference table27904
-Node: Joining 2 similar tables28898
-Node: Selecting the output columns31307
-Node: Post processing33087
-Node: Computing spreadsheet formulas afterward33340
-Node: Algorithm post processing34622
-Node: Chaining36514
-Node: Installation37133
-Node: Author contributors38425
-Node: Changes39290
-Node: GPL 3 License41074
+Node: New1635
+Node: Example2204
+Node: A cooking recipe2366
+Node: SQL equivalent4228
+Node: In-place Push Pull4694
+Node: _In-place_ mode4983
+Node: _Push_ mode5328
+Node: _Pull_ mode6125
+Node: As a rule of thumb7253
+Node: Matching rows7762
+Node: Duplicate rows8298
+Node: How to handle missing rows?10115
+Node: Wizard12353
+Node: Guiding (traditional) wizard12619
+Node: Experimental free form wizard14475
+Node: Wide variety of input tables16125
+Node: Standard Org Mode input16704
+Node: Virtual input table from Babel17204
+Node: An Org ID19526
+Node: CSV input20126
+Node: JSON input21635
+Node: Fixed-width input24119
+Node: Input slicing29322
+Node: Malformed input tables30057
+Node: Headers30953
+Node: About reference tables31943
+Node: Multiple reference tables32644
+Node: Zero reference table33303
+Node: Joining 2 similar tables34297
+Node: Selecting the output columns36706
+Node: Post processing38486
+Node: Computing spreadsheet formulas afterward38748
+Node: Algorithm post processing40030
+Node: Virtual input table from Babel (1)41905
+Node: Wide variety of input tables (1)43383
+Node: Chaining46573
+Node: Installation47206
+Node: Author contributors48491
+Node: Changes49356
+Node: GPL 3 License51192
 
 End Tag Table
 

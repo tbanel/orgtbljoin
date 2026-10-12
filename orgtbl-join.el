@@ -252,6 +252,96 @@ COLNAMES, if not nil, is a list of column names."
         (setq table (cons colnames (cons 'hline table))))
     table))
 
+(defun orgtbl-join--fixedwidth-guess ()
+  "Guess the columns in the current buffer, formatted as fixed columns.
+If there is a white-space character on all rows at the same position,
+then it is considered as a column separator."
+  (goto-char (point-min))
+  (let ((blanks
+         (make-vector
+          (1+
+           (cl-loop
+            for nbtabs = 0
+            until (eobp)
+            maximize (- (pos-eol) (pos-bol))
+            if (and
+                (< nbtabs 3)
+                (search-forward "\t" (pos-eol) t))
+            do
+            (error "Fixed columns: TAB found at line %s
+  most likely the table is in CSV format."
+                     (count-lines (point-min) (point)))
+            (setq nbtabs (1+ nbtabs))
+            do (forward-line 1)))
+           t)))
+    (goto-char (point-min))
+    (while (not (eobp))
+      (cl-loop
+       for i from (pos-bol) below (pos-eol)
+       for j from 0
+       do
+       (unless (eq (char-after i) ? )
+         (aset blanks j nil)))
+      (forward-line 1))
+    (let ((last t) beg end)
+      (cl-loop
+       for b across blanks
+       for i from 0
+       do
+       (cond
+        ((eq b t)
+         (cond
+          ((eq last nil)
+           (setq end i))))
+        ((eq last t)
+         (setq beg i)))
+       (setq last b)
+       if end
+       collect (cons beg end)
+       and do (setq beg nil) (setq end nil)))))
+
+(defun orgtbl-join--fixedwidth-to-lisp (&optional delimit header)
+  "Converts the current buffer formatted as fixed width columns to Lisp.
+DELIMIT is a list of begining and end pairs describing each column:
+((beg1 . end1) (beg2 . end2) (beg3 . end3) …)
+Beginings and ends are numbers of characters, starting from zero.
+If DELIMIT is nil, an attempt is made to guess it.
+HEADER may be:
+- nil: no header, refer to columns as $1, $2, $3…
+- 1 or any small number: the header is extracted from the first HEADER rows.
+- (\"colA\" \"colB\" \"colC\" …): a list of explicit column names."
+  (unless delimit
+    (setq delimit (orgtbl-join--fixedwidth-guess))
+    (message "Fixed columns at those positions:\n  %S" delimit))
+  (goto-char (point-min))
+  (let (table)
+    (while (not (eobp))
+      (let ((bol (pos-bol)))
+        (setq
+         table
+         (push
+          (cl-loop
+           for be in delimit
+           collect
+           (string-trim
+            (buffer-substring-no-properties
+             (min (+ bol (car be)) (pos-eol))
+             (min (+ bol (cdr be)) (pos-eol)))))
+          table)))
+      (forward-line 1))
+    (setq table (nreverse table))
+    (cond
+     ((not header))
+     ((consp header)
+      (setq table (cons header (cons 'hline table))))
+     ((numberp header)
+      (setcdr
+       (nthcdr (1- header) table)
+       (cons 'hline (nthcdr header table))))
+     (t
+      (error "Fixed columns: header = %S not understood" header)))
+    table))
+
 ;; A few rx abbreviations
 ;; each time a bit of a regexp is used twice or more,
 ;; it makes sense to define an abbrev
@@ -267,7 +357,8 @@ COLNAMES, if not nil, is a list of column names."
   ;; we suggest using an explicit set of character alternatives,
   ;; such as ‘[ \t]’, instead, as it will be faster than ‘[[:blank:]]’.
 
-  (rx-define blanks (* (any " \t ")))
+  (rx-define blanks   (* (any " \t ")))
+  (rx-define blanksnl (* (any " \t \n")))
 
   ;; search for table name, such as:
   ;; #+tablename: mytable
@@ -325,6 +416,50 @@ If FILE is nil, use current buffer."
       nil t)
      collect (match-string-no-properties 1))))
 
+(defun orgtbl-join--is-name-diese+begin (file name)
+  "Return non-nil if FILE:NAME points to a #+beginXXX block.
+NAME should appear in FILE as a line like this:
+#+name: NAME
+FILE can be nil to search in the current buffer.
+Otherwise it is a file path."
+  (interactive)
+  (orgtbl-join--with-file file
+    (search-forward-regexp
+     (rx
+      tblname (literal name) blanks "\n"
+      blanksnl
+      (*
+       (or
+        (seq "#+begin" unmatchable)
+        (seq "#" (* nonl) "\n" blanksnl)))
+      "#+begin")
+     nil t)))
+
+(defun orgtbl-join--is-id-diese+begin (id)
+  "Return non-nil if ID points to a #+beginXXX block.
+ID is an org-id."
+  (interactive)
+  (let ((id-loc (org-id-find id 'marker)))
+    (and
+     id-loc
+     (markerp id-loc)
+     (with-current-buffer (marker-buffer id-loc)
+       (save-excursion
+         (goto-char (marker-position id-loc))
+         (move-marker id-loc nil)
+         (forward-line 1)
+         (search-forward-regexp
+          (rx
+           point
+           (* blanks ":" (+ alnum) ":" (* nonl) "\n")
+           blanksnl
+           (*
+            (or
+             (seq "#+begin" unmatchable)
+             (seq "#" (* nonl) "\n" blanksnl)))
+           "#+begin")
+          nil t))))))
+
 (defun orgtbl-join--table-from-babel (name-or-id)
   "Retrieve an input table as the result of running a Babel block.
 NAME-OR-ID is the usual Org convention for pointing to a distant reference.
@@ -346,14 +481,25 @@ FILE is a filename with possible relative or absolute path.
 If FILE is nil, look in the current buffer.
 NAME should match a #+name: tag."
   (orgtbl-join--with-file file
-    (if (re-search-forward
-         (rx ;; a single regexp :)
-          tblname (literal name) blanks "\n"
-          blanks "#+begin" (0+ nonl) "\n"
-          (group (*? anything))
-          bol blanks "#+end")
-         nil t)
-        (match-string-no-properties 1))))
+    (cond
+     ((not (re-search-forward (rx tblname (literal name) blanks "\n")))
+      nil)
+     ((re-search-forward
+       (rx
+        point
+        ;; do not try to detect additional lines here
+        ;; because org-babel-ref-resolve could not understand them
+        blanks "#+begin_src")
+       nil t)
+      (org-babel-ref-resolve name))
+     ((re-search-forward
+       (rx ;; a single regexp :)
+        point blanks
+        blanks "#+begin" (0+ nonl) "\n"
+        (group (*? anything))
+        bol blanks "#+end")
+       nil t)
+      (match-string-no-properties 1)))))
 
 (defun orgtbl-join--table-from-csv (file name params)
   "Parse a CSV formatted table located in FILE.
@@ -443,6 +589,34 @@ to the column names."
           `(,colnames hline ,@result)
         result))))
 
+(defun orgtbl-join--table-from-fixedwidth (file name params)
+  "Parse a fixed-width formatted table located in FILE.
+If NAME is nil, then FILE is supposed to contain just one fixed-width table.
+If NAME is given, it is supposed to be an Org block name which contains
+a fixed-width table.
+The column locations are currently guessed.
+PARAMS is a p-list which currently can handle
+the `header' and `coord' entries."
+    (let (header coord block)
+    (cl-loop
+     for p on (cdr (read params))
+     do
+     (cond
+      ((eq (car p) 'header)
+       (setq p (cdr p))
+       (setq header (car p)))
+      ((eq (car p) 'coord)
+       (setq p (cdr p))
+       (setq coord (car p)))
+      (t
+       (message "fixed columns reader: parameter %S not recognized" (car p)))))
+    (if name
+        (setq block (orgtbl-join--block-from-name file name)))
+    (message "BLOCK = %S" block)
+    (with-temp-buffer
+      (if name (insert block) (insert-file-contents file))
+      (orgtbl-join--fixedwidth-to-lisp coord header))))
+
 (defun orgtbl-join--table-from-name (file name)
   "Parse an Org table named NAME in a distant Org file named FILE.
 FILE is a filename with possible relative or absolute path.
@@ -492,11 +666,11 @@ The header have an ID property equal to ID in a PROPERTY drawer."
   "Parse LOCATOR, a description of where to find the input table.
 The result is a vector containing:
 [
-  FILE   ; optional file where the table/Babel/CSV/JSON may be found
+  FILE   ; optional file where the table/Babel/CSV/JSON/fixed-width is located
   NAME   ; name of table/Babel denoted by #+name:
   ORGID  ; Org Mode id in a property drawer (exclusive with file+name)
-  PARAMS ; optional parameters to pass to babel/CSV/JSON
-  SLICE  ; optional slicing of the resultin table, like [0:7]
+  PARAMS ; optional parameters to pass to babel/CSV/JSON/fixed-width
+  SLICE  ; optional slicing of the resulting table, like [0:7]
 ]
 If LOCATOR looks like NAME(params…)[slice] or just NAME, then NAME
 is searched in the Org Mode database, and if found it is interpreted
@@ -546,7 +720,7 @@ The result is a locator suitable for orgtbl-join and Org Mode."
 (defun orgtbl-join-table-from-any-ref (name-or-id)
   "Find a table referenced by NAME-OR-ID.
 The reference is all the accepted Org references,
-and additionally pointers to CSV or JSON files.
+and additionally pointers to CSV, JSON, or fixed-width files.
 The pointed to object may also be a Babel block, which when executed
 returns an Org table. Parameters may be passed to the Babel block
 in parenthesis.
@@ -570,6 +744,9 @@ An horizontal line is translated as the special symbol `hline'."
          ;; name-or-id = "file:(json …)"
          ((and params (string-match-p (rx bos "(json") params))
           (orgtbl-join--table-from-json file name params))
+         ;; name-or-id = "file:(fixed …)"
+         ((and params (string-match-p (rx bos "(fixed") params))
+          (orgtbl-join--table-from-fixedwidth file name params))
          ;; name-or-id = "34cbc63a-c664-471e-a620-d654b26ffa31"
          ;; pointing to a header in a distant org file, followed by a table
          (orgid
@@ -717,14 +894,38 @@ again and again the same string."
 (defun orgtbl-join--elisp-table-to-string (table)
   "Convert TABLE to a string formatted as an Org Mode table.
 TABLE is a list of lists of cells.  The list may contain the
-special symbol `hline' to mean an horizontal line."
+special symbol `hline' to mean an horizontal line.
+TABLE may have optionally a first row which gives the formatting of columns.
+In this case this first row must contain the usual Org Mode formatting cookies
+like <r> of <l12>.
+It may also contain nil, which means that the formatting is decided on whether
+the column is mainly numeric (right alignment) or mainly alpha (left alignment)"
   (let* ((nbcols (cl-loop
 		  for row in table
 		  maximize (if (listp row) (length row) 0)))
 	 (maxwidths  (make-list nbcols 1))
 	 (numbers    (make-list nbcols 0))
 	 (non-empty  (make-list nbcols 0))
-	 (spaces-cache (make-vector 100 nil)))
+	 (spaces-cache (make-vector 100 nil))
+         (colformat nil))
+    ;; detect whether the first row is a formatting one, like:
+    ;; ("<r>" "<12>" nil "<l7>")
+    (when
+        (cl-loop
+         for k in (car table)
+         always
+         (or
+          (not k)
+          (and
+           (stringp k)
+           (string-match-p
+            (rx bos "<" (* anychar) ">" eos)
+            k))))
+      (setq colformat (car table))
+      (setq table (cdr table)))
+    (setq
+     colformat
+     (append colformat (make-list (- nbcols (length colformat)) nil)))
 
     ;; compute maxwidths
     (cl-loop for row in table
@@ -742,47 +943,81 @@ special symbol `hline' to mean an horizontal line."
 		      if (< (car mx) (string-width cellnp))
 		      do (setcar mx (string-width cellnp))))
 
-    ;; change meaning of numbers from quantity of cells with numbers
-    ;; to flags saying whether alignment should be left (number alignment)
+    ;; transform colformat to a list of -1, 0, 1
     (cl-loop for nu on numbers
 	     for ne in non-empty
-	     do
-	     (setcar nu (< (car nu) (* org-table-number-fraction ne))))
+             for fo on colformat
+             for cfo = (car fo)
+             do
+             (cond
+              ((not cfo)
+               ;; no explicit format? see if column is mainly numeric
+               ;; and if so format to the right, otherwise to the left
+	       (setcar
+                fo
+                (if (< (car nu) (* org-table-number-fraction ne))
+                    -1
+                  1)))
+              ((and (stringp cfo)
+                    (string-match
+                     (rx bos "<" (group (any "rlc")) (* digit) ">" eos)
+                     cfo))
+               (setcar
+                fo
+                (pcase (match-string 1 cfo)
+                  ("r"  1)
+                  ("l" -1)
+                  ("c"  0)
+                  (_ (error "should not happen")))))
+              (t (setcar fo -1))))
 
     ;; create well padded and aligned cells
     (let ((bits (orgtbl-join--list-create)))
-      (cl-loop for row in table
-	       do
-	       (if (listp row)
-		   (cl-loop for cell in row
-			    for mx in maxwidths
-			    for nu in numbers
-			    for pad = (- mx (string-width cell))
-                            do
-			    (orgtbl-join--list-append bits "| ")
-			    (cond
-			     ;; no alignment
-                             ((<= pad 0)
-			      (orgtbl-join--list-append bits cell))
-			     ;; left alignment
-			     (nu
-			      (orgtbl-join--list-append bits cell)
-                              (orgtbl-join--list-append
-                               bits
-                               (orgtbl-join--insert-make-spaces pad spaces-cache)))
-			     ;; right alignment
-                             (t
-			      (orgtbl-join--list-append
-                               bits
-                               (orgtbl-join--insert-make-spaces pad spaces-cache))
-			      (orgtbl-join--list-append bits cell)))
-			    (orgtbl-join--list-append bits " "))
-		 (cl-loop for bar = "|" then "+"
-			  for mx in maxwidths
-                          do
-			  (orgtbl-join--list-append bits bar)
-			  (orgtbl-join--list-append bits (make-string (+ mx 2) ?-))))
-	       (orgtbl-join--list-append bits "|\n"))
+      (cl-loop
+       for row in table
+       do
+       (if (listp row)
+	   (cl-loop
+            for cell in row
+	    for mx in maxwidths
+	    for fo in colformat
+	    for pad = (- mx (string-width cell))
+            do
+	    (orgtbl-join--list-append bits "| ")
+	    (cond
+	     ;; no alignment
+             ((<= pad 0)
+	      (orgtbl-join--list-append bits cell))
+	     ;; left alignment
+	     ((eq fo -1)
+	      (orgtbl-join--list-append bits cell)
+              (orgtbl-join--list-append
+               bits
+               (orgtbl-join--insert-make-spaces pad spaces-cache)))
+	     ;; right alignment
+             ((eq fo 1)
+	      (orgtbl-join--list-append
+               bits
+               (orgtbl-join--insert-make-spaces pad spaces-cache))
+	      (orgtbl-join--list-append bits cell))
+             ;; center alignement
+             ((eq fo 0)
+              (orgtbl-join--list-append
+               bits
+               (orgtbl-join--insert-make-spaces (/ pad 2) spaces-cache))
+              (orgtbl-join--list-append bits cell)
+              (orgtbl-join--list-append
+               bits
+               (orgtbl-join--insert-make-spaces (/ (1+ pad) 2) spaces-cache)))
+             (t (error "this case should not happen fo=%S" fo)))
+	    (orgtbl-join--list-append bits " "))
+	 (cl-loop
+          for bar = "|" then "+"
+	  for mx in maxwidths
+          do
+	  (orgtbl-join--list-append bits bar)
+	  (orgtbl-join--list-append bits (make-string (+ mx 2) ?-))))
+       (orgtbl-join--list-append bits "|\n"))
       ;; remove the last \n because Org Mode re-adds it
       (setcar (car bits) "|")
       (mapconcat #'identity (orgtbl-join--list-get bits)))))
@@ -1316,19 +1551,19 @@ a Babel block suitable for aggregation."
 - a regular Org table,
 - a Babel block whose output will be the input table.
 Org table & Babel block names are available at completion (type ~TAB~).
-Leave empty for a CSV or JSON formatted table."
+Leave empty for a CSV, JSON, of fixed-width formatted table."
            :params "* Parameters for Babel code block (optional)
 ** A Babel code block may require specific parameters
 Give them here if needed, surrounded by parenthesis. Example:
   ~(size=4,reverse=nil)~
-** CSV or JSON formatted tables.
+** CSV, JSON, or fixed-width formatted tables.
 Examples:
-  ~(csv header)~ ~(json)~
+  ~(csv header)~ ~(json)~ ~(fixed …)~
 ** Regular Org Mode table
 Leave empty."
            :slice "* Slicing (optional)
 Slicing is an Org Mode feature allowing to cut the input table.
-It applies to any input: Org table, Babel output, CSV, JSON.
+It applies to any input: Org table, Babel output, CSV, JSON, fixed-width.
 Leave empty for no slicing.
 ** Examples:
 - ~mytable[0:5]~     retains only the first 6 rows of the input table
@@ -1498,7 +1733,16 @@ it is queried even when EXPERT is nil."
       ((string-match-p (rx ".csv"  eos) file)
        (setq params "(csv)"))
       ((string-match-p (rx ".json" eos) file)
-       (setq params "(json)"))))
+       (setq params "(json)"))
+      ((string-match-p (rx ".fixed" eos) file)
+       (setq params "(fixed)"))))
+
+    (and
+     (not params)
+     (or
+      (and name    (orgtbl-join--is-name-diese+begin file name))
+      (and isorgid (orgtbl-join--is-id-diese+begin orgid)))
+     (setq params "()"))
 
     (when (or expert params)
       (orgtbl-join--display-help :params)

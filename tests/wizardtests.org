@@ -293,3 +293,72 @@ Add a computed column with onces (converted from grams)
 | corn      |    250 | 21.3 |   4.7 |   1.8 |     2.8 |  8.8 |
 #+TBLFM: $7=$2*0.03527396;f1
 #+END:
+
+* Distant fixed columns
+
+#+begin_src elisp :results none
+(orgtbl-join-wizard-test nil
+ :init    "C-u C-c C-x x join <return>"
+ :isid    "n"
+ :file    "unittests.org <return>"
+ :name    "itemprice <return>"
+ :params  "<left> fixed SPC header SPC 1 SPC coord SPC ( ( 0 SPC . SPC 7 ) SPC ( 11 SPC . SPC 16 ) ) <return>"
+ :slice   "<return>"
+ :isid    "n"
+ :file    "unittests.org <return>"
+ :name    "itemqty <return>"
+ :params  "<left> fixed SPC header SPC ( itemclass SPC quantity ) SPC coord SPC ( ( 0 SPC . SPC 7 ) SPC ( 11 SPC . SPC 16 ) ) <return>"
+ :slice   "<return>"
+ :mascol  "item <return>"
+ :refcol  "itemclass <return>"
+ :full    "<return>"
+ :another "n <return>"
+)
+#+end_src
+
+#+BEGIN: join :mas-table "unittests.org:itemprice(fixed header 1 coord ((0 . 7) (11 . 16)))" :ref-table "unittests.org:itemqty(fixed header (itemclass quantity) coord ((0 . 7) (11 . 16)))" :mas-column "item" :ref-column "itemclass" :full "mas"
+| item    | price | quantity |
+|---------+-------+----------|
+| pencil  |  0.45 |      560 |
+| pencil  |  0.45 |     5000 |
+| pencil  |  0.45 |     4500 |
+| pencil  |  0.59 |      560 |
+| pencil  |  0.59 |     5000 |
+| pencil  |  0.59 |     4500 |
+| pencil  |  1.17 |      560 |
+| pencil  |  1.17 |     5000 |
+| pencil  |  1.17 |     4500 |
+| paper   |  3.30 |     3700 |
+| paper   |  3.30 |     2070 |
+| paper   |  3.30 |     4900 |
+| paper   |  1.01 |     3700 |
+| paper   |  1.01 |     2070 |
+| paper   |  1.01 |     4900 |
+| paper   |  1.23 |     3700 |
+| paper   |  1.23 |     2070 |
+| paper   |  1.23 |     4900 |
+| eraser  |  0.18 |      900 |
+| eraser  |  0.18 |     1200 |
+| eraser  |  0.22 |      900 |
+| eraser  |  0.22 |     1200 |
+| clip    |  0.87 |      540 |
+| marker  |  0.84 |      430 |
+| marker  |  0.84 |      700 |
+| marker  |  0.84 |      120 |
+| marker  |  1.05 |      430 |
+| marker  |  1.05 |      700 |
+| marker  |  1.05 |      120 |
+| marker  |  2.15 |      430 |
+| marker  |  2.15 |      700 |
+| marker  |  2.15 |      120 |
+| envelop |  0.95 |     1800 |
+| scissor |  2.11 |      110 |
+| scissor |  2.11 |       30 |
+| scissor |  2.11 |       20 |
+| scissor |  2.80 |      110 |
+| scissor |  2.80 |       30 |
+| scissor |  2.80 |       20 |
+| scissor |  3.95 |      110 |
+| scissor |  3.95 |       30 |
+| scissor |  3.95 |       20 |
+#+END:
